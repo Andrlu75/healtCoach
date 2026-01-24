@@ -22,4 +22,6 @@ export const clientsApi = {
   archive: (id: number) => api.post(`/clients/${id}/archive/`),
   setPersona: (id: number, persona_id: number | null) =>
     api.post<Client>(`/clients/${id}/set_persona/`, { persona_id }),
+
+  delete: (id: number) => api.delete(`/clients/${id}/`),
 }

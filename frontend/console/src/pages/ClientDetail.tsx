@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Save } from 'lucide-react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { ArrowLeft, Save, Trash2 } from 'lucide-react'
 import { clientsApi } from '../api/clients'
 import { settingsApi } from '../api/settings'
 import { mealsApi, metricsApi, chatApi } from '../api/data'
@@ -18,12 +18,24 @@ const statusLabels: Record<string, { label: string; cls: string }> = {
 
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const clientId = Number(id)
 
   const [client, setClient] = useState<Client | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('meals')
   const [saving, setSaving] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [profileMsg, setProfileMsg] = useState('')
+
+  // Editable profile
+  const [profile, setProfile] = useState({
+    first_name: '',
+    last_name: '',
+    city: '',
+    timezone: '',
+    status: 'pending' as string,
+  })
 
   // Editable norms
   const [norms, setNorms] = useState({
@@ -51,6 +63,13 @@ export default function ClientDetail() {
     clientsApi.get(clientId)
       .then(({ data }) => {
         setClient(data)
+        setProfile({
+          first_name: data.first_name || '',
+          last_name: data.last_name || '',
+          city: data.city || '',
+          timezone: data.timezone || '',
+          status: data.status,
+        })
         setNorms({
           daily_calories: data.daily_calories?.toString() || '',
           daily_proteins: data.daily_proteins?.toString() || '',
@@ -80,6 +99,30 @@ export default function ClientDetail() {
       chatApi.messages(clientId)
         .then(({ data }) => setMessages(data.results))
         .finally(() => setTabLoading(false))
+    }
+  }
+
+  const saveProfile = async () => {
+    setSavingProfile(true)
+    setProfileMsg('')
+    try {
+      const { data } = await clientsApi.update(clientId, profile)
+      setClient(data)
+      setProfileMsg('Сохранено')
+    } catch {
+      setProfileMsg('Ошибка сохранения')
+    } finally {
+      setSavingProfile(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm('Удалить клиента? Все его данные (питание, метрики, чат) будут удалены.')) return
+    try {
+      await clientsApi.delete(clientId)
+      navigate('/clients')
+    } catch {
+      alert('Ошибка удаления')
     }
   }
 
@@ -113,25 +156,104 @@ export default function ClientDetail() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link to="/clients" className="p-2 hover:bg-gray-100 rounded-lg">
-          <ArrowLeft size={20} />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {client.first_name} {client.last_name}
-          </h1>
-          <div className="flex items-center gap-2 mt-1">
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusLabels[client.status]?.cls}`}>
-              {statusLabels[client.status]?.label}
-            </span>
-            {client.telegram_username && (
-              <span className="text-sm text-gray-500">@{client.telegram_username}</span>
-            )}
-            {client.city && (
-              <span className="text-sm text-gray-400">{client.city}</span>
-            )}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Link to="/clients" className="p-2 hover:bg-gray-100 rounded-lg">
+            <ArrowLeft size={20} />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {client.first_name} {client.last_name}
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusLabels[client.status]?.cls}`}>
+                {statusLabels[client.status]?.label}
+              </span>
+              {client.telegram_username && (
+                <span className="text-sm text-gray-500">@{client.telegram_username}</span>
+              )}
+            </div>
           </div>
+        </div>
+        <button
+          onClick={handleDelete}
+          className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg border border-red-200"
+        >
+          <Trash2 size={16} />
+          Удалить
+        </button>
+      </div>
+
+      {/* Profile */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+        <h3 className="text-sm font-medium text-gray-700 mb-3">Профиль</h3>
+        <div className="grid grid-cols-2 gap-4 mb-3">
+          <div>
+            <label className="text-xs text-gray-500">Имя</label>
+            <input
+              type="text"
+              value={profile.first_name}
+              onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Фамилия</label>
+            <input
+              type="text"
+              value={profile.last_name}
+              onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Город</label>
+            <input
+              type="text"
+              value={profile.city}
+              onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
+              placeholder="Москва"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Таймзона</label>
+            <input
+              type="text"
+              value={profile.timezone}
+              onChange={(e) => setProfile({ ...profile, timezone: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
+              placeholder="Europe/Moscow"
+            />
+          </div>
+        </div>
+        <div className="mb-3">
+          <label className="text-xs text-gray-500">Статус</label>
+          <select
+            value={profile.status}
+            onChange={(e) => setProfile({ ...profile, status: e.target.value })}
+            className="mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
+          >
+            <option value="pending">Ожидает</option>
+            <option value="active">Активен</option>
+            <option value="paused">На паузе</option>
+            <option value="archived">Архив</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={saveProfile}
+            disabled={savingProfile}
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            <Save size={14} />
+            {savingProfile ? 'Сохранение...' : 'Сохранить профиль'}
+          </button>
+          {profileMsg && (
+            <span className={`text-sm ${profileMsg.includes('Ошибка') ? 'text-red-600' : 'text-green-600'}`}>
+              {profileMsg}
+            </span>
+          )}
         </div>
       </div>
 
