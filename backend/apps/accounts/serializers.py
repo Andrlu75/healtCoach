@@ -20,6 +20,7 @@ class CoachSerializer(serializers.ModelSerializer):
 
 class ClientSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
+    persona_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Client
@@ -29,12 +30,16 @@ class ClientSerializer(serializers.ModelSerializer):
             'city', 'timezone', 'status',
             'daily_calories', 'daily_proteins', 'daily_fats', 'daily_carbs', 'daily_water',
             'onboarding_completed', 'onboarding_data',
+            'persona', 'persona_name',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'telegram_user_id', 'created_at', 'updated_at']
 
     def get_full_name(self, obj):
         return f'{obj.first_name} {obj.last_name}'.strip()
+
+    def get_persona_name(self, obj):
+        return obj.persona.name if obj.persona else None
 
 
 class ClientDetailSerializer(ClientSerializer):

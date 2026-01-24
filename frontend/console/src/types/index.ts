@@ -33,6 +33,8 @@ export interface Client {
   daily_water: number | null
   onboarding_completed: boolean
   onboarding_data: Record<string, unknown>
+  persona: number | null
+  persona_name: string | null
   created_at: string
   updated_at: string
   meals_count?: number
@@ -42,6 +44,7 @@ export interface Client {
 export interface BotPersona {
   id: number
   name: string
+  is_default: boolean
   age: number | null
   city: string
   style_description: string
@@ -139,4 +142,73 @@ export interface DashboardStats {
   active_clients: number
   pending_clients: number
   paused_clients: number
+}
+
+export interface Meal {
+  id: number
+  dish_name: string
+  dish_type: string
+  image_type: string
+  calories: number | null
+  proteins: number | null
+  fats: number | null
+  carbohydrates: number | null
+  meal_time: string
+  created_at: string
+}
+
+export interface HealthMetric {
+  id: number
+  client: number
+  metric_type: string
+  value: number
+  unit: string
+  source: string
+  recorded_at: string
+  created_at: string
+}
+
+export interface ChatMessage {
+  id: number
+  client: number
+  role: 'user' | 'assistant' | 'system'
+  message_type: string
+  content: string
+  created_at: string
+}
+
+export interface Report {
+  id: number
+  client: number
+  client_name: string
+  report_type: 'daily' | 'weekly'
+  period_start: string
+  period_end: string
+  content: Record<string, unknown> | null
+  summary: string
+  pdf_url: string | null
+  is_sent: boolean
+  created_at: string
+}
+
+export interface InviteLink {
+  id: number
+  code: string
+  max_uses: number
+  uses_count: number
+  is_active: boolean
+  expires_at: string | null
+  invite_url: string
+  created_at: string
+}
+
+export interface OnboardingQuestion {
+  id: number
+  text: string
+  question_type: 'text' | 'number' | 'choice' | 'multi_choice' | 'date'
+  options: string[]
+  is_required: boolean
+  order: number
+  field_key: string
+  created_at: string
 }

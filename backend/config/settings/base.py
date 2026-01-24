@@ -2,6 +2,7 @@ from pathlib import Path
 from decouple import config, Csv
 from datetime import timedelta
 import dj_database_url
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -130,13 +131,38 @@ CORS_ALLOWED_ORIGINS = config(
     cast=Csv()
 )
 
+# Redis
+REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/0')
+
+# Cache
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': REDIS_URL,
+    },
+}
+
 # Celery
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/1')
-CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 CELERY_TIMEZONE = 'Europe/Moscow'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+CELERY_BEAT_SCHEDULE = {
+    'check-reminders-every-minute': {
+        'task': 'reminders.check_reminders',
+        'schedule': 60.0,
+    },
+    'generate-daily-reports': {
+        'task': 'reports.generate_daily_reports',
+        'schedule': crontab(hour=22, minute=0),
+    },
+    'generate-weekly-reports': {
+        'task': 'reports.generate_weekly_reports',
+        'schedule': crontab(hour=10, minute=0, day_of_week=1),
+    },
+}
 
 # S3 Storage
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
@@ -160,8 +186,7 @@ AI_CONFIG = {
 }
 
 # Telegram
-TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
-TELEGRAM_WEBHOOK_URL = config('TELEGRAM_WEBHOOK_URL', default='')
+TELEGRAM_WEBHOOK_BASE_URL = config('TELEGRAM_WEBHOOK_BASE_URL', default='')
 TELEGRAM_WEBHOOK_SECRET = config('TELEGRAM_WEBHOOK_SECRET', default='')
 
 # Weather

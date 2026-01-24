@@ -24,33 +24,96 @@ from .serializers import (
 from core.ai.model_fetcher import fetch_models, _fetch_openrouter_metadata, _find_openrouter_meta, OPENROUTER_PROVIDER_MAP
 
 
+DEFAULT_SYSTEM_PROMPT = (
+    'Ты — дружелюбный помощник health-коуча. '
+    'Общайся легко и непринуждённо, как со старым другом. '
+    'Не давай медицинских рекомендаций. '
+    'Твоя роль — дружеская поддержка и лёгкая мотивация.'
+)
+
+
 class BotPersonaView(APIView):
 
     def get(self, request):
-        persona, _ = BotPersona.objects.get_or_create(
-            coach=request.user.coach_profile,
-            defaults={'system_prompt': self._default_system_prompt()}
-        )
-        serializer = BotPersonaSerializer(persona)
+        """List all personas for the coach."""
+        personas = BotPersona.objects.filter(coach=request.user.coach_profile).order_by('-is_default', '-created_at')
+        serializer = BotPersonaSerializer(personas, many=True)
         return Response(serializer.data)
 
+    def post(self, request):
+        """Create a new persona."""
+        coach = request.user.coach_profile
+        serializer = BotPersonaSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        persona = serializer.save(coach=coach)
+        # If first persona or explicitly default, set as default
+        if not BotPersona.objects.filter(coach=coach).exclude(pk=persona.pk).exists():
+            persona.is_default = True
+            persona.save(update_fields=['is_default'])
+        return Response(BotPersonaSerializer(persona).data, status=status.HTTP_201_CREATED)
+
     def put(self, request):
-        persona, _ = BotPersona.objects.get_or_create(
-            coach=request.user.coach_profile,
-            defaults={'system_prompt': self._default_system_prompt()}
-        )
+        """Update a persona by id (passed in body)."""
+        coach = request.user.coach_profile
+        persona_id = request.data.get('id')
+        if not persona_id:
+            return Response({'error': 'id обязателен'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            persona = BotPersona.objects.get(pk=persona_id, coach=coach)
+        except BotPersona.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
         serializer = BotPersonaSerializer(persona, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
 
-    def _default_system_prompt(self):
-        return (
-            '\u0422\u044b \u2014 \u0434\u0440\u0443\u0436\u0435\u043b\u044e\u0431\u043d\u044b\u0439 \u043f\u043e\u043c\u043e\u0449\u043d\u0438\u043a health-\u043a\u043e\u0443\u0447\u0430. '
-            '\u041e\u0431\u0449\u0430\u0439\u0441\u044f \u043b\u0435\u0433\u043a\u043e \u0438 \u043d\u0435\u043f\u0440\u0438\u043d\u0443\u0436\u0434\u0451\u043d\u043d\u043e, \u043a\u0430\u043a \u0441\u043e \u0441\u0442\u0430\u0440\u044b\u043c \u0434\u0440\u0443\u0433\u043e\u043c. '
-            '\u041d\u0435 \u0434\u0430\u0432\u0430\u0439 \u043c\u0435\u0434\u0438\u0446\u0438\u043d\u0441\u043a\u0438\u0445 \u0440\u0435\u043a\u043e\u043c\u0435\u043d\u0434\u0430\u0446\u0438\u0439. '
-            '\u0422\u0432\u043e\u044f \u0440\u043e\u043b\u044c \u2014 \u0434\u0440\u0443\u0436\u0435\u0441\u043a\u0430\u044f \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0430 \u0438 \u043b\u0451\u0433\u043a\u0430\u044f \u043c\u043e\u0442\u0438\u0432\u0430\u0446\u0438\u044f.'
+    def delete(self, request):
+        """Delete a persona by id (query param)."""
+        coach = request.user.coach_profile
+        persona_id = request.query_params.get('id')
+        if not persona_id:
+            return Response({'error': 'id обязателен'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            persona = BotPersona.objects.get(pk=persona_id, coach=coach)
+        except BotPersona.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        was_default = persona.is_default
+        persona.delete()
+        # If deleted was default, promote another
+        if was_default:
+            next_persona = BotPersona.objects.filter(coach=coach).first()
+            if next_persona:
+                next_persona.is_default = True
+                next_persona.save(update_fields=['is_default'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class BotPersonaSetDefaultView(APIView):
+
+    def post(self, request, pk):
+        coach = request.user.coach_profile
+        try:
+            persona = BotPersona.objects.get(pk=pk, coach=coach)
+        except BotPersona.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        BotPersona.objects.filter(coach=coach).update(is_default=False)
+        persona.is_default = True
+        persona.save(update_fields=['is_default'])
+        return Response({'status': 'ok'})
+
+
+def _get_default_persona(coach):
+    """Get default persona for coach, creating one if needed."""
+    persona = BotPersona.objects.filter(coach=coach, is_default=True).first()
+    if not persona:
+        persona = BotPersona.objects.filter(coach=coach).first()
+    if not persona:
+        persona = BotPersona.objects.create(
+            coach=coach,
+            is_default=True,
+            system_prompt=DEFAULT_SYSTEM_PROMPT,
         )
+    return persona
 
 
 class AIProviderListView(APIView):
@@ -113,7 +176,7 @@ class AIProviderDeleteView(APIView):
         ).delete()
 
         # Clear model selections for this provider
-        persona, _ = BotPersona.objects.get_or_create(coach=request.user.coach_profile)
+        persona = _get_default_persona(request.user.coach_profile)
         updated_fields = []
         if persona.text_provider == provider:
             persona.text_provider = ''
@@ -252,7 +315,7 @@ class AIModelDeleteView(APIView):
         model_config.delete()
 
         # Clear model selections if this model was assigned
-        persona, _ = BotPersona.objects.get_or_create(coach=request.user.coach_profile)
+        persona = _get_default_persona(request.user.coach_profile)
         updated_fields = []
         if persona.text_provider == provider and persona.text_model == model_id:
             persona.text_provider = ''
@@ -275,9 +338,7 @@ class AIModelDeleteView(APIView):
 class AISettingsView(APIView):
 
     def get(self, request):
-        persona, _ = BotPersona.objects.get_or_create(
-            coach=request.user.coach_profile
-        )
+        persona = _get_default_persona(request.user.coach_profile)
         data = {
             'text_provider': persona.text_provider,
             'text_model': persona.text_model,
@@ -295,7 +356,7 @@ class AISettingsView(APIView):
         serializer.is_valid(raise_exception=True)
 
         coach = request.user.coach_profile
-        persona, _ = BotPersona.objects.get_or_create(coach=coach)
+        persona = _get_default_persona(coach)
         data = serializer.validated_data
 
         # Validate that selected models exist in coach's AIModelConfig
@@ -370,7 +431,7 @@ class AITestView(APIView):
 
         task_type = request.data.get('task_type', 'text')  # text or vision
         coach = request.user.coach_profile
-        persona, _ = BotPersona.objects.get_or_create(coach=coach)
+        persona = _get_default_persona(coach)
 
         if task_type == 'text':
             provider_name = persona.text_provider
@@ -513,8 +574,9 @@ class TelegramSettingsView(APIView):
 
         # Set webhook for first bot
         if bot.is_active:
-            webhook_url = getattr(django_settings, 'TELEGRAM_WEBHOOK_URL', '')
-            if webhook_url:
+            base_url = getattr(django_settings, 'TELEGRAM_WEBHOOK_BASE_URL', '')
+            if base_url:
+                webhook_url = f'{base_url}/api/bot/webhook/{bot.pk}/'
                 params = {'url': webhook_url}
                 webhook_secret = getattr(django_settings, 'TELEGRAM_WEBHOOK_SECRET', '')
                 if webhook_secret:
@@ -558,8 +620,9 @@ class TelegramSettingsView(APIView):
             bot.save(update_fields=['is_active'])
 
             # Set webhook for new active bot
-            webhook_url = getattr(django_settings, 'TELEGRAM_WEBHOOK_URL', '')
-            if webhook_url:
+            base_url = getattr(django_settings, 'TELEGRAM_WEBHOOK_BASE_URL', '')
+            if base_url:
+                webhook_url = f'{base_url}/api/bot/webhook/{bot.pk}/'
                 params = {'url': webhook_url}
                 webhook_secret = getattr(django_settings, 'TELEGRAM_WEBHOOK_SECRET', '')
                 if webhook_secret:
@@ -607,8 +670,9 @@ class TelegramSettingsView(APIView):
             if remaining:
                 remaining.is_active = True
                 remaining.save(update_fields=['is_active'])
-                webhook_url = getattr(django_settings, 'TELEGRAM_WEBHOOK_URL', '')
-                if webhook_url:
+                base_url = getattr(django_settings, 'TELEGRAM_WEBHOOK_BASE_URL', '')
+                if base_url:
+                    webhook_url = f'{base_url}/api/bot/webhook/{remaining.pk}/'
                     params = {'url': webhook_url}
                     webhook_secret = getattr(django_settings, 'TELEGRAM_WEBHOOK_SECRET', '')
                     if webhook_secret:

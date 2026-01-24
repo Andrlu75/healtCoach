@@ -2,7 +2,8 @@ from django.db import models
 
 
 class BotPersona(models.Model):
-    coach = models.OneToOneField('accounts.Coach', on_delete=models.CASCADE, related_name='bot_persona')
+    coach = models.ForeignKey('accounts.Coach', on_delete=models.CASCADE, related_name='bot_personas')
+    is_default = models.BooleanField(default=False)
     name = models.CharField(max_length=100, default='\u0424\u0451\u0434\u043e\u0440')
     age = models.IntegerField(null=True, blank=True)
     city = models.CharField(max_length=100, blank=True)

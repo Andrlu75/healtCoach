@@ -13,8 +13,11 @@ import type {
 } from '../types'
 
 export const settingsApi = {
-  getPersona: () => api.get<BotPersona>('/persona/'),
-  updatePersona: (data: Partial<BotPersona>) => api.put<BotPersona>('/persona/', data),
+  getPersonas: () => api.get<BotPersona[]>('/persona/'),
+  createPersona: (data: Partial<BotPersona>) => api.post<BotPersona>('/persona/', data),
+  updatePersona: (data: Partial<BotPersona> & { id: number }) => api.put<BotPersona>('/persona/', data),
+  deletePersona: (id: number) => api.delete(`/persona/?id=${id}`),
+  setPersonaDefault: (id: number) => api.post(`/persona/${id}/set_default/`),
 
   // AI Model Selection
   getAISettings: () => api.get<AIModelSelection>('/persona/ai/'),

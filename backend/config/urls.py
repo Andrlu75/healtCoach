@@ -8,6 +8,8 @@ urlpatterns = [
     path('api/auth/', include('apps.accounts.urls')),
     path('api/coach/', include('apps.accounts.coach_urls')),
     path('api/bot/', include('apps.bot.urls')),
+    path('api/chat/', include('apps.chat.urls')),
+    path('api/miniapp/', include('apps.bot.client_urls')),
     path('api/clients/', include('apps.accounts.client_urls')),
     path('api/meals/', include('apps.meals.urls')),
     path('api/metrics/', include('apps.metrics.urls')),
@@ -15,6 +17,7 @@ urlpatterns = [
     path('api/reminders/', include('apps.reminders.urls')),
     path('api/reports/', include('apps.reports.urls')),
     path('api/persona/', include('apps.persona.urls')),
+    path('api/weather/', include('apps.weather.urls')),
 ]
 
 if settings.DEBUG:

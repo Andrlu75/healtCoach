@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (
     BotPersonaView,
+    BotPersonaSetDefaultView,
     AISettingsView,
     AIProviderListView,
     AIProviderDeleteView,
@@ -16,6 +17,7 @@ from .views import (
 
 urlpatterns = [
     path('', BotPersonaView.as_view(), name='bot_persona'),
+    path('<int:pk>/set_default/', BotPersonaSetDefaultView.as_view(), name='bot_persona_set_default'),
     path('ai/', AISettingsView.as_view(), name='ai_settings'),
     path('providers/', AIProviderListView.as_view(), name='ai_providers'),
     path('providers/<int:pk>/', AIProviderDeleteView.as_view(), name='ai_provider_delete'),

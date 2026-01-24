@@ -1,35 +1,79 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect } from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import WebApp from '@twa-dev/sdk'
+import dayjs from 'dayjs'
+import 'dayjs/locale/ru'
 
-function App() {
-  const [count, setCount] = useState(0)
+dayjs.locale('ru')
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+import { useAuthStore } from './stores/auth'
+import Layout from './components/Layout'
+import Dashboard from './pages/Dashboard'
+import Diary from './pages/Diary'
+import Stats from './pages/Stats'
+import Reminders from './pages/Reminders'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+})
+
+function AppContent() {
+  const { isAuthenticated, isLoading, error, authenticate } = useAuthStore()
+
+  useEffect(() => {
+    WebApp.ready()
+    WebApp.expand()
+
+    if (!isAuthenticated) {
+      const initData = WebApp.initData
+      if (initData) {
+        authenticate(initData)
+      }
+    }
+  }, [isAuthenticated, authenticate])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full" />
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
+    )
+  }
+
+  if (error || (!isAuthenticated && !isLoading)) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <p className="text-gray-500 text-center">
+          {error || 'Откройте приложение через Telegram'}
         </p>
       </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    )
+  }
+
+  return (
+    <Routes>
+      <Route element={<Layout />}>
+        <Route index element={<Dashboard />} />
+        <Route path="/diary" element={<Diary />} />
+        <Route path="/stats" element={<Stats />} />
+        <Route path="/reminders" element={<Reminders />} />
+      </Route>
+    </Routes>
   )
 }
 
-export default App
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </QueryClientProvider>
+  )
+}

@@ -38,6 +38,7 @@ class Client(models.Model):
     ]
 
     coach = models.ForeignKey(Coach, on_delete=models.CASCADE, related_name='clients')
+    persona = models.ForeignKey('persona.BotPersona', null=True, blank=True, on_delete=models.SET_NULL, related_name='clients')
     telegram_user_id = models.BigIntegerField(unique=True)
     telegram_username = models.CharField(max_length=100, blank=True)
     first_name = models.CharField(max_length=100)

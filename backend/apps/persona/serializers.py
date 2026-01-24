@@ -6,7 +6,7 @@ class BotPersonaSerializer(serializers.ModelSerializer):
     class Meta:
         model = BotPersona
         fields = [
-            'id', 'name', 'age', 'city',
+            'id', 'name', 'age', 'city', 'is_default',
             'style_description', 'system_prompt', 'greeting_message',
             'text_provider', 'text_model',
             'vision_provider', 'vision_model',

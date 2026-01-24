@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { clientsApi } from '../api/clients'
 import type { Client } from '../types'
@@ -11,6 +12,7 @@ const statusLabels: Record<string, { label: string; class: string }> = {
 }
 
 export default function Clients() {
+  const navigate = useNavigate()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
@@ -23,7 +25,7 @@ export default function Clients() {
   const loadClients = () => {
     setLoading(true)
     clientsApi.list({ status: filter || undefined, search: search || undefined })
-      .then(({ data }) => setClients(data))
+      .then(({ data }) => setClients(data.results || []))
       .finally(() => setLoading(false))
   }
 
@@ -32,7 +34,8 @@ export default function Clients() {
     loadClients()
   }
 
-  const handleAction = async (id: number, action: 'pause' | 'activate' | 'archive') => {
+  const handleAction = async (e: React.MouseEvent, id: number, action: 'pause' | 'activate' | 'archive') => {
+    e.stopPropagation()
     await clientsApi[action](id)
     loadClients()
   }
@@ -80,13 +83,14 @@ export default function Clients() {
                 <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Telegram</th>
                 <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Статус</th>
                 <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Город</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Персона</th>
                 <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Приёмы пищи</th>
                 <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">Действия</th>
               </tr>
             </thead>
             <tbody>
               {clients.map((client) => (
-                <tr key={client.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <tr key={client.id} onClick={() => navigate(`/clients/${client.id}`)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{client.full_name}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">@{client.telegram_username}</td>
                   <td className="px-4 py-3">
@@ -95,11 +99,12 @@ export default function Clients() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">{client.city || '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-500">{client.persona_name || '—'}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{client.meals_count ?? '—'}</td>
                   <td className="px-4 py-3 text-right">
                     {client.status === 'active' && (
                       <button
-                        onClick={() => handleAction(client.id, 'pause')}
+                        onClick={(e) => handleAction(e, client.id, 'pause')}
                         className="text-xs text-gray-500 hover:text-gray-700 mr-2"
                       >
                         Пауза
@@ -107,7 +112,7 @@ export default function Clients() {
                     )}
                     {client.status === 'paused' && (
                       <button
-                        onClick={() => handleAction(client.id, 'activate')}
+                        onClick={(e) => handleAction(e, client.id, 'activate')}
                         className="text-xs text-green-600 hover:text-green-700 mr-2"
                       >
                         Активировать
@@ -115,7 +120,7 @@ export default function Clients() {
                     )}
                     {client.status !== 'archived' && (
                       <button
-                        onClick={() => handleAction(client.id, 'archive')}
+                        onClick={(e) => handleAction(e, client.id, 'archive')}
                         className="text-xs text-red-500 hover:text-red-700"
                       >
                         Архив

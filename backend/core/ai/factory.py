@@ -3,10 +3,14 @@ from django.conf import settings
 from .base import AbstractAIProvider
 from .openai_provider import OpenAIProvider
 from .deepseek_provider import DeepSeekProvider
+from .anthropic_provider import AnthropicProvider
+from .gemini_provider import GeminiProvider
 
 PROVIDERS = {
     'openai': OpenAIProvider,
     'deepseek': DeepSeekProvider,
+    'anthropic': AnthropicProvider,
+    'gemini': GeminiProvider,
 }
 
 
