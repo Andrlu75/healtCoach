@@ -2,11 +2,11 @@ from django.conf import settings
 
 from .base import AbstractAIProvider
 from .openai_provider import OpenAIProvider
-from .anthropic_provider import AnthropicProvider
+from .deepseek_provider import DeepSeekProvider
 
 PROVIDERS = {
     'openai': OpenAIProvider,
-    'anthropic': AnthropicProvider,
+    'deepseek': DeepSeekProvider,
 }
 
 

@@ -31,6 +31,7 @@ class AbstractAIProvider(ABC):
         image_data: bytes,
         prompt: str,
         detail: str = 'low',
+        media_type: str = 'image/jpeg',
         max_tokens: int = 500,
         model: Optional[str] = None,
     ) -> AIResponse:

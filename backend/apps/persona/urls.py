@@ -1,9 +1,30 @@
 from django.urls import path
-from .views import BotPersonaView, AISettingsView, TelegramSettingsView, DashboardStatsView
+from .views import (
+    BotPersonaView,
+    AISettingsView,
+    AIProviderListView,
+    AIProviderDeleteView,
+    AIProviderModelsView,
+    AIModelListView,
+    AIModelDeleteView,
+    AIUsageView,
+    AITestView,
+    TelegramSettingsView,
+    TelegramTestView,
+    DashboardStatsView,
+)
 
 urlpatterns = [
     path('', BotPersonaView.as_view(), name='bot_persona'),
     path('ai/', AISettingsView.as_view(), name='ai_settings'),
+    path('providers/', AIProviderListView.as_view(), name='ai_providers'),
+    path('providers/<int:pk>/', AIProviderDeleteView.as_view(), name='ai_provider_delete'),
+    path('providers/models/', AIProviderModelsView.as_view(), name='ai_provider_models'),
+    path('models/', AIModelListView.as_view(), name='ai_models'),
+    path('models/<int:pk>/', AIModelDeleteView.as_view(), name='ai_model_delete'),
+    path('ai/usage/', AIUsageView.as_view(), name='ai_usage'),
+    path('ai/test/', AITestView.as_view(), name='ai_test'),
     path('telegram/', TelegramSettingsView.as_view(), name='telegram_settings'),
+    path('telegram/test/', TelegramTestView.as_view(), name='telegram_test'),
     path('dashboard/', DashboardStatsView.as_view(), name='dashboard_stats'),
 ]

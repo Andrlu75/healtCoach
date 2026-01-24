@@ -47,23 +47,78 @@ export interface BotPersona {
   style_description: string
   system_prompt: string
   greeting_message: string
-  ai_provider: 'openai' | 'anthropic'
-  ai_model_chat: string
-  ai_model_vision: string
+  text_provider: string
+  text_model: string
+  vision_provider: string
+  vision_model: string
+  voice_provider: string
+  voice_model: string
   temperature: number
   max_tokens: number
   created_at: string
   updated_at: string
 }
 
-export interface AISettings {
-  ai_provider: 'openai' | 'anthropic'
-  ai_model_chat: string
-  ai_model_vision: string
+export type ProviderType = 'openai' | 'deepseek'
+
+export interface AIProviderConfig {
+  id: number
+  provider: ProviderType
+  is_active: boolean
+  masked_key: string
+  created_at: string
+}
+
+export interface AIModelConfigEntry {
+  id: number
+  provider: ProviderType
+  model_id: string
+  model_name: string
+  created_at: string
+  price_input: number | null
+  price_output: number | null
+  supports_text: boolean
+  supports_vision: boolean
+  supports_audio: boolean
+  context_length: number | null
+}
+
+export interface AIModelSelection {
+  text_provider: string
+  text_model: string
+  vision_provider: string
+  vision_model: string
+  voice_provider: string
+  voice_model: string
   temperature: number
   max_tokens: number
-  openai_api_key: string
-  anthropic_api_key: string
+}
+
+export interface AIModelInfo {
+  id: string
+  name: string
+  price_input: number | null
+  price_output: number | null
+  supports_text: boolean
+  supports_vision: boolean
+  supports_audio: boolean
+  context_length: number | null
+}
+
+export interface AIUsageStats {
+  provider: string
+  model: string
+  task_type: string
+  requests_count: number
+  total_input_tokens: number
+  total_output_tokens: number
+  total_cost_usd: number
+}
+
+export interface AIUsageResponse {
+  stats: AIUsageStats[]
+  total_cost_usd: number
+  period: string
 }
 
 export interface TelegramSettings {

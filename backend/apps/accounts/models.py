@@ -16,6 +16,8 @@ class User(AbstractUser):
 class Coach(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='coach_profile')
     telegram_user_id = models.BigIntegerField(unique=True, null=True, blank=True)
+    telegram_bot_token = models.CharField(max_length=100, blank=True)
+    telegram_notification_chat_id = models.CharField(max_length=50, blank=True)
     business_name = models.CharField(max_length=200, blank=True)
     timezone = models.CharField(max_length=50, default='Europe/Moscow')
     created_at = models.DateTimeField(auto_now_add=True)

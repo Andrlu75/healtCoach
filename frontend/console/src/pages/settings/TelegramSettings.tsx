@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Send } from 'lucide-react'
 import { settingsApi } from '../../api/settings'
 import type { TelegramSettings as TelegramSettingsType } from '../../types'
 
@@ -12,7 +13,9 @@ export default function TelegramSettings() {
   const [data, setData] = useState<TelegramSettingsType>(defaultData)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
   const [message, setMessage] = useState('')
+  const [testMessage, setTestMessage] = useState('')
 
   useEffect(() => {
     settingsApi.getTelegramSettings()
@@ -91,6 +94,44 @@ export default function TelegramSettings() {
           )}
         </div>
       </form>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mt-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Тест соединения</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Отправьте тестовое сообщение, чтобы убедиться, что бот работает и может писать в указанный чат.
+        </p>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={async () => {
+              if (!data.bot_token || !data.notification_chat_id) {
+                setTestMessage('Заполните Bot Token и Chat ID')
+                return
+              }
+              setTesting(true)
+              setTestMessage('')
+              try {
+                await settingsApi.testTelegram(data.bot_token, data.notification_chat_id)
+                setTestMessage('Сообщение отправлено!')
+              } catch (err: unknown) {
+                const error = err as { response?: { data?: { error?: string } } }
+                setTestMessage(error.response?.data?.error || 'Ошибка отправки')
+              } finally {
+                setTesting(false)
+              }
+            }}
+            disabled={testing}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+          >
+            <Send size={16} />
+            {testing ? 'Отправка...' : 'Отправить тест'}
+          </button>
+          {testMessage && (
+            <span className={`text-sm ${testMessage.includes('Ошибка') || testMessage.includes('Заполните') ? 'text-red-600' : 'text-green-600'}`}>
+              {testMessage}
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,15 +1,18 @@
 import base64
 from typing import Optional
 
-import anthropic
+import openai
 
 from .base import AbstractAIProvider, AIResponse
 
 
-class AnthropicProvider(AbstractAIProvider):
+class DeepSeekProvider(AbstractAIProvider):
 
     def __init__(self, api_key: str):
-        self.client = anthropic.AsyncAnthropic(api_key=api_key)
+        self.client = openai.AsyncOpenAI(
+            api_key=api_key,
+            base_url='https://api.deepseek.com',
+        )
 
     async def complete(
         self,
@@ -20,29 +23,28 @@ class AnthropicProvider(AbstractAIProvider):
         temperature: float = 0.7,
         model: Optional[str] = None,
     ) -> AIResponse:
-        model = model or 'claude-sonnet-4-20250514'
+        model = model or 'deepseek-chat'
+        input_messages = [{'role': 'system', 'content': system_prompt}] + messages
 
-        response = await self.client.messages.create(
+        response = await self.client.chat.completions.create(
             model=model,
+            messages=input_messages,
             max_tokens=max_tokens,
             temperature=temperature,
-            system=system_prompt,
-            messages=messages,
         )
 
-        content = ''
-        for block in response.content:
-            if block.type == 'text':
-                content += block.text
+        content = response.choices[0].message.content or ''
+        usage = {}
+        if response.usage:
+            usage = {
+                'input_tokens': response.usage.prompt_tokens,
+                'output_tokens': response.usage.completion_tokens,
+            }
 
         return AIResponse(
             content=content,
-            response_id=response.id,
             model=response.model,
-            usage={
-                'input_tokens': response.usage.input_tokens,
-                'output_tokens': response.usage.output_tokens,
-            },
+            usage=usage,
         )
 
     async def analyze_image(
@@ -54,42 +56,41 @@ class AnthropicProvider(AbstractAIProvider):
         max_tokens: int = 500,
         model: Optional[str] = None,
     ) -> AIResponse:
-        model = model or 'claude-sonnet-4-20250514'
+        model = model or 'deepseek-chat'
         b64_image = base64.b64encode(image_data).decode('utf-8')
 
-        response = await self.client.messages.create(
+        response = await self.client.chat.completions.create(
             model=model,
-            max_tokens=max_tokens,
             messages=[
                 {
                     'role': 'user',
                     'content': [
+                        {'type': 'text', 'text': prompt},
                         {
-                            'type': 'image',
-                            'source': {
-                                'type': 'base64',
-                                'media_type': media_type,
-                                'data': b64_image,
+                            'type': 'image_url',
+                            'image_url': {
+                                'url': f'data:image/jpeg;base64,{b64_image}',
+                                'detail': detail,
                             },
                         },
-                        {'type': 'text', 'text': prompt},
                     ],
                 }
             ],
+            max_tokens=max_tokens,
         )
 
-        content = ''
-        for block in response.content:
-            if block.type == 'text':
-                content += block.text
+        content = response.choices[0].message.content or ''
+        usage = {}
+        if response.usage:
+            usage = {
+                'input_tokens': response.usage.prompt_tokens,
+                'output_tokens': response.usage.completion_tokens,
+            }
 
         return AIResponse(
             content=content,
             model=response.model,
-            usage={
-                'input_tokens': response.usage.input_tokens,
-                'output_tokens': response.usage.output_tokens,
-            },
+            usage=usage,
         )
 
     async def transcribe_audio(
@@ -97,8 +98,7 @@ class AnthropicProvider(AbstractAIProvider):
         audio_data: bytes,
         language: str = 'ru',
     ) -> str:
-        # Anthropic doesn't have transcription — fallback to OpenAI Whisper
         raise NotImplementedError(
-            'Anthropic does not support audio transcription. '
+            'DeepSeek does not support audio transcription. '
             'Use OpenAI provider for transcription.'
         )
