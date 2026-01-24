@@ -135,7 +135,7 @@ export default function ClientDetail() {
     setSavingProfile(true)
     setProfileMsg('')
     try {
-      const { data } = await clientsApi.update(clientId, profile)
+      const { data } = await clientsApi.update(clientId, profile as Partial<Client>)
       setClient(data)
       setProfileMsg('Сохранено')
     } catch {

@@ -67,7 +67,7 @@ export interface BotPersona {
   updated_at: string
 }
 
-export type ProviderType = 'openai' | 'deepseek'
+export type ProviderType = 'openai' | 'deepseek' | 'anthropic'
 
 export interface AIProviderConfig {
   id: number
