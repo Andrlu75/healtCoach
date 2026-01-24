@@ -15,6 +15,7 @@ from .handlers.onboarding import handle_onboarding
 from .handlers.photo import handle_photo
 from .handlers.text import handle_text
 from .handlers.voice import handle_voice
+from .telegram_api import send_message
 
 logger = logging.getLogger(__name__)
 
@@ -73,15 +74,24 @@ async def _dispatch(bot_id: int, data: dict):
 
     # Route to handler
     text = message.get('text', '')
+    chat_id = message['chat']['id']
 
     if text.startswith('/start'):
         await handle_start(bot, client, message)
+    elif _is_onboarding(client):
+        if text:
+            await handle_onboarding(bot, client, message)
+    elif not client.onboarding_completed:
+        # Client hasn't completed onboarding — prompt to use invite link
+        await send_message(
+            bot.token, chat_id,
+            'Для начала работы нужна ссылка-приглашение от вашего коуча. '
+            'Попросите ссылку и нажмите на неё для регистрации.'
+        )
     elif message.get('photo'):
         await handle_photo(bot, client, message)
     elif message.get('voice') or message.get('audio'):
         await handle_voice(bot, client, message)
-    elif text and _is_onboarding(client):
-        await handle_onboarding(bot, client, message)
     elif text:
         await handle_text(bot, client, message)
 
@@ -105,7 +115,7 @@ async def _get_or_create_client(bot: TelegramBot, from_user: dict) -> Client:
             'first_name': from_user.get('first_name', ''),
             'last_name': from_user.get('last_name', ''),
             'telegram_username': from_user.get('username', ''),
-            'status': 'active',
+            'status': 'pending',
         },
     )
 

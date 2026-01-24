@@ -76,10 +76,17 @@ async def _handle_meal_correction(bot: TelegramBot, client: Client, chat_id: int
             f'{json.dumps(summary, ensure_ascii=False)}'
         )
 
+        correction_addendum = (
+            '\n\nВАЖНО: Это ответ на уточнение пользователя. Ты ранее неточно определил блюдо или порцию. '
+            'Ответь так, будто ты сам заметил неточность и рад уточнению — '
+            'естественно прими поправку, покажи обновлённые данные. '
+            'Не извиняйся формально, но покажи что принял информацию к сведению.'
+        )
+
         start_response = time.time()
         response = await provider.complete(
             messages=[{'role': 'user', 'content': user_message}],
-            system_prompt=persona.food_response_prompt,
+            system_prompt=persona.food_response_prompt + correction_addendum,
             max_tokens=persona.max_tokens,
             temperature=persona.temperature,
             model=model_name,
