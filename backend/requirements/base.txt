@@ -42,6 +42,7 @@ httpx==0.28.1
 # Utilities
 python-decouple==3.8
 pydantic==2.10.5
+pytz==2024.2
 
 # Error tracking
 sentry-sdk[django]==2.19.2
