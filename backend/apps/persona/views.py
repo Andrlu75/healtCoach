@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from .models import BotPersona, AIProviderConfig, AIModelConfig, AIUsageLog
+from .models import BotPersona, AIProviderConfig, AIModelConfig, AIUsageLog, TelegramBot
 from .serializers import (
     BotPersonaSerializer,
     AIProviderConfigSerializer,
@@ -18,6 +18,8 @@ from .serializers import (
     AIModelConfigSerializer,
     AIModelAddSerializer,
     TelegramSettingsSerializer,
+    TelegramBotSerializer,
+    TelegramBotCreateSerializer,
 )
 from core.ai.model_fetcher import fetch_models, _fetch_openrouter_metadata, _find_openrouter_meta, OPENROUTER_PROVIDER_MAP
 
@@ -486,32 +488,156 @@ class TelegramSettingsView(APIView):
 
     def get(self, request):
         coach = request.user.coach_profile
-        data = {
-            'bot_token': coach.telegram_bot_token,
-            'webhook_url': '',
+        bots = TelegramBot.objects.filter(coach=coach).order_by('-is_active', '-created_at')
+        return Response({
+            'bots': TelegramBotSerializer(bots, many=True).data,
             'notification_chat_id': coach.telegram_notification_chat_id,
-        }
-        return Response(data)
+        })
 
-    def put(self, request):
-        serializer = TelegramSettingsSerializer(data=request.data)
+    def post(self, request):
+        """Add a new bot."""
+        from django.conf import settings as django_settings
+
+        serializer = TelegramBotCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         coach = request.user.coach_profile
-        coach.telegram_bot_token = serializer.validated_data.get('bot_token', '')
-        coach.telegram_notification_chat_id = serializer.validated_data.get('notification_chat_id', '')
-        coach.save(update_fields=['telegram_bot_token', 'telegram_notification_chat_id'])
+
+        # If no bots exist yet, make this one active
+        has_bots = TelegramBot.objects.filter(coach=coach).exists()
+        bot = TelegramBot.objects.create(
+            coach=coach,
+            name=serializer.validated_data['name'],
+            token=serializer.validated_data['token'],
+            is_active=not has_bots,
+        )
+
+        # Set webhook for first bot
+        if bot.is_active:
+            webhook_url = getattr(django_settings, 'TELEGRAM_WEBHOOK_URL', '')
+            if webhook_url:
+                params = {'url': webhook_url}
+                webhook_secret = getattr(django_settings, 'TELEGRAM_WEBHOOK_SECRET', '')
+                if webhook_secret:
+                    params['secret_token'] = webhook_secret
+                httpx.post(
+                    f'https://api.telegram.org/bot{bot.token}/setWebhook',
+                    json=params,
+                    timeout=10,
+                )
+
+        return Response(TelegramBotSerializer(bot).data, status=status.HTTP_201_CREATED)
+
+    def put(self, request):
+        """Switch active bot or update notification_chat_id."""
+        from django.conf import settings as django_settings
+
+        coach = request.user.coach_profile
+        bot_id = request.data.get('bot_id')
+        notification_chat_id = request.data.get('notification_chat_id')
+
+        if bot_id is not None:
+            try:
+                bot = TelegramBot.objects.get(pk=bot_id, coach=coach)
+            except TelegramBot.DoesNotExist:
+                return Response(
+                    {'error': 'Бот не найден'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            # Remove webhook from previously active bot
+            old_active = TelegramBot.objects.filter(coach=coach, is_active=True).first()
+            if old_active and old_active.pk != bot.pk:
+                httpx.post(
+                    f'https://api.telegram.org/bot{old_active.token}/deleteWebhook',
+                    timeout=10,
+                )
+
+            # Deactivate all, activate selected
+            TelegramBot.objects.filter(coach=coach).update(is_active=False)
+            bot.is_active = True
+            bot.save(update_fields=['is_active'])
+
+            # Set webhook for new active bot
+            webhook_url = getattr(django_settings, 'TELEGRAM_WEBHOOK_URL', '')
+            if webhook_url:
+                params = {'url': webhook_url}
+                webhook_secret = getattr(django_settings, 'TELEGRAM_WEBHOOK_SECRET', '')
+                if webhook_secret:
+                    params['secret_token'] = webhook_secret
+                httpx.post(
+                    f'https://api.telegram.org/bot{bot.token}/setWebhook',
+                    json=params,
+                    timeout=10,
+                )
+
+        if notification_chat_id is not None:
+            coach.telegram_notification_chat_id = notification_chat_id
+            coach.save(update_fields=['telegram_notification_chat_id'])
+
         return Response({'status': 'updated'})
+
+    def delete(self, request):
+        """Delete a bot by id (passed as query param)."""
+        from django.conf import settings as django_settings
+
+        coach = request.user.coach_profile
+        bot_id = request.query_params.get('bot_id')
+        if not bot_id:
+            return Response(
+                {'error': 'Укажите bot_id'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            bot = TelegramBot.objects.get(pk=bot_id, coach=coach)
+        except TelegramBot.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        was_active = bot.is_active
+
+        # Remove webhook from deleted bot
+        httpx.post(
+            f'https://api.telegram.org/bot{bot.token}/deleteWebhook',
+            timeout=10,
+        )
+        bot.delete()
+
+        # If deleted bot was active, activate next and set webhook
+        if was_active:
+            remaining = TelegramBot.objects.filter(coach=coach).first()
+            if remaining:
+                remaining.is_active = True
+                remaining.save(update_fields=['is_active'])
+                webhook_url = getattr(django_settings, 'TELEGRAM_WEBHOOK_URL', '')
+                if webhook_url:
+                    params = {'url': webhook_url}
+                    webhook_secret = getattr(django_settings, 'TELEGRAM_WEBHOOK_SECRET', '')
+                    if webhook_secret:
+                        params['secret_token'] = webhook_secret
+                    httpx.post(
+                        f'https://api.telegram.org/bot{remaining.token}/setWebhook',
+                        json=params,
+                        timeout=10,
+                    )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class TelegramTestView(APIView):
 
     def post(self, request):
+        coach = request.user.coach_profile
         bot_token = request.data.get('bot_token', '').strip()
         chat_id = request.data.get('chat_id', '').strip()
 
+        # Use active bot's token if not provided
+        if not bot_token:
+            active_bot = TelegramBot.objects.filter(coach=coach, is_active=True).first()
+            if active_bot:
+                bot_token = active_bot.token
+
         if not bot_token or not chat_id:
             return Response(
-                {'error': '\u0423\u043a\u0430\u0436\u0438\u0442\u0435 bot_token \u0438 chat_id'},
+                {'error': 'Укажите bot_token и chat_id'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

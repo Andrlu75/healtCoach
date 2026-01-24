@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import BotPersona, AIProviderConfig, AIModelConfig, AIUsageLog
+from .models import BotPersona, AIProviderConfig, AIModelConfig, AIUsageLog, TelegramBot
 
 
 class BotPersonaSerializer(serializers.ModelSerializer):
@@ -81,7 +81,19 @@ class AIUsageStatsSerializer(serializers.Serializer):
     total_cost_usd = serializers.DecimalField(max_digits=10, decimal_places=6)
 
 
+class TelegramBotSerializer(serializers.ModelSerializer):
+    masked_token = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = TelegramBot
+        fields = ['id', 'name', 'masked_token', 'is_active', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class TelegramBotCreateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=100)
+    token = serializers.CharField(max_length=100)
+
+
 class TelegramSettingsSerializer(serializers.Serializer):
-    bot_token = serializers.CharField(max_length=100, required=False, allow_blank=True)
-    webhook_url = serializers.URLField(required=False, allow_blank=True)
     notification_chat_id = serializers.CharField(max_length=50, required=False, allow_blank=True)

@@ -121,9 +121,16 @@ export interface AIUsageResponse {
   period: string
 }
 
+export interface TelegramBot {
+  id: number
+  name: string
+  masked_token: string
+  is_active: boolean
+  created_at: string
+}
+
 export interface TelegramSettings {
-  bot_token: string
-  webhook_url: string
+  bots: TelegramBot[]
   notification_chat_id: string
 }
 
