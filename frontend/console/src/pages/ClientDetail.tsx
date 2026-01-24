@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, Trash2 } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, MapPin, Clock, Send } from 'lucide-react'
 import { clientsApi } from '../api/clients'
 import { settingsApi } from '../api/settings'
 import { mealsApi, metricsApi, chatApi } from '../api/data'
@@ -52,6 +52,15 @@ export default function ClientDetail() {
     status: 'pending' as string,
   })
 
+  // Physiology
+  const [physiology, setPhysiology] = useState({
+    height: '',
+    weight: '',
+    birth_date: '',
+  })
+  const [savingPhysiology, setSavingPhysiology] = useState(false)
+  const [physiologyMsg, setPhysiologyMsg] = useState('')
+
   // Editable norms
   const [norms, setNorms] = useState({
     daily_calories: '',
@@ -84,6 +93,11 @@ export default function ClientDetail() {
           city: data.city || '',
           timezone: data.timezone || '',
           status: data.status,
+        })
+        setPhysiology({
+          height: data.height?.toString() || '',
+          weight: data.weight?.toString() || '',
+          birth_date: data.birth_date || '',
         })
         setNorms({
           daily_calories: data.daily_calories?.toString() || '',
@@ -131,6 +145,24 @@ export default function ClientDetail() {
     }
   }
 
+  const savePhysiology = async () => {
+    setSavingPhysiology(true)
+    setPhysiologyMsg('')
+    try {
+      const { data } = await clientsApi.update(clientId, {
+        height: physiology.height ? Number(physiology.height) : null,
+        weight: physiology.weight ? Number(physiology.weight) : null,
+        birth_date: physiology.birth_date || null,
+      } as Partial<Client>)
+      setClient(data)
+      setPhysiologyMsg('Сохранено')
+    } catch {
+      setPhysiologyMsg('Ошибка сохранения')
+    } finally {
+      setSavingPhysiology(false)
+    }
+  }
+
   const handleDelete = async () => {
     if (!confirm('Удалить клиента? Все его данные (питание, метрики, чат) будут удалены.')) return
     try {
@@ -168,119 +200,195 @@ export default function ClientDetail() {
   if (loading) return <div className="text-gray-500">Загрузка...</div>
   if (!client) return <div className="text-gray-500">Клиент не найден</div>
 
+  const initials = `${client.first_name?.[0] || ''}${client.last_name?.[0] || ''}`.toUpperCase() || '?'
+
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Link to="/clients" className="p-2 hover:bg-gray-100 rounded-lg">
-            <ArrowLeft size={20} />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {client.first_name} {client.last_name}
-            </h1>
-            <div className="flex items-center gap-2 mt-1">
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusLabels[client.status]?.cls}`}>
-                {statusLabels[client.status]?.label}
-              </span>
-              {client.telegram_username && (
-                <span className="text-sm text-gray-500">@{client.telegram_username}</span>
+      {/* Back button */}
+      <div className="mb-4">
+        <Link to="/clients" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+          <ArrowLeft size={16} />
+          Клиенты
+        </Link>
+      </div>
+
+      {/* Profile card */}
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-6">
+        {/* Gradient banner */}
+        <div className="h-24 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+
+        {/* Avatar + info */}
+        <div className="px-6 pb-6">
+          <div className="flex items-end gap-5 -mt-12">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 border-4 border-white shadow-lg flex items-center justify-center shrink-0">
+              <span className="text-2xl font-bold text-white">{initials}</span>
+            </div>
+            <div className="flex-1 min-w-0 pb-1">
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl font-bold text-gray-900 truncate">
+                  {client.first_name} {client.last_name}
+                </h1>
+                <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${statusLabels[client.status]?.cls}`}>
+                  {statusLabels[client.status]?.label}
+                </span>
+              </div>
+              <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                {client.telegram_username && (
+                  <span className="flex items-center gap-1">
+                    <Send size={13} className="text-gray-400" />
+                    @{client.telegram_username}
+                  </span>
+                )}
+                {client.city && (
+                  <span className="flex items-center gap-1">
+                    <MapPin size={13} className="text-gray-400" />
+                    {client.city}
+                  </span>
+                )}
+                {client.timezone && (
+                  <span className="flex items-center gap-1">
+                    <Clock size={13} className="text-gray-400" />
+                    {timezoneOptions.find((tz) => tz.value === client.timezone)?.label || client.timezone}
+                  </span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={handleDelete}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <Trash2 size={14} />
+              Удалить
+            </button>
+          </div>
+
+          {/* Editable fields */}
+          <div className="mt-6 pt-5 border-t border-gray-100">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Имя</label>
+                <input
+                  type="text"
+                  value={profile.first_name}
+                  onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
+                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Фамилия</label>
+                <input
+                  type="text"
+                  value={profile.last_name}
+                  onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
+                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Город</label>
+                <input
+                  type="text"
+                  value={profile.city}
+                  onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  placeholder="Москва"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Статус</label>
+                <select
+                  value={profile.status}
+                  onChange={(e) => setProfile({ ...profile, status: e.target.value })}
+                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                >
+                  <option value="pending">Ожидает</option>
+                  <option value="active">Активен</option>
+                  <option value="paused">На паузе</option>
+                  <option value="archived">Архив</option>
+                </select>
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Часовой пояс</label>
+              <select
+                value={profile.timezone}
+                onChange={(e) => setProfile({ ...profile, timezone: e.target.value })}
+                className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              >
+                <option value="">Не указан</option>
+                {!timezoneOptions.find((tz) => tz.value === profile.timezone) && profile.timezone && (
+                  <option value={profile.timezone}>{profile.timezone}</option>
+                )}
+                {timezoneOptions.map((tz) => (
+                  <option key={tz.value} value={tz.value}>{tz.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={saveProfile}
+                disabled={savingProfile}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                <Save size={14} />
+                {savingProfile ? 'Сохранение...' : 'Сохранить'}
+              </button>
+              {profileMsg && (
+                <span className={`text-sm ${profileMsg.includes('Ошибка') ? 'text-red-600' : 'text-green-600'}`}>
+                  {profileMsg}
+                </span>
               )}
             </div>
           </div>
         </div>
-        <button
-          onClick={handleDelete}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg border border-red-200"
-        >
-          <Trash2 size={16} />
-          Удалить
-        </button>
       </div>
 
-      {/* Profile */}
+      {/* Physiology */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-        <h3 className="text-sm font-medium text-gray-700 mb-3">Профиль</h3>
-        <div className="grid grid-cols-3 gap-4 mb-3">
+        <h3 className="text-sm font-medium text-gray-700 mb-3">Физиологические данные</h3>
+        <div className="grid grid-cols-3 gap-4 mb-4">
           <div>
-            <label className="text-xs text-gray-500">Имя</label>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Рост (см)</label>
             <input
-              type="text"
-              value={profile.first_name}
-              onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
-              className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
+              type="number"
+              value={physiology.height}
+              onChange={(e) => setPhysiology({ ...physiology, height: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="170"
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500">Фамилия</label>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Вес (кг)</label>
             <input
-              type="text"
-              value={profile.last_name}
-              onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
-              className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
+              type="number"
+              step="0.1"
+              value={physiology.weight}
+              onChange={(e) => setPhysiology({ ...physiology, weight: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="70"
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500">Telegram</label>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Дата рождения</label>
             <input
-              type="text"
-              value={client.telegram_username ? `@${client.telegram_username}` : '—'}
-              disabled
-              className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500"
+              type="date"
+              value={physiology.birth_date}
+              onChange={(e) => setPhysiology({ ...physiology, birth_date: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
           </div>
-          <div>
-            <label className="text-xs text-gray-500">Город</label>
-            <input
-              type="text"
-              value={profile.city}
-              onChange={(e) => setProfile({ ...profile, city: e.target.value })}
-              className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
-              placeholder="Москва"
-            />
-          </div>
-          <div className="col-span-2">
-            <label className="text-xs text-gray-500">Часовой пояс</label>
-            <select
-              value={profile.timezone}
-              onChange={(e) => setProfile({ ...profile, timezone: e.target.value })}
-              className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
-            >
-              {!timezoneOptions.find((tz) => tz.value === profile.timezone) && profile.timezone && (
-                <option value={profile.timezone}>{profile.timezone}</option>
-              )}
-              {timezoneOptions.map((tz) => (
-                <option key={tz.value} value={tz.value}>{tz.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="mb-3">
-          <label className="text-xs text-gray-500">Статус</label>
-          <select
-            value={profile.status}
-            onChange={(e) => setProfile({ ...profile, status: e.target.value })}
-            className="mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
-          >
-            <option value="pending">Ожидает</option>
-            <option value="active">Активен</option>
-            <option value="paused">На паузе</option>
-            <option value="archived">Архив</option>
-          </select>
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={saveProfile}
-            disabled={savingProfile}
-            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            onClick={savePhysiology}
+            disabled={savingPhysiology}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
             <Save size={14} />
-            {savingProfile ? 'Сохранение...' : 'Сохранить профиль'}
+            {savingPhysiology ? 'Сохранение...' : 'Сохранить'}
           </button>
-          {profileMsg && (
-            <span className={`text-sm ${profileMsg.includes('Ошибка') ? 'text-red-600' : 'text-green-600'}`}>
-              {profileMsg}
+          {physiologyMsg && (
+            <span className={`text-sm ${physiologyMsg.includes('Ошибка') ? 'text-red-600' : 'text-green-600'}`}>
+              {physiologyMsg}
             </span>
           )}
         </div>

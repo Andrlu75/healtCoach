@@ -47,6 +47,11 @@ class Client(models.Model):
     timezone = models.CharField(max_length=50, default='Europe/Moscow')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
 
+    # Физиологические данные
+    height = models.IntegerField(null=True, blank=True)  # см
+    weight = models.FloatField(null=True, blank=True)  # кг
+    birth_date = models.DateField(null=True, blank=True)
+
     # Персональные нормы КБЖУ
     daily_calories = models.IntegerField(null=True, blank=True)
     daily_proteins = models.FloatField(null=True, blank=True)

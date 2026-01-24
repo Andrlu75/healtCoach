@@ -10,6 +10,7 @@ from .serializers import (
     InviteLinkSerializer,
     OnboardingQuestionCreateSerializer,
     OnboardingQuestionSerializer,
+    OnboardingQuestionUpdateSerializer,
 )
 
 
@@ -103,7 +104,7 @@ class OnboardingQuestionDetailView(APIView):
         except OnboardingQuestion.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-        serializer = OnboardingQuestionCreateSerializer(data=request.data)
+        serializer = OnboardingQuestionUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         for field, value in serializer.validated_data.items():

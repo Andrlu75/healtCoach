@@ -28,6 +28,7 @@ class ClientSerializer(serializers.ModelSerializer):
             'id', 'telegram_user_id', 'telegram_username',
             'first_name', 'last_name', 'full_name',
             'city', 'timezone', 'status',
+            'height', 'weight', 'birth_date',
             'daily_calories', 'daily_proteins', 'daily_fats', 'daily_carbs', 'daily_water',
             'onboarding_completed', 'onboarding_data',
             'persona', 'persona_name',

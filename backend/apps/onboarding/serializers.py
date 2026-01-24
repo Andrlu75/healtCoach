@@ -45,3 +45,12 @@ class OnboardingQuestionCreateSerializer(serializers.Serializer):
     is_required = serializers.BooleanField(default=True)
     order = serializers.IntegerField(default=0)
     field_key = serializers.CharField(required=False, default='', allow_blank=True)
+
+
+class OnboardingQuestionUpdateSerializer(serializers.Serializer):
+    text = serializers.CharField(required=False)
+    question_type = serializers.ChoiceField(choices=['text', 'number', 'choice', 'multi_choice', 'date'], required=False)
+    options = serializers.ListField(child=serializers.CharField(), required=False)
+    is_required = serializers.BooleanField(required=False)
+    order = serializers.IntegerField(required=False)
+    field_key = serializers.CharField(required=False, allow_blank=True)

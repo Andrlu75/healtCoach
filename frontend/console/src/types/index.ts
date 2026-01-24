@@ -26,6 +26,9 @@ export interface Client {
   city: string
   timezone: string
   status: 'pending' | 'active' | 'paused' | 'archived'
+  height: number | null
+  weight: number | null
+  birth_date: string | null
   daily_calories: number | null
   daily_proteins: number | null
   daily_fats: number | null
