@@ -1,3 +1,5 @@
+from decouple import config  # noqa: E402
+
 from .base import *  # noqa: F401, F403
 
 DEBUG = False
@@ -10,12 +12,35 @@ CSRF_COOKIE_SECURE = True
 SECURE_SSL_REDIRECT = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+# Whitenoise for static files
+MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Cache — use Redis if available, otherwise locmem
+REDIS_URL = config('REDIS_URL', default='')
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+        },
+    }
+    CELERY_BROKER_URL = REDIS_URL
+    CELERY_RESULT_BACKEND = REDIS_URL
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        },
+    }
+
 # S3 Storage in production
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+AWS_ACCESS_KEY_ID_VAL = config('AWS_ACCESS_KEY_ID', default='')
+if AWS_ACCESS_KEY_ID_VAL:
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
 # Sentry
 import sentry_sdk  # noqa: E402
-from decouple import config  # noqa: E402
 
 SENTRY_DSN = config('SENTRY_DSN', default='')
 if SENTRY_DSN:
