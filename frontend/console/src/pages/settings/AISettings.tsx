@@ -15,9 +15,10 @@ type TabId = 'providers' | 'models' | 'assignments' | 'usage'
 const PROVIDER_LABELS: Record<ProviderType, string> = {
   openai: 'OpenAI',
   deepseek: 'DeepSeek',
+  anthropic: 'Anthropic',
 }
 
-const PROVIDER_LIST: ProviderType[] = ['openai', 'deepseek']
+const PROVIDER_LIST: ProviderType[] = ['openai', 'deepseek', 'anthropic']
 
 // --- Add Provider Modal ---
 function AddProviderModal({
