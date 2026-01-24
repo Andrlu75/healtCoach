@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Trash2, MapPin, Clock, Send } from 'lucide-react'
 import { clientsApi } from '../api/clients'
@@ -504,7 +504,12 @@ export default function ClientDetail() {
       ) : tab === 'metrics' ? (
         <MetricsTab metrics={metrics} />
       ) : (
-        <ChatTab messages={messages} />
+        <ChatTab
+          messages={messages}
+          client={client}
+          onClientUpdate={setClient}
+          onMessagesUpdate={setMessages}
+        />
       )}
     </div>
   )
@@ -582,32 +587,134 @@ function MetricsTab({ metrics }: { metrics: HealthMetric[] }) {
   )
 }
 
-function ChatTab({ messages }: { messages: ChatMessage[] }) {
-  if (!messages.length) {
-    return <p className="text-sm text-gray-400 py-4">Нет сообщений</p>
+function ChatTab({
+  messages,
+  client,
+  onClientUpdate,
+  onMessagesUpdate,
+}: {
+  messages: ChatMessage[]
+  client: Client
+  onClientUpdate: (c: Client) => void
+  onMessagesUpdate: (msgs: ChatMessage[]) => void
+}) {
+  const [inputText, setInputText] = useState('')
+  const [sending, setSending] = useState(false)
+  const [toggling, setToggling] = useState(false)
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  // Автопрокрутка вниз
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  // Polling каждые 5 секунд
+  const pollMessages = useCallback(() => {
+    chatApi.messages(client.id).then(({ data }) => onMessagesUpdate(data.results))
+  }, [client.id, onMessagesUpdate])
+
+  useEffect(() => {
+    const interval = setInterval(pollMessages, 5000)
+    return () => clearInterval(interval)
+  }, [pollMessages])
+
+  const toggleManualMode = async () => {
+    setToggling(true)
+    try {
+      const { data } = await clientsApi.update(client.id, { manual_mode: !client.manual_mode } as Partial<Client>)
+      onClientUpdate(data)
+    } finally {
+      setToggling(false)
+    }
+  }
+
+  const handleSend = async () => {
+    const text = inputText.trim()
+    if (!text) return
+    setSending(true)
+    try {
+      const { data } = await chatApi.send(client.id, text)
+      onMessagesUpdate([...messages, data])
+      setInputText('')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
   }
 
   return (
-    <div className="space-y-2 max-h-[500px] overflow-y-auto">
-      {messages.map((msg) => (
-        <div
-          key={msg.id}
-          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-        >
+    <div>
+      {/* Toggle manual mode */}
+      <div className="flex items-center gap-3 mb-3">
+        <label className="flex items-center gap-2 cursor-pointer select-none">
           <div
-            className={`max-w-[70%] rounded-xl px-3 py-2 ${
-              msg.role === 'user'
-                ? 'bg-blue-100 text-blue-900'
-                : 'bg-gray-100 text-gray-900'
-            }`}
+            onClick={toggling ? undefined : toggleManualMode}
+            className={`relative w-10 h-5 rounded-full transition-colors ${
+              client.manual_mode ? 'bg-blue-600' : 'bg-gray-300'
+            } ${toggling ? 'opacity-50' : 'cursor-pointer'}`}
           >
-            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-            <p className="text-xs text-gray-400 mt-1">
-              {dayjs(msg.created_at).format('DD.MM HH:mm')}
-            </p>
+            <div
+              className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                client.manual_mode ? 'translate-x-5' : ''
+              }`}
+            />
           </div>
+          <span className="text-sm text-gray-700">Ручной режим</span>
+        </label>
+      </div>
+
+      {/* Messages */}
+      <div className="space-y-2 max-h-[500px] overflow-y-auto">
+        {!messages.length && <p className="text-sm text-gray-400 py-4">Нет сообщений</p>}
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div
+              className={`max-w-[70%] rounded-xl px-3 py-2 ${
+                msg.role === 'user'
+                  ? 'bg-blue-100 text-blue-900'
+                  : 'bg-gray-100 text-gray-900'
+              }`}
+            >
+              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {dayjs(msg.created_at).format('DD.MM HH:mm')}
+              </p>
+            </div>
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input field — visible only in manual mode */}
+      {client.manual_mode && (
+        <div className="mt-3 flex gap-2">
+          <input
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Написать клиенту..."
+            className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          />
+          <button
+            onClick={handleSend}
+            disabled={sending || !inputText.trim()}
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            <Send size={14} />
+            {sending ? '...' : 'Отправить'}
+          </button>
         </div>
-      ))}
+      )}
     </div>
   )
 }

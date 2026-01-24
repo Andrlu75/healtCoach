@@ -59,6 +59,9 @@ class Client(models.Model):
     daily_carbs = models.FloatField(null=True, blank=True)
     daily_water = models.FloatField(null=True, blank=True)  # литры
 
+    # Режим диалога
+    manual_mode = models.BooleanField(default=False)
+
     # Онбординг
     onboarding_completed = models.BooleanField(default=False)
     onboarding_data = models.JSONField(default=dict, blank=True)

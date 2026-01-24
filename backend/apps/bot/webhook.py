@@ -90,6 +90,19 @@ async def _dispatch(bot_id: int, data: dict):
         )
     elif message.get('photo'):
         await handle_photo(bot, client, message)
+    elif client.manual_mode:
+        # Ручной режим: сохраняем сообщение, AI не отвечает
+        from apps.chat.models import ChatMessage
+        content = text
+        if message.get('voice') or message.get('audio'):
+            content = '[голосовое сообщение]'
+        if content:
+            await sync_to_async(ChatMessage.objects.create)(
+                client=client,
+                role='user',
+                message_type='voice' if (message.get('voice') or message.get('audio')) else 'text',
+                content=content,
+            )
     elif message.get('voice') or message.get('audio'):
         await handle_voice(bot, client, message)
     elif text:

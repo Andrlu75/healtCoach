@@ -14,6 +14,8 @@ export const metricsApi = {
 export const chatApi = {
   messages: (client_id: number) =>
     api.get<{ results: ChatMessage[] }>('/chat/messages/', { params: { client_id } }),
+  send: (client_id: number, text: string) =>
+    api.post<ChatMessage>('/chat/send/', { client_id, text }),
 }
 
 export const reportsApi = {
