@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, GripVertical, Save } from 'lucide-react'
+import { Plus, Trash2, ChevronUp, ChevronDown, Save } from 'lucide-react'
 import { onboardingApi } from '../api/data'
 import type { OnboardingQuestion } from '../types'
 
@@ -26,6 +26,22 @@ export default function OnboardingEditor() {
     onboardingApi.getQuestions()
       .then(({ data }) => setQuestions(data))
       .finally(() => setLoading(false))
+  }
+
+  const moveQuestion = async (index: number, direction: 'up' | 'down') => {
+    const swapIndex = direction === 'up' ? index - 1 : index + 1
+    if (swapIndex < 0 || swapIndex >= questions.length) return
+
+    const current = questions[index]
+    const swap = questions[swapIndex]
+
+    // Swap orders
+    await Promise.all([
+      onboardingApi.updateQuestion(current.id, { order: swap.order }),
+      onboardingApi.updateQuestion(swap.id, { order: current.order }),
+    ])
+
+    loadQuestions()
   }
 
   const deleteQuestion = async (id: number) => {
@@ -62,7 +78,7 @@ export default function OnboardingEditor() {
         </div>
       ) : (
         <div className="space-y-2">
-          {questions.map((q) => (
+          {questions.map((q, idx) => (
             <div key={q.id}>
               {editingId === q.id ? (
                 <QuestionForm
@@ -72,9 +88,25 @@ export default function OnboardingEditor() {
                 />
               ) : (
                 <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-start gap-3">
-                  <GripVertical size={16} className="text-gray-300 mt-1 shrink-0" />
+                  <div className="flex flex-col gap-0.5 shrink-0">
+                    <button
+                      onClick={() => moveQuestion(idx, 'up')}
+                      disabled={idx === 0}
+                      className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-20"
+                    >
+                      <ChevronUp size={14} />
+                    </button>
+                    <button
+                      onClick={() => moveQuestion(idx, 'down')}
+                      disabled={idx === questions.length - 1}
+                      className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-20"
+                    >
+                      <ChevronDown size={14} />
+                    </button>
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 font-mono">{idx + 1}.</span>
                       <span className="text-sm font-medium text-gray-900">{q.text}</span>
                       {q.is_required && (
                         <span className="text-xs text-red-500">*</span>
