@@ -7,6 +7,21 @@ import { mealsApi, metricsApi, chatApi } from '../api/data'
 import type { Client, Meal, HealthMetric, ChatMessage, BotPersona } from '../types'
 import dayjs from 'dayjs'
 
+const timezoneOptions = [
+  { value: 'Europe/Kaliningrad', label: 'Калининград (UTC+2)' },
+  { value: 'Europe/Moscow', label: 'Москва / Санкт-Петербург (UTC+3)' },
+  { value: 'Europe/Samara', label: 'Самара / Ижевск (UTC+4)' },
+  { value: 'Asia/Yekaterinburg', label: 'Екатеринбург / Челябинск / Уфа (UTC+5)' },
+  { value: 'Asia/Omsk', label: 'Омск (UTC+6)' },
+  { value: 'Asia/Novosibirsk', label: 'Новосибирск / Томск / Барнаул (UTC+7)' },
+  { value: 'Asia/Krasnoyarsk', label: 'Красноярск / Кемерово (UTC+7)' },
+  { value: 'Asia/Irkutsk', label: 'Иркутск / Улан-Удэ (UTC+8)' },
+  { value: 'Asia/Yakutsk', label: 'Якутск / Чита (UTC+9)' },
+  { value: 'Asia/Vladivostok', label: 'Владивосток / Хабаровск (UTC+10)' },
+  { value: 'Asia/Magadan', label: 'Магадан / Сахалин (UTC+11)' },
+  { value: 'Asia/Kamchatka', label: 'Петропавловск-Камчатский (UTC+12)' },
+]
+
 type Tab = 'meals' | 'metrics' | 'chat'
 
 const statusLabels: Record<string, { label: string; cls: string }> = {
@@ -187,7 +202,7 @@ export default function ClientDetail() {
       {/* Profile */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
         <h3 className="text-sm font-medium text-gray-700 mb-3">Профиль</h3>
-        <div className="grid grid-cols-2 gap-4 mb-3">
+        <div className="grid grid-cols-3 gap-4 mb-3">
           <div>
             <label className="text-xs text-gray-500">Имя</label>
             <input
@@ -207,6 +222,15 @@ export default function ClientDetail() {
             />
           </div>
           <div>
+            <label className="text-xs text-gray-500">Telegram</label>
+            <input
+              type="text"
+              value={client.telegram_username ? `@${client.telegram_username}` : '—'}
+              disabled
+              className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500"
+            />
+          </div>
+          <div>
             <label className="text-xs text-gray-500">Город</label>
             <input
               type="text"
@@ -216,15 +240,20 @@ export default function ClientDetail() {
               placeholder="Москва"
             />
           </div>
-          <div>
-            <label className="text-xs text-gray-500">Таймзона</label>
-            <input
-              type="text"
+          <div className="col-span-2">
+            <label className="text-xs text-gray-500">Часовой пояс</label>
+            <select
               value={profile.timezone}
               onChange={(e) => setProfile({ ...profile, timezone: e.target.value })}
               className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
-              placeholder="Europe/Moscow"
-            />
+            >
+              {!timezoneOptions.find((tz) => tz.value === profile.timezone) && profile.timezone && (
+                <option value={profile.timezone}>{profile.timezone}</option>
+              )}
+              {timezoneOptions.map((tz) => (
+                <option key={tz.value} value={tz.value}>{tz.label}</option>
+              ))}
+            </select>
           </div>
         </div>
         <div className="mb-3">
