@@ -3,9 +3,13 @@ import uuid
 from django.db import models
 
 
+def _generate_invite_code():
+    return uuid.uuid4().hex
+
+
 class InviteLink(models.Model):
     coach = models.ForeignKey('accounts.Coach', on_delete=models.CASCADE, related_name='invite_links')
-    code = models.CharField(max_length=32, unique=True, default=uuid.uuid4)
+    code = models.CharField(max_length=32, unique=True, default=_generate_invite_code)
     is_active = models.BooleanField(default=True)
     max_uses = models.IntegerField(default=1)
     uses_count = models.IntegerField(default=0)
