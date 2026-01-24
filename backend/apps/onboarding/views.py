@@ -23,10 +23,7 @@ class InviteLinkListView(APIView):
 
         # Get active bot username for deep link
         bot = TelegramBot.objects.filter(coach=coach, is_active=True).first()
-        bot_username = ''
-        if bot:
-            # Extract username from token (bot_id:hash format)
-            bot_username = bot.name  # fallback to name
+        bot_username = bot.username if bot else ''
 
         serializer = InviteLinkSerializer(
             invites, many=True,
@@ -46,7 +43,7 @@ class InviteLinkListView(APIView):
         )
 
         bot = TelegramBot.objects.filter(coach=coach, is_active=True).first()
-        bot_username = bot.name if bot else ''
+        bot_username = bot.username if bot else ''
 
         return Response(
             InviteLinkSerializer(

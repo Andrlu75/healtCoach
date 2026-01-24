@@ -79,6 +79,7 @@ class AIModelConfig(models.Model):
 class TelegramBot(models.Model):
     coach = models.ForeignKey('accounts.Coach', on_delete=models.CASCADE, related_name='telegram_bots')
     name = models.CharField(max_length=100)  # "Тестовый", "Продуктивный"
+    username = models.CharField(max_length=100, blank=True)  # @username бота (без @)
     token = models.CharField(max_length=100)
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -562,13 +562,28 @@ class TelegramSettingsView(APIView):
         serializer = TelegramBotCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         coach = request.user.coach_profile
+        token = serializer.validated_data['token']
+
+        # Get bot username from Telegram API
+        bot_username = ''
+        try:
+            resp = httpx.get(
+                f'https://api.telegram.org/bot{token}/getMe',
+                timeout=10,
+            )
+            result = resp.json()
+            if result.get('ok'):
+                bot_username = result['result'].get('username', '')
+        except httpx.RequestError:
+            pass
 
         # If no bots exist yet, make this one active
         has_bots = TelegramBot.objects.filter(coach=coach).exists()
         bot = TelegramBot.objects.create(
             coach=coach,
             name=serializer.validated_data['name'],
-            token=serializer.validated_data['token'],
+            username=bot_username,
+            token=token,
             is_active=not has_bots,
         )
 

@@ -86,8 +86,8 @@ class TelegramBotSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TelegramBot
-        fields = ['id', 'name', 'masked_token', 'is_active', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = ['id', 'name', 'username', 'masked_token', 'is_active', 'created_at']
+        read_only_fields = ['id', 'username', 'created_at']
 
 
 class TelegramBotCreateSerializer(serializers.Serializer):

@@ -132,6 +132,7 @@ export interface AIUsageResponse {
 export interface TelegramBot {
   id: number
   name: string
+  username: string
   masked_token: string
   is_active: boolean
   created_at: string
