@@ -574,7 +574,7 @@ class TelegramSettingsView(APIView):
             result = resp.json()
             if result.get('ok'):
                 bot_username = result['result'].get('username', '')
-        except httpx.RequestError:
+        except Exception:
             pass
 
         # If no bots exist yet, make this one active
