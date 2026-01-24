@@ -1,0 +1,76 @@
+services:
+  - type: web
+    name: healthcoach-api
+    runtime: python
+    region: frankfurt
+    plan: starter
+    buildCommand: |
+      cd backend && pip install -r requirements/prod.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    startCommand: cd backend && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: healthcoach-db
+          property: connectionString
+
+  - type: worker
+    name: healthcoach-celery
+    runtime: python
+    region: frankfurt
+    plan: starter
+    buildCommand: cd backend && pip install -r requirements/prod.txt
+    startCommand: cd backend && celery -A config worker -l info --concurrency=2
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: DATABASE_URL
+        fromDatabase:
+          name: healthcoach-db
+          property: connectionString
+
+  - type: worker
+    name: healthcoach-beat
+    runtime: python
+    region: frankfurt
+    plan: starter
+    buildCommand: cd backend && pip install -r requirements/prod.txt
+    startCommand: cd backend && celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: DATABASE_URL
+        fromDatabase:
+          name: healthcoach-db
+          property: connectionString
+
+  - type: web
+    name: healthcoach-miniapp
+    runtime: static
+    buildCommand: cd frontend/miniapp && npm ci && npm run build
+    staticPublishPath: frontend/miniapp/dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+
+  - type: web
+    name: healthcoach-console
+    runtime: static
+    buildCommand: cd frontend/console && npm ci && npm run build
+    staticPublishPath: frontend/console/dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+
+databases:
+  - name: healthcoach-db
+    plan: starter
+    databaseName: healthcoach
+    region: frankfurt
