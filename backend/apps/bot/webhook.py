@@ -54,6 +54,19 @@ async def _dispatch(bot_id: int, data: dict):
     if not message:
         return
 
+    # Log incoming message
+    from_user = message.get('from', {})
+    user_name = from_user.get('first_name', '') or from_user.get('username', '')
+    user_id = from_user.get('id', '?')
+
+    if message.get('photo'):
+        logger.info('[BOT %s] 📷 Фото от %s (id=%s)', bot_id, user_name, user_id)
+    elif message.get('voice') or message.get('audio'):
+        logger.info('[BOT %s] 🎤 Голосовое от %s (id=%s)', bot_id, user_name, user_id)
+    elif message.get('text'):
+        text_preview = message['text'][:50] + '...' if len(message.get('text', '')) > 50 else message.get('text', '')
+        logger.info('[BOT %s] 💬 Сообщение от %s (id=%s): %s', bot_id, user_name, user_id, text_preview)
+
     # Load bot
     bot = await sync_to_async(
         lambda: TelegramBot.objects.select_related('coach').filter(
