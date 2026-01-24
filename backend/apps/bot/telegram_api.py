@@ -7,33 +7,72 @@ logger = logging.getLogger(__name__)
 TELEGRAM_API = 'https://api.telegram.org'
 
 
+TG_MSG_LIMIT = 4096
+
+
+def _split_text(text: str, limit: int = TG_MSG_LIMIT) -> list[str]:
+    """Split text into chunks respecting paragraph boundaries."""
+    if len(text) <= limit:
+        return [text]
+
+    chunks = []
+    while text:
+        if len(text) <= limit:
+            chunks.append(text)
+            break
+
+        # Try to split at paragraph boundary
+        split_at = text.rfind('\n\n', 0, limit)
+        if split_at == -1:
+            # Try newline
+            split_at = text.rfind('\n', 0, limit)
+        if split_at == -1:
+            # Try space
+            split_at = text.rfind(' ', 0, limit)
+        if split_at == -1:
+            split_at = limit
+
+        chunks.append(text[:split_at].rstrip())
+        text = text[split_at:].lstrip()
+
+    return chunks
+
+
+async def _send_single(client: httpx.AsyncClient, url: str, chat_id: int, text: str) -> dict | None:
+    """Send a single message, trying Markdown then plain text."""
+    resp = await client.post(url, json={
+        'chat_id': chat_id,
+        'text': text,
+        'parse_mode': 'Markdown',
+    })
+    result = resp.json()
+    if result.get('ok'):
+        return result.get('result')
+
+    # Fallback: send without parse_mode
+    resp = await client.post(url, json={
+        'chat_id': chat_id,
+        'text': text,
+    })
+    result = resp.json()
+    if result.get('ok'):
+        return result.get('result')
+
+    logger.error('Failed to send message to chat %s: %s', chat_id, result)
+    return None
+
+
 async def send_message(token: str, chat_id: int, text: str) -> dict | None:
-    """Send a text message. Tries Markdown first, falls back to plain text."""
+    """Send a text message. Splits long messages into chunks."""
     url = f'{TELEGRAM_API}/bot{token}/sendMessage'
+    chunks = _split_text(text)
 
+    last_result = None
     async with httpx.AsyncClient(timeout=15) as client:
-        # Try with Markdown
-        resp = await client.post(url, json={
-            'chat_id': chat_id,
-            'text': text,
-            'parse_mode': 'Markdown',
-        })
-        result = resp.json()
-        if result.get('ok'):
-            return result.get('result')
+        for chunk in chunks:
+            last_result = await _send_single(client, url, chat_id, chunk)
 
-        # Fallback: send without parse_mode
-        logger.warning('Markdown failed for chat %s, sending plain text', chat_id)
-        resp = await client.post(url, json={
-            'chat_id': chat_id,
-            'text': text,
-        })
-        result = resp.json()
-        if result.get('ok'):
-            return result.get('result')
-
-        logger.error('Failed to send message to chat %s: %s', chat_id, result)
-        return None
+    return last_result
 
 
 async def send_chat_action(token: str, chat_id: int, action: str = 'typing') -> None:

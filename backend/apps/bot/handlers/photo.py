@@ -1,12 +1,18 @@
+import json
 import logging
+import time
+
+from asgiref.sync import sync_to_async
 
 from apps.accounts.models import Client
+from apps.chat.models import InteractionLog
 from apps.meals.services import (
     analyze_food,
     classify_image,
     format_meal_response,
     get_daily_summary,
     save_meal,
+    ANALYZE_FOOD_PROMPT,
 )
 from apps.metrics.services import (
     format_metrics_response,
@@ -16,7 +22,7 @@ from apps.metrics.services import (
 from apps.persona.models import TelegramBot
 
 from ..telegram_api import get_file, send_chat_action, send_message
-from ..services import get_ai_vision_response
+from ..services import get_ai_vision_response, _get_persona, _get_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -61,11 +67,105 @@ async def handle_photo(bot: TelegramBot, client: Client, message: dict):
 
 async def _handle_food_photo(bot: TelegramBot, client: Client, chat_id: int, image_data: bytes, caption: str):
     """Analyze food photo, save meal, return nutrition summary."""
+    from core.ai.factory import get_ai_provider
+
+    start_time = time.time()
     analysis = await analyze_food(bot, image_data, caption)
+    duration_ms_analysis = int((time.time() - start_time) * 1000)
+
+    # Extract meta before saving
+    meta = analysis.pop('_meta', {})
+
     await save_meal(client, image_data, analysis)
     summary = await get_daily_summary(client)
-    response_text = format_meal_response(analysis, summary)
+
+    # Check if persona has food_response_prompt
+    persona = await _get_persona(bot, client)
+
+    if persona.food_response_prompt:
+        # Generate rich AI response using food_response_prompt
+        provider_name = persona.text_provider or meta.get('provider', 'openai')
+        model_name = persona.text_model or None
+        api_key = await _get_api_key(bot.coach, provider_name)
+        provider = get_ai_provider(provider_name, api_key)
+
+        # Build context with analysis data and daily summary
+        user_message = (
+            f'Данные анализа еды:\n'
+            f'{json.dumps(analysis, ensure_ascii=False)}\n\n'
+            f'Дневная сводка:\n'
+            f'{json.dumps(summary, ensure_ascii=False)}'
+        )
+        if caption:
+            user_message = f'Подпись пользователя: "{caption}"\n\n' + user_message
+
+        start_response = time.time()
+        response = await provider.complete(
+            messages=[{'role': 'user', 'content': user_message}],
+            system_prompt=persona.food_response_prompt,
+            max_tokens=persona.max_tokens,
+            temperature=persona.temperature,
+            model=model_name,
+        )
+        duration_ms = duration_ms_analysis + int((time.time() - start_response) * 1000)
+        response_text = response.content
+        response_model = response.model or model_name or ''
+        response_provider = provider_name
+
+        ai_request_log = {
+            'system_prompt': persona.food_response_prompt,
+            'messages': [{'role': 'user', 'content': user_message}],
+            'provider': provider_name,
+            'model': model_name or '',
+            'temperature': persona.temperature,
+            'max_tokens': persona.max_tokens,
+        }
+        ai_response_log = {
+            'content': response.content,
+            'model': response.model or '',
+            'usage': response.usage or {},
+            'response_id': response.response_id or '',
+            'analysis': analysis,
+        }
+    else:
+        # Fallback to template response
+        response_text = format_meal_response(analysis, summary)
+        duration_ms = duration_ms_analysis
+        response_provider = meta.get('provider', '')
+        response_model = meta.get('model', '')
+
+        analyze_prompt = ANALYZE_FOOD_PROMPT
+        if caption:
+            analyze_prompt += f'\n\nПодпись пользователя: "{caption}"'
+
+        ai_request_log = {
+            'prompt': analyze_prompt,
+            'provider': response_provider,
+            'model': response_model,
+            'max_tokens': 500,
+        }
+        ai_response_log = {
+            'analysis': analysis,
+            'raw_content': meta.get('raw_content', ''),
+            'usage': meta.get('usage', {}),
+            'response_id': meta.get('response_id', ''),
+        }
+
     await send_message(bot.token, chat_id, response_text)
+
+    # Log interaction
+    await sync_to_async(InteractionLog.objects.create)(
+        client=client,
+        coach=bot.coach,
+        interaction_type='vision',
+        client_input=caption or '[Фото еды]',
+        ai_request=ai_request_log,
+        ai_response=ai_response_log,
+        client_output=response_text,
+        provider=response_provider,
+        model=response_model,
+        duration_ms=duration_ms,
+    )
 
 
 async def _handle_data_photo(bot: TelegramBot, client: Client, chat_id: int, image_data: bytes):

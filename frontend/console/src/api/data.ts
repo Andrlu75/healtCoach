@@ -1,5 +1,5 @@
 import api from './client'
-import type { Meal, HealthMetric, ChatMessage, Report, InviteLink, OnboardingQuestion } from '../types'
+import type { Meal, HealthMetric, ChatMessage, Report, InviteLink, OnboardingQuestion, InteractionLog } from '../types'
 
 export const mealsApi = {
   list: (params?: { client_id?: number; date?: string }) =>
@@ -23,6 +23,11 @@ export const reportsApi = {
     api.get<Report>(`/reports/${id}/`),
   generate: (client_id: number, type: string, date?: string) =>
     api.post<Report>('/reports/generate/', { client_id, type, date }),
+}
+
+export const logsApi = {
+  list: (params?: { client_id?: number; interaction_type?: string; date_from?: string; date_to?: string; page?: number; page_size?: number }) =>
+    api.get<{ results: InteractionLog[]; count: number; page: number; page_size: number }>('/chat/logs/', { params }),
 }
 
 export const onboardingApi = {

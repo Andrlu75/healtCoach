@@ -167,6 +167,18 @@ export default function PersonaSettings() {
         </div>
 
         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Промпт ответа по еде</label>
+          <textarea
+            value={data.food_response_prompt || ''}
+            onChange={(e) => setData({ ...data, food_response_prompt: e.target.value })}
+            rows={5}
+            placeholder="Ты — нутрициолог. Получив данные анализа еды и дневную сводку, дай развёрнутый ответ..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none font-mono text-sm"
+          />
+          <p className="text-xs text-gray-400 mt-1">Промпт для генерации ответа по фото еды. Получает JSON с анализом и дневной сводкой. Если пусто — используется шаблонный ответ.</p>
+        </div>
+
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Приветственное сообщение</label>
           <textarea
             value={data.greeting_message || ''}

@@ -1,10 +1,11 @@
 import { Link, useLocation, Outlet } from 'react-router-dom'
-import { LayoutDashboard, Users, Bot, Brain, Send, LogOut, FileText, ClipboardList, LinkIcon } from 'lucide-react'
+import { LayoutDashboard, Users, Bot, Brain, Send, LogOut, FileText, ClipboardList, LinkIcon, ScrollText } from 'lucide-react'
 import { useAuthStore } from '../../stores/auth'
 
 const nav = [
   { to: '/', icon: LayoutDashboard, label: 'Дашборд' },
   { to: '/clients', icon: Users, label: 'Клиенты' },
+  { to: '/logs', icon: ScrollText, label: 'Логи' },
   { to: '/reports', icon: FileText, label: 'Отчёты' },
   { to: '/onboarding', icon: ClipboardList, label: 'Онбординг' },
   { to: '/invites', icon: LinkIcon, label: 'Инвайты' },

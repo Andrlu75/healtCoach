@@ -31,8 +31,7 @@ class OpenAIProvider(AbstractAIProvider):
         kwargs = {
             'model': model,
             'messages': input_messages,
-            # GPT-5: reasoning tokens + output tokens укладываются в лимит
-            'max_completion_tokens': max(max_tokens * 4, 4096) if is_gpt5 else max_tokens,
+            'max_completion_tokens': max(max_tokens * 10, 8192) if is_gpt5 else max_tokens,
         }
 
         if not is_gpt5:

@@ -9,6 +9,7 @@ class BotPersona(models.Model):
     city = models.CharField(max_length=100, blank=True)
     style_description = models.TextField(blank=True)
     system_prompt = models.TextField(default='')
+    food_response_prompt = models.TextField(blank=True)
     greeting_message = models.TextField(blank=True)
 
     # AI settings — separate models for text/vision/voice

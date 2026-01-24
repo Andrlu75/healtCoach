@@ -8,6 +8,7 @@ import ClientDetail from './pages/ClientDetail'
 import OnboardingEditor from './pages/OnboardingEditor'
 import Reports from './pages/Reports'
 import Invites from './pages/Invites'
+import Logs from './pages/Logs'
 import AISettings from './pages/settings/AISettings'
 import TelegramSettings from './pages/settings/TelegramSettings'
 import PersonaSettings from './pages/settings/PersonaSettings'
@@ -35,6 +36,7 @@ function App() {
           <Route path="clients" element={<Clients />} />
           <Route path="clients/:id" element={<ClientDetail />} />
           <Route path="onboarding" element={<OnboardingEditor />} />
+          <Route path="logs" element={<Logs />} />
           <Route path="reports" element={<Reports />} />
           <Route path="invites" element={<Invites />} />
           <Route path="settings/ai" element={<AISettings />} />

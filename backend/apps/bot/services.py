@@ -1,10 +1,11 @@
 import logging
+import time
 from decimal import Decimal
 
 from asgiref.sync import sync_to_async
 
 from apps.accounts.models import Client
-from apps.chat.models import ChatMessage
+from apps.chat.models import ChatMessage, InteractionLog
 from apps.persona.models import AIProviderConfig, AIUsageLog, BotPersona, TelegramBot
 from core.ai.factory import get_ai_provider
 
@@ -88,6 +89,7 @@ async def get_ai_text_response(bot: TelegramBot, client: Client, text: str) -> s
     provider = get_ai_provider(provider_name, api_key)
 
     # Call AI
+    start_time = time.time()
     response = await provider.complete(
         messages=context,
         system_prompt=persona.system_prompt,
@@ -95,6 +97,7 @@ async def get_ai_text_response(bot: TelegramBot, client: Client, text: str) -> s
         temperature=persona.temperature,
         model=model,
     )
+    duration_ms = int((time.time() - start_time) * 1000)
 
     # Save assistant response
     await _save_message(
@@ -107,6 +110,32 @@ async def get_ai_text_response(bot: TelegramBot, client: Client, text: str) -> s
     await _log_usage(
         bot.coach, client, provider_name,
         response.model or model or '', 'text', response.usage,
+    )
+
+    # Log interaction
+    await sync_to_async(InteractionLog.objects.create)(
+        client=client,
+        coach=bot.coach,
+        interaction_type='text',
+        client_input=text,
+        ai_request={
+            'system_prompt': persona.system_prompt,
+            'messages': context,
+            'provider': provider_name,
+            'model': model or '',
+            'temperature': persona.temperature,
+            'max_tokens': persona.max_tokens,
+        },
+        ai_response={
+            'content': response.content,
+            'model': response.model or '',
+            'usage': response.usage or {},
+            'response_id': response.response_id or '',
+        },
+        client_output=response.content,
+        provider=provider_name,
+        model=response.model or model or '',
+        duration_ms=duration_ms,
     )
 
     return response.content
@@ -134,12 +163,14 @@ async def get_ai_vision_response(bot: TelegramBot, client: Client, image_data: b
         prompt += 'Пользователь отправил фото. Проанализируй изображение и дай рекомендации.'
 
     # Call AI vision
+    start_time = time.time()
     response = await provider.analyze_image(
         image_data=image_data,
         prompt=prompt,
         max_tokens=persona.max_tokens,
         model=model,
     )
+    duration_ms = int((time.time() - start_time) * 1000)
 
     # Save assistant response
     await _save_message(
@@ -152,6 +183,31 @@ async def get_ai_vision_response(bot: TelegramBot, client: Client, image_data: b
     await _log_usage(
         bot.coach, client, provider_name,
         response.model or model or '', 'vision', response.usage,
+    )
+
+    # Log interaction
+    await sync_to_async(InteractionLog.objects.create)(
+        client=client,
+        coach=bot.coach,
+        interaction_type='vision',
+        client_input=user_text,
+        ai_request={
+            'system_prompt': persona.system_prompt,
+            'prompt': prompt,
+            'provider': provider_name,
+            'model': model or '',
+            'max_tokens': persona.max_tokens,
+        },
+        ai_response={
+            'content': response.content,
+            'model': response.model or '',
+            'usage': response.usage or {},
+            'response_id': response.response_id or '',
+        },
+        client_output=response.content,
+        provider=provider_name,
+        model=response.model or model or '',
+        duration_ms=duration_ms,
     )
 
     return response.content

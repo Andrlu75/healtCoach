@@ -15,6 +15,33 @@ from .models import Meal
 
 logger = logging.getLogger(__name__)
 
+MEAL_CORRECTION_WINDOW_MINUTES = 5
+
+CLASSIFY_CORRECTION_PROMPT = """Пользователь ранее отправил фото еды, которое было распознано как: "{dish_name}" ({calories} ккал, Б:{proteins} Ж:{fats} У:{carbs}).
+
+Теперь пользователь написал: "{user_text}"
+
+Это уточнение/коррекция к предыдущему блюду (название, порция, вес, ингредиенты)? Ответь ОДНИМ словом: YES или NO."""
+
+RECALCULATE_PROMPT = """Пользователь уточнил информацию о блюде.
+
+Предыдущее распознавание:
+- Блюдо: {dish_name}
+- Калории: {calories}, Белки: {proteins}, Жиры: {fats}, Углеводы: {carbs}
+
+Уточнение пользователя: "{user_text}"
+
+Пересчитай КБЖУ с учётом уточнения. Верни JSON (без markdown-обёртки, только чистый JSON):
+{{
+  "dish_name": "уточнённое название",
+  "dish_type": "тип (завтрак/обед/ужин/перекус)",
+  "calories": число_ккал,
+  "proteins": граммы_белка,
+  "fats": граммы_жиров,
+  "carbohydrates": граммы_углеводов
+}}
+"""
+
 CLASSIFY_PROMPT = """Определи тип изображения. Ответь ОДНИМ словом:
 - food — если на фото еда, блюдо, напиток, продукты
 - data — если на фото цифровые данные (весы, анализы, показатели здоровья, скриншот трекера)
@@ -81,7 +108,10 @@ async def classify_image(bot: TelegramBot, image_data: bytes) -> str:
 
 
 async def analyze_food(bot: TelegramBot, image_data: bytes, caption: str = '') -> dict:
-    """Analyze food photo and return structured nutrition data."""
+    """Analyze food photo and return structured nutrition data.
+
+    Returns dict with keys: analysis data + _meta with provider info.
+    """
     provider, provider_name, model, persona = await _get_vision_provider(bot)
 
     prompt = ANALYZE_FOOD_PROMPT
@@ -125,6 +155,14 @@ async def analyze_food(bot: TelegramBot, image_data: bytes, caption: str = '') -
             'fats': 0,
             'carbohydrates': 0,
         }
+
+    data['_meta'] = {
+        'provider': provider_name,
+        'model': response.model or model or '',
+        'usage': response.usage or {},
+        'response_id': response.response_id or '',
+        'raw_content': response.content,
+    }
 
     return data
 
@@ -239,3 +277,90 @@ def format_meal_response(analysis: dict, summary: dict) -> str:
     )
 
     return text
+
+
+async def get_recent_meal(client: Client) -> Meal | None:
+    """Get client's most recent meal within correction window."""
+    from django.utils import timezone as tz
+    import datetime
+
+    cutoff = tz.now() - datetime.timedelta(minutes=MEAL_CORRECTION_WINDOW_MINUTES)
+    meal = await sync_to_async(
+        lambda: Meal.objects.filter(
+            client=client,
+            image_type='food',
+            created_at__gte=cutoff,
+        ).first()
+    )()
+    return meal
+
+
+async def is_meal_correction(bot: TelegramBot, meal: Meal, user_text: str) -> bool:
+    """Ask AI if user's text is a correction to the recent meal."""
+    provider, provider_name, model, persona = await _get_vision_provider(bot)
+
+    prompt = CLASSIFY_CORRECTION_PROMPT.format(
+        dish_name=meal.dish_name,
+        calories=meal.calories or 0,
+        proteins=meal.proteins or 0,
+        fats=meal.fats or 0,
+        carbs=meal.carbohydrates or 0,
+        user_text=user_text,
+    )
+
+    response = await provider.complete(
+        messages=[{'role': 'user', 'content': prompt}],
+        system_prompt='Ответь ОДНИМ словом: YES или NO.',
+        max_tokens=5,
+        temperature=0,
+        model=model,
+    )
+
+    return 'yes' in response.content.strip().lower()
+
+
+async def recalculate_meal(bot: TelegramBot, meal: Meal, user_text: str) -> dict:
+    """Recalculate meal nutrition based on user correction."""
+    provider, provider_name, model, persona = await _get_vision_provider(bot)
+
+    prompt = RECALCULATE_PROMPT.format(
+        dish_name=meal.dish_name,
+        calories=meal.calories or 0,
+        proteins=meal.proteins or 0,
+        fats=meal.fats or 0,
+        carbs=meal.carbohydrates or 0,
+        user_text=user_text,
+    )
+
+    response = await provider.complete(
+        messages=[{'role': 'user', 'content': prompt}],
+        system_prompt='Верни только JSON.',
+        max_tokens=200,
+        temperature=0.2,
+        model=model,
+    )
+
+    # Parse JSON
+    content = response.content.strip()
+    if content.startswith('```'):
+        content = content.split('\n', 1)[1] if '\n' in content else content[3:]
+        if content.endswith('```'):
+            content = content[:-3]
+        content = content.strip()
+
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        logger.error('Failed to parse recalculation JSON: %s', content)
+        return {}
+
+    # Update meal
+    meal.dish_name = data.get('dish_name', meal.dish_name)
+    meal.dish_type = data.get('dish_type', meal.dish_type)
+    meal.calories = data.get('calories', meal.calories)
+    meal.proteins = data.get('proteins', meal.proteins)
+    meal.fats = data.get('fats', meal.fats)
+    meal.carbohydrates = data.get('carbohydrates', meal.carbohydrates)
+    await sync_to_async(meal.save)()
+
+    return data

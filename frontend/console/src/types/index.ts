@@ -49,6 +49,7 @@ export interface BotPersona {
   city: string
   style_description: string
   system_prompt: string
+  food_response_prompt: string
   greeting_message: string
   text_provider: string
   text_model: string
@@ -199,6 +200,21 @@ export interface InviteLink {
   is_active: boolean
   expires_at: string | null
   invite_url: string
+  created_at: string
+}
+
+export interface InteractionLog {
+  id: number
+  client: number
+  client_name: string
+  interaction_type: 'text' | 'vision' | 'voice'
+  client_input: string
+  ai_request: Record<string, unknown>
+  ai_response: Record<string, unknown>
+  client_output: string
+  provider: string
+  model: string
+  duration_ms: number
   created_at: string
 }
 
