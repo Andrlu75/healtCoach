@@ -74,8 +74,12 @@ export const settingsApi = {
     api.put('/persona/telegram/', { notification_chat_id }),
   deleteTelegramBot: (bot_id: number) =>
     api.delete(`/persona/telegram/?bot_id=${bot_id}`),
-  testTelegram: (chat_id: string, bot_token?: string) =>
-    api.post('/persona/telegram/test/', { bot_token: bot_token || '', chat_id }),
+  testTelegram: (chat_id: string, bot_token?: string) => {
+    if (!chat_id?.trim()) {
+      return Promise.reject(new Error('Chat ID не указан'))
+    }
+    return api.post('/persona/telegram/test/', { bot_token: bot_token || '', chat_id: chat_id.trim() })
+  },
 
   getDashboardStats: () => api.get<DashboardStats>('/persona/dashboard/'),
 }

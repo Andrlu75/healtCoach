@@ -92,7 +92,8 @@ export default function TelegramSettings() {
   }
 
   const handleTest = async () => {
-    if (!notificationChatId) {
+    const chatId = notificationChatId?.trim()
+    if (!chatId) {
       setTestMessage('Заполните Chat ID')
       return
     }
@@ -104,11 +105,11 @@ export default function TelegramSettings() {
     setTesting(true)
     setTestMessage('')
     try {
-      await settingsApi.testTelegram(notificationChatId)
+      await settingsApi.testTelegram(chatId)
       setTestMessage('Сообщение отправлено!')
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } }
-      setTestMessage(error.response?.data?.error || 'Ошибка отправки')
+      const error = err as { response?: { data?: { error?: string } }; message?: string }
+      setTestMessage(error.response?.data?.error || error.message || 'Ошибка отправки')
     } finally {
       setTesting(false)
     }
