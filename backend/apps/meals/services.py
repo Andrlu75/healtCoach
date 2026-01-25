@@ -578,6 +578,9 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
         }
 
     # Generate AI response text with recommendations (like in Telegram)
+    text_model_used = None
+    text_provider_name = None
+
     if persona.food_response_prompt:
         # Get daily summary for context
         summary = await get_daily_summary(client)
@@ -634,53 +637,36 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
             )
 
             data['ai_response'] = text_response.content
-
-            # Log interaction with full details
-            duration_ms = int((time.time() - start_time) * 1000)
-            await sync_to_async(InteractionLog.objects.create)(
-                client=client,
-                coach=client.coach,
-                interaction_type='vision',
-                client_input=caption or '[Miniapp: Фото еды]',
-                ai_request={
-                    'source': 'miniapp',
-                    'vision_prompt': ANALYZE_FOOD_PROMPT,
-                    'text_prompt': persona.food_response_prompt,
-                    'caption': caption,
-                },
-                ai_response={
-                    'analysis': data,
-                    'ai_response': text_response.content,
-                    'vision_model': model_used,
-                    'text_model': text_model_used,
-                },
-                client_output=text_response.content,
-                provider=text_provider_name,
-                model=text_model_used,
-                duration_ms=duration_ms,
+        else:
+            logger.warning(
+                '[ANALYZE] No API config for text provider %s, skipping AI response',
+                text_provider_name
             )
-    else:
-        # Log interaction without AI response text
-        duration_ms = int((time.time() - start_time) * 1000)
-        await sync_to_async(InteractionLog.objects.create)(
-            client=client,
-            coach=client.coach,
-            interaction_type='vision',
-            client_input=caption or '[Miniapp: Фото еды]',
-            ai_request={
-                'source': 'miniapp',
-                'vision_prompt': ANALYZE_FOOD_PROMPT,
-                'caption': caption,
-            },
-            ai_response={
-                'analysis': data,
-                'vision_model': model_used,
-            },
-            client_output=json.dumps(data, ensure_ascii=False),
-            provider=provider_name,
-            model=model_used,
-            duration_ms=duration_ms,
-        )
+
+    # Always log interaction
+    duration_ms = int((time.time() - start_time) * 1000)
+    await sync_to_async(InteractionLog.objects.create)(
+        client=client,
+        coach=client.coach,
+        interaction_type='vision',
+        client_input=caption or '[Miniapp: Фото еды]',
+        ai_request={
+            'source': 'miniapp',
+            'vision_prompt': ANALYZE_FOOD_PROMPT,
+            'text_prompt': persona.food_response_prompt if persona.food_response_prompt else None,
+            'caption': caption,
+        },
+        ai_response={
+            'analysis': data,
+            'ai_response': data.get('ai_response'),
+            'vision_model': model_used,
+            'text_model': text_model_used,
+        },
+        client_output=data.get('ai_response') or json.dumps(data, ensure_ascii=False),
+        provider=text_provider_name or provider_name,
+        model=text_model_used or model_used,
+        duration_ms=duration_ms,
+    )
 
     return data
 

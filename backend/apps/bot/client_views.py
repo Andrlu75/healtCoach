@@ -144,6 +144,7 @@ class ClientMealAnalyzeView(APIView):
 
     def post(self, request):
         from asgiref.sync import async_to_sync
+        from apps.chat.models import InteractionLog
 
         client = get_client_from_token(request)
         if not client:
@@ -163,6 +164,31 @@ class ClientMealAnalyzeView(APIView):
             result = async_to_sync(analyze_food_for_client)(client, image_data, caption)
             return Response(result)
         except Exception as e:
+            logger.exception(
+                '[ANALYZE] Error analyzing photo for client=%s: %s',
+                client.pk, str(e)
+            )
+
+            # Log failed interaction
+            InteractionLog.objects.create(
+                client=client,
+                coach=client.coach,
+                interaction_type='vision',
+                client_input=caption or '[Miniapp: Фото еды]',
+                ai_request={
+                    'source': 'miniapp',
+                    'caption': caption,
+                    'error': True,
+                },
+                ai_response={
+                    'error': str(e),
+                },
+                client_output=f'Ошибка: {str(e)}',
+                provider='unknown',
+                model='unknown',
+                duration_ms=0,
+            )
+
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
