@@ -162,6 +162,7 @@ export interface DashboardStats {
 
 export interface Meal {
   id: number
+  image: string | null
   dish_name: string
   dish_type: string
   image_type: string

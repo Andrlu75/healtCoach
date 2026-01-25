@@ -516,41 +516,81 @@ export default function ClientDetail() {
 }
 
 function MealsTab({ meals }: { meals: Meal[] }) {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+
   if (!meals.length) {
     return <p className="text-sm text-gray-400 py-4">Нет записей о питании</p>
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-gray-200 bg-gray-50">
-            <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Время</th>
-            <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Блюдо</th>
-            <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Тип</th>
-            <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Ккал</th>
-            <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Б</th>
-            <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Ж</th>
-            <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">У</th>
-          </tr>
-        </thead>
-        <tbody>
-          {meals.map((m) => (
-            <tr key={m.id} className="border-b border-gray-100">
-              <td className="px-4 py-2 text-sm text-gray-500">
-                {dayjs(m.meal_time).format('DD.MM HH:mm')}
-              </td>
-              <td className="px-4 py-2 text-sm text-gray-900">{m.dish_name}</td>
-              <td className="px-4 py-2 text-sm text-gray-500">{m.dish_type}</td>
-              <td className="px-4 py-2 text-sm text-right">{m.calories ? Math.round(m.calories) : '—'}</td>
-              <td className="px-4 py-2 text-sm text-right">{m.proteins ? Math.round(m.proteins) : '—'}</td>
-              <td className="px-4 py-2 text-sm text-right">{m.fats ? Math.round(m.fats) : '—'}</td>
-              <td className="px-4 py-2 text-sm text-right">{m.carbohydrates ? Math.round(m.carbohydrates) : '—'}</td>
+    <>
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 w-16">Фото</th>
+              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Время</th>
+              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Блюдо</th>
+              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Тип</th>
+              <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Ккал</th>
+              <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Б</th>
+              <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Ж</th>
+              <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">У</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {meals.map((m) => (
+              <tr key={m.id} className="border-b border-gray-100">
+                <td className="px-4 py-2">
+                  {m.image ? (
+                    <img
+                      src={m.image}
+                      alt={m.dish_name}
+                      className="w-12 h-12 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => setSelectedImage(m.image)}
+                    />
+                  ) : (
+                    <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <span className="text-gray-400 text-xs">—</span>
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-2 text-sm text-gray-500">
+                  {dayjs(m.meal_time).format('DD.MM HH:mm')}
+                </td>
+                <td className="px-4 py-2 text-sm text-gray-900">{m.dish_name}</td>
+                <td className="px-4 py-2 text-sm text-gray-500">{m.dish_type}</td>
+                <td className="px-4 py-2 text-sm text-right">{m.calories ? Math.round(m.calories) : '—'}</td>
+                <td className="px-4 py-2 text-sm text-right">{m.proteins ? Math.round(m.proteins) : '—'}</td>
+                <td className="px-4 py-2 text-sm text-right">{m.fats ? Math.round(m.fats) : '—'}</td>
+                <td className="px-4 py-2 text-sm text-right">{m.carbohydrates ? Math.round(m.carbohydrates) : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Fullscreen image modal */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedImage(null)}
+        >
+          <img
+            src={selectedImage}
+            alt="Фото блюда"
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setSelectedImage(null)}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 text-3xl font-light"
+          >
+            ×
+          </button>
+        </div>
+      )}
+    </>
   )
 }
 
