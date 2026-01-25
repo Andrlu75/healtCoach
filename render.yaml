@@ -79,8 +79,3 @@ services:
         name: Cache-Control
         value: public, max-age=0, must-revalidate
 
-databases:
-  - name: healthCoach
-    plan: starter
-    databaseName: healthcoach
-    region: oregon
