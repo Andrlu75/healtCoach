@@ -1,8 +1,19 @@
 import json
 import logging
+import random
 import time
 
 from asgiref.sync import sync_to_async
+
+# Связующие фразы после "Анализирую..."
+ANALYSIS_INTRO_PHRASES = [
+    'Готово! Вот что я вижу:',
+    'Разобрался! Смотри:',
+    'Так, понял что тут:',
+    'Ага, вот что получилось:',
+    'Всё, разглядел:',
+    'Окей, вижу тут:',
+]
 
 from apps.accounts.models import Client
 from apps.chat.models import InteractionLog
@@ -103,9 +114,17 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
         if caption:
             user_message = f'Подпись пользователя: "{caption}"\n\n' + user_message
 
+        # Add instruction to start with a transition phrase
+        intro_instruction = (
+            '\n\nВАЖНО: Пользователь уже получил сообщение "Фото получил, анализирую...". '
+            'Начни ответ с короткой естественной фразы-перехода вроде "Готово!", "Так, вижу тут...", '
+            '"Разобрался!" или подобной — чтобы связать с предыдущим сообщением. '
+            'Каждый раз используй разные варианты.'
+        )
+
         response = await provider.complete(
             messages=[{'role': 'user', 'content': user_message}],
-            system_prompt=persona.food_response_prompt,
+            system_prompt=persona.food_response_prompt + intro_instruction,
             max_tokens=persona.max_tokens,
             temperature=persona.temperature,
             model=model_name,
@@ -157,7 +176,8 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
         }
     else:
         # Fallback to template response (no extra AI call)
-        response_text = format_meal_response(analysis, summary)
+        intro = random.choice(ANALYSIS_INTRO_PHRASES)
+        response_text = f'{intro}\n\n{format_meal_response(analysis, summary)}'
         duration_ms = int((time.time() - start_time) * 1000)
         response_provider = meta.get('provider', '')
         response_model = meta.get('model', '')
@@ -226,10 +246,18 @@ async def _handle_food_photo(bot: TelegramBot, client: Client, chat_id: int, ima
         if caption:
             user_message = f'Подпись пользователя: "{caption}"\n\n' + user_message
 
+        # Add instruction to start with a transition phrase
+        intro_instruction = (
+            '\n\nВАЖНО: Пользователь уже получил сообщение "Фото получил, анализирую...". '
+            'Начни ответ с короткой естественной фразы-перехода вроде "Готово!", "Так, вижу тут...", '
+            '"Разобрался!" или подобной — чтобы связать с предыдущим сообщением. '
+            'Каждый раз используй разные варианты.'
+        )
+
         start_response = time.time()
         response = await provider.complete(
             messages=[{'role': 'user', 'content': user_message}],
-            system_prompt=persona.food_response_prompt,
+            system_prompt=persona.food_response_prompt + intro_instruction,
             max_tokens=persona.max_tokens,
             temperature=persona.temperature,
             model=model_name,
@@ -256,7 +284,8 @@ async def _handle_food_photo(bot: TelegramBot, client: Client, chat_id: int, ima
         }
     else:
         # Fallback to template response
-        response_text = format_meal_response(analysis, summary)
+        intro = random.choice(ANALYSIS_INTRO_PHRASES)
+        response_text = f'{intro}\n\n{format_meal_response(analysis, summary)}'
         duration_ms = duration_ms_analysis
         response_provider = meta.get('provider', '')
         response_model = meta.get('model', '')
