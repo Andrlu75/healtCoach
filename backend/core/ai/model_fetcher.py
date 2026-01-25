@@ -69,8 +69,10 @@ def _find_openrouter_meta(model_id: str, or_prefix: str, metadata: dict) -> dict
     if meta:
         return meta
 
-    # 2. Strip date suffix (e.g. -20250514, -20241022)
-    base_id = re.sub(r'-\d{8}$', '', model_id)
+    # 2. Strip date suffix (e.g. -2025-08-07, -20250514, -20241022)
+    # Handle both formats: YYYY-MM-DD and YYYYMMDD
+    base_id = re.sub(r'-\d{4}-\d{2}-\d{2}$', '', model_id)  # -2025-08-07
+    base_id = re.sub(r'-\d{8}$', '', base_id)  # -20250514
     if base_id != model_id:
         meta = metadata.get(f"{or_prefix}/{base_id}")
         if meta:
