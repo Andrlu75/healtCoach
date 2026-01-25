@@ -31,7 +31,8 @@ function AddMeal() {
   const queryClient = useQueryClient()
   const { showBackButton, hideBackButton } = useTelegram()
   const { impact, notification } = useHaptic()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
 
@@ -50,9 +51,14 @@ function AddMeal() {
 
   const selectedType = watch('dish_type')
 
-  const handlePhotoSelect = () => {
+  const handleCameraClick = () => {
     impact('light')
-    fileInputRef.current?.click()
+    cameraInputRef.current?.click()
+  }
+
+  const handleGalleryClick = () => {
+    impact('light')
+    galleryInputRef.current?.click()
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,9 +78,8 @@ function AddMeal() {
     impact('light')
     setPhotoFile(null)
     setPhotoPreview(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
+    if (cameraInputRef.current) cameraInputRef.current.value = ''
+    if (galleryInputRef.current) galleryInputRef.current.value = ''
   }
 
   useEffect(() => {
@@ -158,11 +163,20 @@ function AddMeal() {
             {...register('dish_name', { required: 'Введите название блюда' })}
           />
 
+          {/* Инпут для камеры */}
           <input
-            ref={fileInputRef}
+            ref={cameraInputRef}
             type="file"
             accept="image/*"
             capture="environment"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          {/* Инпут для галереи */}
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/*"
             onChange={handleFileChange}
             className="hidden"
           />
@@ -184,18 +198,26 @@ function AddMeal() {
               </motion.button>
             </div>
           ) : (
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.98 }}
-              onClick={handlePhotoSelect}
-              className="w-full h-24 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 dark:text-gray-500 active:bg-gray-50 dark:active:bg-gray-800"
-            >
-              <div className="flex gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.95 }}
+                onClick={handleCameraClick}
+                className="h-20 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center gap-1.5 text-gray-500 dark:text-gray-400 active:bg-gray-50 dark:active:bg-gray-800"
+              >
                 <Camera size={24} />
+                <span className="text-xs">Камера</span>
+              </motion.button>
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.95 }}
+                onClick={handleGalleryClick}
+                className="h-20 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center gap-1.5 text-gray-500 dark:text-gray-400 active:bg-gray-50 dark:active:bg-gray-800"
+              >
                 <Image size={24} />
-              </div>
-              <span className="text-sm">Сделать фото или выбрать</span>
-            </motion.button>
+                <span className="text-xs">Галерея</span>
+              </motion.button>
+            </div>
           )}
         </Card>
 
