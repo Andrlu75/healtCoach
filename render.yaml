@@ -5,7 +5,7 @@ services:
     region: frankfurt
     plan: starter
     rootDir: backend
-    buildCommand: pip install -r requirements/prod.txt && echo "=== TESTING DJANGO ===" && python -c "import django; print('Django OK')" && python manage.py collectstatic --noinput && python manage.py migrate
+    buildCommand: pip install -r requirements/prod.txt && DJANGO_SETTINGS_MODULE=config.settings.prod python manage.py collectstatic --noinput && DJANGO_SETTINGS_MODULE=config.settings.prod python manage.py migrate
     startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     envVars:
       - key: PYTHON_VERSION
