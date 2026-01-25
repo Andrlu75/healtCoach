@@ -123,8 +123,18 @@ export interface AIUsageStats {
   total_cost_usd: number
 }
 
+export interface AIClientUsageStats {
+  client_id: number | null
+  client_name: string
+  requests_count: number
+  total_input_tokens: number
+  total_output_tokens: number
+  total_cost_usd: number
+}
+
 export interface AIUsageResponse {
   stats: AIUsageStats[]
+  stats_by_client: AIClientUsageStats[]
   total_cost_usd: number
   period: string
 }

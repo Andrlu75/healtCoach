@@ -414,10 +414,38 @@ class AIUsageView(APIView):
             total_cost_usd=Sum('cost_usd'),
         ).order_by('-total_cost_usd')
 
+        # Stats by client
+        stats_by_client = queryset.values(
+            'client__id', 'client__first_name', 'client__last_name'
+        ).annotate(
+            requests_count=Count('id'),
+            total_input_tokens=Sum('input_tokens'),
+            total_output_tokens=Sum('output_tokens'),
+            total_cost_usd=Sum('cost_usd'),
+        ).order_by('-total_cost_usd')
+
+        # Format client stats
+        client_stats = []
+        for row in stats_by_client:
+            client_name = 'Система'
+            if row['client__id']:
+                first = row['client__first_name'] or ''
+                last = row['client__last_name'] or ''
+                client_name = f"{first} {last}".strip() or f"Клиент #{row['client__id']}"
+            client_stats.append({
+                'client_id': row['client__id'],
+                'client_name': client_name,
+                'requests_count': row['requests_count'],
+                'total_input_tokens': row['total_input_tokens'] or 0,
+                'total_output_tokens': row['total_output_tokens'] or 0,
+                'total_cost_usd': row['total_cost_usd'] or 0,
+            })
+
         total_cost = queryset.aggregate(total=Sum('cost_usd'))['total'] or 0
 
         return Response({
             'stats': list(stats),
+            'stats_by_client': client_stats,
             'total_cost_usd': total_cost,
             'period': period,
         })

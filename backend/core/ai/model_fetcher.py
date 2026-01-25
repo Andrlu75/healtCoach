@@ -130,25 +130,16 @@ def _enrich_models(models: list[dict], provider: str, metadata: dict) -> list[di
 
 def get_cached_pricing(provider: str, model_id: str) -> tuple[float, float] | None:
     """Возвращает (price_input, price_output) за 1M токенов из кэша, или None."""
-    import logging
-    logger = logging.getLogger(__name__)
-
     metadata = _openrouter_cache['data']
     if not metadata:
-        logger.info('[PRICING] Cache empty, fetching from OpenRouter...')
         _fetch_openrouter_metadata_sync()
         metadata = _openrouter_cache['data']
-        logger.info('[PRICING] Fetched %d models from OpenRouter', len(metadata))
     if not metadata:
-        logger.warning('[PRICING] No metadata available')
         return None
     or_prefix = OPENROUTER_PROVIDER_MAP.get(provider, provider)
     meta = _find_openrouter_meta(model_id, or_prefix, metadata)
     if meta:
-        logger.debug('[PRICING] Found %s/%s: in=$%.4f out=$%.4f per 1M',
-                     or_prefix, model_id, meta['price_input'], meta['price_output'])
         return (meta['price_input'], meta['price_output'])
-    logger.warning('[PRICING] Model not found: %s/%s', or_prefix, model_id)
     return None
 
 
