@@ -2,7 +2,7 @@ services:
   - type: web
     name: healthcoach-api
     runtime: python
-    region: frankfurt
+    region: oregon
     plan: starter
     rootDir: backend
     buildCommand: export DJANGO_SETTINGS_MODULE=config.settings.prod && pip install -r requirements/prod.txt && python manage.py collectstatic --noinput && python manage.py migrate
@@ -44,7 +44,7 @@ services:
   - type: web
     name: healthcoach-console
     runtime: static
-    region: frankfurt
+    region: oregon
     rootDir: frontend/console
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
@@ -64,4 +64,4 @@ databases:
   - name: healthCoach
     plan: starter
     databaseName: healthcoach
-    region: frankfurt
+    region: oregon
