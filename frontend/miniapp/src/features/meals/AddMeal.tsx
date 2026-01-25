@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Camera, X, Image } from 'lucide-react'
-import { addMealWithPhoto } from '../../api/endpoints'
+import { Camera, X, Image, Loader2 } from 'lucide-react'
+import { addMealWithPhoto, analyzeMealPhoto } from '../../api/endpoints'
 import { useTelegram, useHaptic } from '../../shared/hooks'
 import { Button, Input, Card } from '../../shared/components/ui'
 import { cn } from '../../shared/lib/cn'
@@ -36,6 +36,7 @@ function AddMeal() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [isCameraOpen, setIsCameraOpen] = useState(false)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   const {
     register,
@@ -51,6 +52,40 @@ function AddMeal() {
   })
 
   const selectedType = watch('dish_type')
+
+  const analyzePhoto = async (file: File) => {
+    setIsAnalyzing(true)
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+      const response = await analyzeMealPhoto(formData)
+      const data = response.data
+
+      // Заполняем форму результатами анализа
+      if (data.dish_name) setValue('dish_name', data.dish_name)
+      if (data.dish_type) {
+        const typeMap: Record<string, MealFormData['dish_type']> = {
+          'завтрак': 'breakfast',
+          'обед': 'lunch',
+          'ужин': 'dinner',
+          'перекус': 'snack',
+        }
+        const mappedType = typeMap[data.dish_type.toLowerCase()] || 'lunch'
+        setValue('dish_type', mappedType)
+      }
+      if (data.calories) setValue('calories', String(data.calories))
+      if (data.proteins) setValue('proteins', String(data.proteins))
+      if (data.fats) setValue('fats', String(data.fats))
+      if (data.carbohydrates) setValue('carbohydrates', String(data.carbohydrates))
+
+      notification('success')
+    } catch (error) {
+      console.error('Failed to analyze photo:', error)
+      notification('error')
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
 
   const handleCameraClick = () => {
     impact('light')
@@ -69,7 +104,8 @@ function AddMeal() {
       setPhotoPreview(reader.result as string)
     }
     reader.readAsDataURL(file)
-    notification('success')
+    // Отправляем на анализ
+    analyzePhoto(file)
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,7 +117,8 @@ function AddMeal() {
         setPhotoPreview(reader.result as string)
       }
       reader.readAsDataURL(file)
-      notification('success')
+      // Отправляем на анализ
+      analyzePhoto(file)
     }
   }
 
@@ -187,16 +224,29 @@ function AddMeal() {
               <img
                 src={photoPreview}
                 alt="Фото блюда"
-                className="w-full h-48 object-cover rounded-xl"
+                className={cn(
+                  "w-full h-48 object-cover rounded-xl transition-opacity",
+                  isAnalyzing && "opacity-50"
+                )}
               />
-              <motion.button
-                type="button"
-                whileTap={{ scale: 0.9 }}
-                onClick={handleRemovePhoto}
-                className="absolute top-2 right-2 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center"
-              >
-                <X size={16} className="text-white" />
-              </motion.button>
+              {isAnalyzing && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <Loader2 size={32} className="text-blue-600 animate-spin" />
+                  <span className="mt-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Анализируем фото...
+                  </span>
+                </div>
+              )}
+              {!isAnalyzing && (
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleRemovePhoto}
+                  className="absolute top-2 right-2 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center"
+                >
+                  <X size={16} className="text-white" />
+                </motion.button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
@@ -258,9 +308,10 @@ function AddMeal() {
           type="submit"
           className="w-full"
           size="lg"
+          disabled={isAnalyzing}
           isLoading={isSubmitting || mutation.isPending}
         >
-          Сохранить
+          {isAnalyzing ? 'Анализируем...' : 'Сохранить'}
         </Button>
       </form>
 

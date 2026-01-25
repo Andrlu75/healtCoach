@@ -479,6 +479,75 @@ async def is_meal_correction(bot: TelegramBot, meal: Meal, user_text: str) -> bo
     return 'yes' in response.content.strip().lower()
 
 
+async def analyze_food_for_client(client: Client, image_data: bytes) -> dict:
+    """Analyze food photo for miniapp client.
+
+    Gets vision provider through client's coach and returns nutrition data.
+    """
+    # Get client's bot/coach to access AI provider
+    bot = await sync_to_async(
+        lambda: TelegramBot.objects.filter(coach=client.coach).first()
+    )()
+    if not bot:
+        raise ValueError('No bot configured for client coach')
+
+    provider, provider_name, model, persona = await _get_vision_provider(bot)
+
+    response = await provider.analyze_image(
+        image_data=image_data,
+        prompt=ANALYZE_FOOD_PROMPT,
+        max_tokens=500,
+        model=model,
+    )
+
+    # Log usage with cost calculation
+    from core.ai.model_fetcher import get_cached_pricing
+    from decimal import Decimal
+
+    model_used = response.model or model or ''
+    input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
+    output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
+
+    cost_usd = Decimal('0')
+    pricing = get_cached_pricing(provider_name, model_used)
+    if pricing and (input_tokens or output_tokens):
+        price_in, price_out = pricing
+        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
+    await sync_to_async(AIUsageLog.objects.create)(
+        coach=client.coach,
+        provider=provider_name,
+        model=model_used,
+        task_type='vision',
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=cost_usd,
+    )
+
+    # Parse JSON from response
+    content = response.content.strip()
+    if content.startswith('```'):
+        content = content.split('\n', 1)[1] if '\n' in content else content[3:]
+        if content.endswith('```'):
+            content = content[:-3]
+        content = content.strip()
+
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        logger.error('Failed to parse food analysis JSON for client: %s', content)
+        data = {
+            'dish_name': 'Неизвестное блюдо',
+            'dish_type': 'snack',
+            'calories': 0,
+            'proteins': 0,
+            'fats': 0,
+            'carbohydrates': 0,
+        }
+
+    return data
+
+
 async def recalculate_meal(bot: TelegramBot, meal: Meal, user_text: str) -> dict:
     """Recalculate meal nutrition based on user correction."""
     provider, provider_name, model, persona = await _get_vision_provider(bot)

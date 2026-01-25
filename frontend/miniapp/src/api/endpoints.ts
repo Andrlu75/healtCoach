@@ -27,6 +27,22 @@ export const addMealWithPhoto = (formData: FormData) =>
     },
   })
 
+export const analyzeMealPhoto = (formData: FormData) =>
+  api.post<{
+    dish_name: string
+    dish_type: string
+    calories: number
+    proteins: number
+    fats: number
+    carbohydrates: number
+    ingredients?: string[]
+    confidence?: number
+  }>('/miniapp/meals/analyze/', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+
 export const deleteMeal = (id: number) =>
   api.delete(`/miniapp/meals/${id}/`)
 

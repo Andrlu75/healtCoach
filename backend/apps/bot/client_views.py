@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from apps.accounts.models import Client
 from apps.meals.models import Meal
 from apps.meals.serializers import MealCreateSerializer, MealSerializer
+from apps.meals.services import analyze_food_for_client
 from apps.reminders.models import Reminder
 from apps.reminders.serializers import ReminderSerializer
 
@@ -124,6 +125,37 @@ class ClientDailySummaryView(APIView):
             'totals': totals,
             'meals_count': meals.count(),
         })
+
+
+class ClientMealAnalyzeView(APIView):
+    """Analyze a food photo and return nutrition data."""
+
+    parser_classes = [MultiPartParser, FormParser]
+
+    async def post(self, request):
+        from asgiref.sync import sync_to_async
+
+        client = await sync_to_async(get_client_from_token)(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        image = request.FILES.get('image')
+        if not image:
+            return Response(
+                {'error': 'Image is required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        image_data = image.read()
+
+        try:
+            result = await analyze_food_for_client(client, image_data)
+            return Response(result)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class ClientReminderListView(APIView):
