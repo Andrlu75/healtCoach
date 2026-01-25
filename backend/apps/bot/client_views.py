@@ -147,9 +147,10 @@ class ClientMealAnalyzeView(APIView):
             )
 
         image_data = image.read()
+        caption = request.data.get('caption', '')
 
         try:
-            result = async_to_sync(analyze_food_for_client)(client, image_data)
+            result = async_to_sync(analyze_food_for_client)(client, image_data, caption)
             return Response(result)
         except Exception as e:
             return Response(

@@ -479,7 +479,7 @@ async def is_meal_correction(bot: TelegramBot, meal: Meal, user_text: str) -> bo
     return 'yes' in response.content.strip().lower()
 
 
-async def analyze_food_for_client(client: Client, image_data: bytes) -> dict:
+async def analyze_food_for_client(client: Client, image_data: bytes, caption: str = '') -> dict:
     """Analyze food photo for miniapp client.
 
     Gets vision provider through client's coach and returns nutrition data.
@@ -493,9 +493,13 @@ async def analyze_food_for_client(client: Client, image_data: bytes) -> dict:
 
     provider, provider_name, model, persona = await _get_vision_provider(bot)
 
+    prompt = ANALYZE_FOOD_PROMPT
+    if caption:
+        prompt += f'\n\nУточнение от пользователя: "{caption}"'
+
     response = await provider.analyze_image(
         image_data=image_data,
-        prompt=ANALYZE_FOOD_PROMPT,
+        prompt=prompt,
         max_tokens=500,
         model=model,
     )
