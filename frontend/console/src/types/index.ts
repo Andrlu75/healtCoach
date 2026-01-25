@@ -170,6 +170,12 @@ export interface Meal {
   proteins: number | null
   fats: number | null
   carbohydrates: number | null
+  ingredients: string[]
+  health_analysis: Record<string, unknown>
+  ai_confidence: number | null
+  plate_type: string
+  layout: string
+  decorations: string
   meal_time: string
   created_at: string
 }
