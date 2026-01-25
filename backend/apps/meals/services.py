@@ -113,12 +113,20 @@ ANALYZE_FOOD_PROMPT = """Проанализируй фото еды и верн�
 
 async def _get_vision_provider(bot: TelegramBot):
     """Get vision AI provider for the bot's coach."""
-    persona = await sync_to_async(
-        lambda: BotPersona.objects.get(coach=bot.coach)
-    )()
+    logger.info('[VISION] Getting provider for bot=%s coach=%s', bot.pk, bot.coach_id)
+
+    try:
+        persona = await sync_to_async(
+            lambda: BotPersona.objects.get(coach=bot.coach)
+        )()
+    except BotPersona.DoesNotExist:
+        logger.error('[VISION] No BotPersona for coach=%s', bot.coach_id)
+        raise ValueError(f'No BotPersona configured for coach {bot.coach_id}')
 
     provider_name = persona.vision_provider or persona.text_provider or 'openai'
     model = persona.vision_model or persona.text_model or None
+
+    logger.info('[VISION] Using provider=%s model=%s', provider_name, model)
 
     config = await sync_to_async(
         lambda: AIProviderConfig.objects.filter(
@@ -126,9 +134,11 @@ async def _get_vision_provider(bot: TelegramBot):
         ).first()
     )()
     if not config:
+        logger.error('[VISION] No API config for provider=%s coach=%s', provider_name, bot.coach_id)
         raise ValueError(f'No API key for provider: {provider_name}')
 
     provider = get_ai_provider(provider_name, config.api_key)
+    logger.info('[VISION] Provider ready: %s', provider_name)
     return provider, provider_name, model, persona
 
 
@@ -515,12 +525,17 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
 
     start_time = time.time()
 
+    logger.info('[ANALYZE] Starting for client=%s coach=%s', client.pk, client.coach_id)
+
     # Get client's bot/coach to access AI provider
     bot = await sync_to_async(
         lambda: TelegramBot.objects.filter(coach=client.coach).first()
     )()
     if not bot:
+        logger.error('[ANALYZE] No bot for coach=%s', client.coach_id)
         raise ValueError('No bot configured for client coach')
+
+    logger.info('[ANALYZE] Found bot=%s', bot.pk)
 
     provider, provider_name, model, persona = await _get_vision_provider(bot)
 
@@ -528,12 +543,16 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
     if caption:
         prompt += f'\n\nУточнение от пользователя: "{caption}"'
 
+    logger.info('[ANALYZE] Calling AI analyze_image with model=%s', model)
+
     response = await provider.analyze_image(
         image_data=image_data,
         prompt=prompt,
         max_tokens=500,
         model=model,
     )
+
+    logger.info('[ANALYZE] AI response received, content length=%d', len(response.content or ''))
 
     # Log usage with cost calculation
     model_used = response.model or model or ''
