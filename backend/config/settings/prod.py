@@ -63,18 +63,18 @@ else:
         },
     }
 
-# Cloudflare R2 Storage (S3-compatible)
-R2_ACCESS_KEY = config('R2_ACCESS_KEY_ID', default='')
-if R2_ACCESS_KEY:
-    AWS_ACCESS_KEY_ID = R2_ACCESS_KEY
-    AWS_SECRET_ACCESS_KEY = config('R2_SECRET_ACCESS_KEY', default='')
-    AWS_STORAGE_BUCKET_NAME = config('R2_BUCKET_NAME', default='healthcoach')
-    AWS_S3_ENDPOINT_URL = config('R2_ENDPOINT_URL', default='')  # https://<account_id>.r2.cloudflarestorage.com
-    AWS_S3_REGION_NAME = 'auto'
-    AWS_DEFAULT_ACL = None
-    AWS_QUERYSTRING_AUTH = True
-    AWS_S3_FILE_OVERWRITE = False
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+# Cloudflare R2 Storage (S3-compatible) - temporarily disabled for debugging
+# R2_ACCESS_KEY = config('R2_ACCESS_KEY_ID', default='')
+# if R2_ACCESS_KEY:
+#     AWS_ACCESS_KEY_ID = R2_ACCESS_KEY
+#     AWS_SECRET_ACCESS_KEY = config('R2_SECRET_ACCESS_KEY', default='')
+#     AWS_STORAGE_BUCKET_NAME = config('R2_BUCKET_NAME', default='healthcoach')
+#     AWS_S3_ENDPOINT_URL = config('R2_ENDPOINT_URL', default='')
+#     AWS_S3_REGION_NAME = 'auto'
+#     AWS_DEFAULT_ACL = None
+#     AWS_QUERYSTRING_AUTH = True
+#     AWS_S3_FILE_OVERWRITE = False
+#     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
 # Sentry
 import sentry_sdk  # noqa: E402
