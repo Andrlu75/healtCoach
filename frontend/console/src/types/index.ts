@@ -231,6 +231,7 @@ export interface InteractionLog {
   model: string
   duration_ms: number
   created_at: string
+  image_url: string | null
 }
 
 export interface OnboardingQuestion {

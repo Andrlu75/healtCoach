@@ -180,9 +180,16 @@ export default function Logs() {
                           <div className="mt-3 grid grid-cols-2 gap-4">
                             <div>
                               <h4 className="text-xs font-medium text-gray-500 mb-1">Полный ввод клиента</h4>
-                              <p className="text-sm text-gray-700 bg-white border border-gray-200 rounded-lg p-3">
-                                {log.client_input}
-                              </p>
+                              <div className="bg-white border border-gray-200 rounded-lg p-3">
+                                <p className="text-sm text-gray-700">{log.client_input}</p>
+                                {log.image_url && (
+                                  <img
+                                    src={log.image_url}
+                                    alt="Фото от клиента"
+                                    className="mt-2 max-w-xs rounded-lg shadow-sm"
+                                  />
+                                )}
+                              </div>
                             </div>
                             <div>
                               <h4 className="text-xs font-medium text-gray-500 mb-1">Полный ответ клиенту</h4>
