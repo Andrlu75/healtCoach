@@ -8,6 +8,7 @@ import { addMealWithPhoto } from '../../api/endpoints'
 import { useTelegram, useHaptic } from '../../shared/hooks'
 import { Button, Input, Card } from '../../shared/components/ui'
 import { cn } from '../../shared/lib/cn'
+import { CameraCapture } from './components/CameraCapture'
 
 interface MealFormData {
   dish_name: string
@@ -31,10 +32,10 @@ function AddMeal() {
   const queryClient = useQueryClient()
   const { showBackButton, hideBackButton } = useTelegram()
   const { impact, notification } = useHaptic()
-  const cameraInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [isCameraOpen, setIsCameraOpen] = useState(false)
 
   const {
     register,
@@ -53,12 +54,22 @@ function AddMeal() {
 
   const handleCameraClick = () => {
     impact('light')
-    cameraInputRef.current?.click()
+    setIsCameraOpen(true)
   }
 
   const handleGalleryClick = () => {
     impact('light')
     galleryInputRef.current?.click()
+  }
+
+  const handleCameraCapture = (file: File) => {
+    setPhotoFile(file)
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setPhotoPreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+    notification('success')
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,7 +89,6 @@ function AddMeal() {
     impact('light')
     setPhotoFile(null)
     setPhotoPreview(null)
-    if (cameraInputRef.current) cameraInputRef.current.value = ''
     if (galleryInputRef.current) galleryInputRef.current.value = ''
   }
 
@@ -163,15 +173,6 @@ function AddMeal() {
             {...register('dish_name', { required: 'Введите название блюда' })}
           />
 
-          {/* Инпут для камеры */}
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleFileChange}
-            className="hidden"
-          />
           {/* Инпут для галереи */}
           <input
             ref={galleryInputRef}
@@ -262,8 +263,17 @@ function AddMeal() {
           Сохранить
         </Button>
       </form>
+
+      <CameraCapture
+        isOpen={isCameraOpen}
+        onClose={() => setIsCameraOpen(false)}
+        onCapture={handleCameraCapture}
+      />
     </div>
   )
 }
 
 export default AddMeal
+
+// Re-export for lazy loading
+export { CameraCapture }
