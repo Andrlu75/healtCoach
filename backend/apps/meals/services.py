@@ -115,11 +115,10 @@ async def _get_vision_provider(bot: TelegramBot):
     """Get vision AI provider for the bot's coach."""
     logger.info('[VISION] Getting provider for bot=%s coach=%s', bot.pk, bot.coach_id)
 
-    try:
-        persona = await sync_to_async(
-            lambda: BotPersona.objects.get(coach=bot.coach)
-        )()
-    except BotPersona.DoesNotExist:
+    persona = await sync_to_async(
+        lambda: BotPersona.objects.filter(coach=bot.coach).first()
+    )()
+    if not persona:
         logger.error('[VISION] No BotPersona for coach=%s', bot.coach_id)
         raise ValueError(f'No BotPersona configured for coach {bot.coach_id}')
 
@@ -717,8 +716,10 @@ async def recalculate_meal_for_client(client: Client, previous_analysis: dict, c
 
     # Get persona for text provider settings
     persona = await sync_to_async(
-        lambda: BotPersona.objects.get(coach=bot.coach)
+        lambda: BotPersona.objects.filter(coach=bot.coach).first()
     )()
+    if not persona:
+        raise ValueError(f'No BotPersona configured for coach {bot.coach_id}')
 
     # Use TEXT provider for recalculation (not vision)
     provider_name = persona.text_provider or persona.vision_provider or 'openai'
