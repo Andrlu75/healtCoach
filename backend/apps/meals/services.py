@@ -49,6 +49,29 @@ CLASSIFY_PROMPT = """Определи тип изображения. Ответ�
 
 Ответ (одно слово):"""
 
+CLASSIFY_AND_ANALYZE_PROMPT = """Посмотри на фото и определи его тип.
+
+Если это ЕДА (блюдо, напиток, продукты) — верни JSON анализа:
+{
+  "type": "food",
+  "dish_name": "название блюда",
+  "dish_type": "тип (завтрак/обед/ужин/перекус)",
+  "calories": число_ккал,
+  "proteins": граммы_белка,
+  "fats": граммы_жиров,
+  "carbohydrates": граммы_углеводов,
+  "ingredients": ["ингредиент1", "ингредиент2"],
+  "confidence": число_от_1_до_100
+}
+
+Если это ДАННЫЕ (весы, анализы, показатели здоровья) — верни:
+{"type": "data"}
+
+Если это ДРУГОЕ — верни:
+{"type": "other"}
+
+Верни только JSON без markdown-обёртки."""
+
 ANALYZE_FOOD_PROMPT = """Проанализируй фото еды и верни JSON (без markdown-обёртки, только чистый JSON):
 {
   "dish_name": "название блюда",
@@ -105,6 +128,61 @@ async def classify_image(bot: TelegramBot, image_data: bytes) -> str:
     elif 'data' in result:
         return 'data'
     return 'other'
+
+
+async def classify_and_analyze(bot: TelegramBot, image_data: bytes, caption: str = '') -> dict:
+    """Classify image and analyze if food — single AI call.
+
+    Returns dict with 'type' key and analysis data if food.
+    """
+    provider, provider_name, model, persona = await _get_vision_provider(bot)
+
+    prompt = CLASSIFY_AND_ANALYZE_PROMPT
+    if caption:
+        prompt += f'\n\nПодпись пользователя: "{caption}"'
+
+    response = await provider.analyze_image(
+        image_data=image_data,
+        prompt=prompt,
+        max_tokens=500,
+        model=model,
+    )
+
+    # Log usage
+    await sync_to_async(AIUsageLog.objects.create)(
+        coach=bot.coach,
+        provider=provider_name,
+        model=response.model or model or '',
+        task_type='vision',
+        input_tokens=response.usage.get('input_tokens', 0),
+        output_tokens=response.usage.get('output_tokens', 0),
+    )
+
+    # Parse JSON from response
+    content = response.content.strip()
+    if content.startswith('```'):
+        content = content.split('\n', 1)[1] if '\n' in content else content[3:]
+        if content.endswith('```'):
+            content = content[:-3]
+        content = content.strip()
+
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        logger.error('Failed to parse classify_and_analyze JSON: %s', content)
+        return {'type': 'other'}
+
+    # Add meta for food analysis
+    if data.get('type') == 'food':
+        data['_meta'] = {
+            'provider': provider_name,
+            'model': response.model or model or '',
+            'usage': response.usage or {},
+            'response_id': response.response_id or '',
+            'raw_content': response.content,
+        }
+
+    return data
 
 
 async def analyze_food(bot: TelegramBot, image_data: bytes, caption: str = '') -> dict:
