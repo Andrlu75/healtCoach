@@ -93,6 +93,13 @@ async def _handle_meal_correction(bot: TelegramBot, client: Client, chat_id: int
         )
         duration_ms += int((time.time() - start_response) * 1000)
         response_text = response.content
+
+        # Log usage
+        from ..services import _log_usage
+        await _log_usage(
+            bot.coach, client, provider_name,
+            response.model or model_name or '', 'text', response.usage or {},
+        )
     else:
         response_text = f'Обновлено: {format_meal_response(updated, summary)}'
 

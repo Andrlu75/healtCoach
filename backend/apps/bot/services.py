@@ -60,15 +60,29 @@ async def _get_context_messages(client: Client, limit: int = 20) -> list[dict]:
 
 
 async def _log_usage(coach, client, provider_name: str, model: str, task_type: str, usage: dict):
+    from core.ai.model_fetcher import get_cached_pricing
+
+    # Extract tokens with fallback for OpenAI format
+    input_tokens = usage.get('input_tokens') or usage.get('prompt_tokens') or 0
+    output_tokens = usage.get('output_tokens') or usage.get('completion_tokens') or 0
+
+    # Calculate cost from OpenRouter pricing
+    cost_usd = Decimal('0')
+    if input_tokens or output_tokens:
+        pricing = get_cached_pricing(provider_name, model)
+        if pricing:
+            price_in, price_out = pricing
+            cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
     await sync_to_async(AIUsageLog.objects.create)(
         coach=coach,
         client=client,
         provider=provider_name,
         model=model,
         task_type=task_type,
-        input_tokens=usage.get('input_tokens', 0),
-        output_tokens=usage.get('output_tokens', 0),
-        cost_usd=Decimal('0'),
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=cost_usd,
     )
 
 

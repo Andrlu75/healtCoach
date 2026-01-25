@@ -120,6 +120,30 @@ async def classify_image(bot: TelegramBot, image_data: bytes) -> str:
         model=model,
     )
 
+    # Log usage
+    from core.ai.model_fetcher import get_cached_pricing
+    from decimal import Decimal
+
+    model_used = response.model or model or ''
+    input_tokens = response.usage.get('input_tokens') or response.usage.get('prompt_tokens') or 0
+    output_tokens = response.usage.get('output_tokens') or response.usage.get('completion_tokens') or 0
+
+    cost_usd = Decimal('0')
+    pricing = get_cached_pricing(provider_name, model_used)
+    if pricing and (input_tokens or output_tokens):
+        price_in, price_out = pricing
+        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
+    await sync_to_async(AIUsageLog.objects.create)(
+        coach=bot.coach,
+        provider=provider_name,
+        model=model_used,
+        task_type='vision',
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=cost_usd,
+    )
+
     result = response.content.strip().lower()
 
     # Normalize response
@@ -422,6 +446,30 @@ async def is_meal_correction(bot: TelegramBot, meal: Meal, user_text: str) -> bo
         model=model,
     )
 
+    # Log usage
+    from core.ai.model_fetcher import get_cached_pricing
+    from decimal import Decimal
+
+    model_used = response.model or model or ''
+    input_tokens = response.usage.get('input_tokens') or response.usage.get('prompt_tokens') or 0
+    output_tokens = response.usage.get('output_tokens') or response.usage.get('completion_tokens') or 0
+
+    cost_usd = Decimal('0')
+    pricing = get_cached_pricing(provider_name, model_used)
+    if pricing and (input_tokens or output_tokens):
+        price_in, price_out = pricing
+        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
+    await sync_to_async(AIUsageLog.objects.create)(
+        coach=bot.coach,
+        provider=provider_name,
+        model=model_used,
+        task_type='text',
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=cost_usd,
+    )
+
     return 'yes' in response.content.strip().lower()
 
 
@@ -444,6 +492,30 @@ async def recalculate_meal(bot: TelegramBot, meal: Meal, user_text: str) -> dict
         max_tokens=200,
         temperature=0.2,
         model=model,
+    )
+
+    # Log usage
+    from core.ai.model_fetcher import get_cached_pricing
+    from decimal import Decimal
+
+    model_used = response.model or model or ''
+    input_tokens = response.usage.get('input_tokens') or response.usage.get('prompt_tokens') or 0
+    output_tokens = response.usage.get('output_tokens') or response.usage.get('completion_tokens') or 0
+
+    cost_usd = Decimal('0')
+    pricing = get_cached_pricing(provider_name, model_used)
+    if pricing and (input_tokens or output_tokens):
+        price_in, price_out = pricing
+        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
+    await sync_to_async(AIUsageLog.objects.create)(
+        coach=bot.coach,
+        provider=provider_name,
+        model=model_used,
+        task_type='text',
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=cost_usd,
     )
 
     # Parse JSON
