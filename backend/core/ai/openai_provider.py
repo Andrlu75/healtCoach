@@ -47,13 +47,20 @@ class OpenAIProvider(AbstractAIProvider):
                 raise
 
         content = self._extract_content(response)
+        usage = {}
+        if response.usage:
+            usage = {
+                'prompt_tokens': response.usage.prompt_tokens,
+                'completion_tokens': response.usage.completion_tokens,
+            }
+            logger.info('[OPENAI] complete: model=%s prompt_tokens=%d completion_tokens=%d',
+                        response.model, response.usage.prompt_tokens, response.usage.completion_tokens)
+        else:
+            logger.warning('[OPENAI] complete: model=%s NO USAGE DATA', response.model)
         return AIResponse(
             content=content,
             model=response.model,
-            usage={
-                'prompt_tokens': response.usage.prompt_tokens,
-                'completion_tokens': response.usage.completion_tokens,
-            } if response.usage else {},
+            usage=usage,
         )
 
     def _extract_content(self, response) -> str:
@@ -130,13 +137,20 @@ class OpenAIProvider(AbstractAIProvider):
                 raise
 
         content = self._extract_content(response)
+        usage = {}
+        if response.usage:
+            usage = {
+                'prompt_tokens': response.usage.prompt_tokens,
+                'completion_tokens': response.usage.completion_tokens,
+            }
+            logger.info('[OPENAI] analyze_image: model=%s prompt_tokens=%d completion_tokens=%d',
+                        response.model, response.usage.prompt_tokens, response.usage.completion_tokens)
+        else:
+            logger.warning('[OPENAI] analyze_image: model=%s NO USAGE DATA', response.model)
         return AIResponse(
             content=content,
             model=response.model,
-            usage={
-                'prompt_tokens': response.usage.prompt_tokens,
-                'completion_tokens': response.usage.completion_tokens,
-            } if response.usage else {},
+            usage=usage,
         )
 
     async def transcribe_audio(

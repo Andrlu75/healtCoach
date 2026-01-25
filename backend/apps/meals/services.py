@@ -177,14 +177,23 @@ async def classify_and_analyze(bot: TelegramBot, image_data: bytes, caption: str
     from decimal import Decimal
 
     model_used = response.model or model or ''
+
+    # Debug: log raw usage
+    logger.info('[CLASSIFY_ANALYZE] provider=%s model=%s raw_usage=%s', provider_name, model_used, response.usage)
+
     input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
     output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
+
+    logger.info('[CLASSIFY_ANALYZE] tokens: in=%d out=%d', input_tokens, output_tokens)
 
     cost_usd = Decimal('0')
     pricing = get_cached_pricing(provider_name, model_used)
     if pricing and (input_tokens or output_tokens):
         price_in, price_out = pricing
         cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+        logger.info('[CLASSIFY_ANALYZE] cost=$%.6f', cost_usd)
+    else:
+        logger.warning('[CLASSIFY_ANALYZE] No pricing or no tokens! pricing=%s', pricing)
 
     await sync_to_async(AIUsageLog.objects.create)(
         coach=bot.coach,
