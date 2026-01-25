@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 async def handle_photo(bot: TelegramBot, client: Client, message: dict):
     """Handle incoming photo message with classification."""
     chat_id = message['chat']['id']
+    total_start = time.time()
 
     photos = message.get('photo')
     if not photos:
@@ -69,27 +70,39 @@ async def handle_photo(bot: TelegramBot, client: Client, message: dict):
 
         if image_type == 'food':
             # Already have analysis from classify_and_analyze
-            await _handle_food_photo_with_analysis(bot, client, chat_id, image_data, caption, result)
+            await _handle_food_photo_with_analysis(bot, client, chat_id, image_data, caption, result, total_start)
         elif image_type == 'data':
             await _handle_data_photo(bot, client, chat_id, image_data)
+            total_ms = int((time.time() - total_start) * 1000)
+            logger.info('[PHOTO] client=%s type=data total=%dms requests=1', client.pk, total_ms)
         else:
             # Generic AI vision response for non-food photos
             response_text = await get_ai_vision_response(bot, client, image_data, caption)
             await send_message(bot.token, chat_id, response_text)
+            total_ms = int((time.time() - total_start) * 1000)
+            logger.info('[PHOTO] client=%s type=other total=%dms requests=2', client.pk, total_ms)
 
     except Exception as e:
         logger.exception('Error handling photo for client %s: %s', client.pk, e)
         await send_message(bot.token, chat_id, 'Произошла ошибка. Попробуйте позже.')
 
 
-async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, chat_id: int, image_data: bytes, caption: str, analysis: dict):
+async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, chat_id: int, image_data: bytes, caption: str, analysis: dict, total_start: float = None):
     """Handle food photo with pre-computed analysis from classify_and_analyze."""
+    from decimal import Decimal
     from core.ai.factory import get_ai_provider
+    from core.ai.model_fetcher import get_cached_pricing
 
     start_time = time.time()
+    if total_start is None:
+        total_start = start_time
 
-    # Extract meta before saving
+    # Extract meta before saving (contains stats from classify_and_analyze)
     meta = analysis.pop('_meta', {})
+
+    # Stats from first AI call (classify_and_analyze)
+    first_call_input = meta.get('usage', {}).get('input_tokens') or meta.get('usage', {}).get('prompt_tokens') or 0
+    first_call_output = meta.get('usage', {}).get('output_tokens') or meta.get('usage', {}).get('completion_tokens') or 0
 
     await save_meal(client, image_data, analysis)
     summary = await get_daily_summary(client)
@@ -136,17 +149,20 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
 
         # Log usage with cost calculation
         from apps.persona.models import AIUsageLog
-        from core.ai.model_fetcher import get_cached_pricing
-        from decimal import Decimal
 
-        input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
-        output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
+        second_call_input = response.usage.get('input_tokens') or response.usage.get('prompt_tokens') or 0
+        second_call_output = response.usage.get('output_tokens') or response.usage.get('completion_tokens') or 0
 
         cost_usd = Decimal('0')
         pricing = get_cached_pricing(provider_name, response_model)
-        if pricing and (input_tokens or output_tokens):
+        if pricing and (second_call_input or second_call_output):
             price_in, price_out = pricing
-            cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+            cost_usd = Decimal(str((second_call_input * price_in + second_call_output * price_out) / 1_000_000))
+
+        # Stats for logging
+        total_input_tokens = first_call_input + second_call_input
+        total_output_tokens = first_call_output + second_call_output
+        ai_requests_count = 2
 
         await sync_to_async(AIUsageLog.objects.create)(
             coach=bot.coach,
@@ -154,8 +170,8 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
             provider=provider_name,
             model=response_model,
             task_type='text',
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
+            input_tokens=second_call_input,
+            output_tokens=second_call_output,
             cost_usd=cost_usd,
         )
 
@@ -181,6 +197,12 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
         duration_ms = int((time.time() - start_time) * 1000)
         response_provider = meta.get('provider', '')
         response_model = meta.get('model', '')
+
+        # Stats for logging (only first call, no second)
+        total_input_tokens = first_call_input
+        total_output_tokens = first_call_output
+        ai_requests_count = 1
+        cost_usd = Decimal('0')  # No second call cost
 
         ai_request_log = {
             'prompt': 'classify_and_analyze (combined)',
@@ -209,6 +231,27 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
         provider=response_provider,
         model=response_model,
         duration_ms=duration_ms,
+    )
+
+    # Log detailed stats
+    total_ms = int((time.time() - total_start) * 1000)
+
+    # Calculate total cost (first call from classify_and_analyze + second call if any)
+    first_call_cost = 0.0
+    first_provider = meta.get('provider', '')
+    first_model = meta.get('model', '')
+    if first_call_input or first_call_output:
+        first_pricing = get_cached_pricing(first_provider, first_model)
+        if first_pricing:
+            price_in, price_out = first_pricing
+            first_call_cost = (first_call_input * price_in + first_call_output * price_out) / 1_000_000
+
+    total_cost = first_call_cost + float(cost_usd)
+
+    logger.info(
+        '[PHOTO] client=%s type=food total=%dms requests=%d tokens_in=%d tokens_out=%d cost=$%.6f model=%s',
+        client.pk, total_ms, ai_requests_count,
+        total_input_tokens, total_output_tokens, total_cost, response_model
     )
 
 
