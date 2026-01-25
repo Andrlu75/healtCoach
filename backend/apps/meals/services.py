@@ -691,6 +691,7 @@ async def recalculate_meal_for_client(client: Client, previous_analysis: dict, c
     Returns updated analysis with ai_response.
     """
     import time
+    from apps.chat.models import InteractionLog
     from core.ai.factory import get_ai_provider
     from core.ai.model_fetcher import get_cached_pricing
     from decimal import Decimal
@@ -843,9 +844,33 @@ async def recalculate_meal_for_client(client: Client, previous_analysis: dict, c
 
             data['ai_response'] = text_response.content
 
+    # Log interaction
+    duration_ms = int((time.time() - start_time) * 1000)
+    await sync_to_async(InteractionLog.objects.create)(
+        client=client,
+        coach=client.coach,
+        interaction_type='text',
+        client_input=f'[Miniapp: Уточнение] {correction}',
+        ai_request={
+            'source': 'miniapp_recalculate',
+            'recalculate_prompt': prompt,
+            'previous_analysis': previous_analysis,
+            'correction': correction,
+        },
+        ai_response={
+            'analysis': data,
+            'ai_response': data.get('ai_response', ''),
+            'model': model_used,
+        },
+        client_output=data.get('ai_response', json.dumps(data, ensure_ascii=False)),
+        provider=provider_name,
+        model=model_used,
+        duration_ms=duration_ms,
+    )
+
     logger.info(
         '[RECALCULATE] client=%s correction="%s" duration=%dms',
-        client.pk, correction[:50], int((time.time() - start_time) * 1000)
+        client.pk, correction[:50], duration_ms
     )
 
     return data
