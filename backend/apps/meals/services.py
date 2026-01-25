@@ -148,14 +148,28 @@ async def classify_and_analyze(bot: TelegramBot, image_data: bytes, caption: str
         model=model,
     )
 
-    # Log usage
+    # Log usage with cost calculation
+    from core.ai.model_fetcher import get_cached_pricing
+    from decimal import Decimal
+
+    model_used = response.model or model or ''
+    input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
+    output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
+
+    cost_usd = Decimal('0')
+    pricing = get_cached_pricing(provider_name, model_used)
+    if pricing and (input_tokens or output_tokens):
+        price_in, price_out = pricing
+        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
     await sync_to_async(AIUsageLog.objects.create)(
         coach=bot.coach,
         provider=provider_name,
-        model=response.model or model or '',
+        model=model_used,
         task_type='vision',
-        input_tokens=response.usage.get('input_tokens', 0),
-        output_tokens=response.usage.get('output_tokens', 0),
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=cost_usd,
     )
 
     # Parse JSON from response
@@ -203,14 +217,28 @@ async def analyze_food(bot: TelegramBot, image_data: bytes, caption: str = '') -
         model=model,
     )
 
-    # Log usage
+    # Log usage with cost calculation
+    from core.ai.model_fetcher import get_cached_pricing
+    from decimal import Decimal
+
+    model_used = response.model or model or ''
+    input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
+    output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
+
+    cost_usd = Decimal('0')
+    pricing = get_cached_pricing(provider_name, model_used)
+    if pricing and (input_tokens or output_tokens):
+        price_in, price_out = pricing
+        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
     await sync_to_async(AIUsageLog.objects.create)(
         coach=bot.coach,
         provider=provider_name,
-        model=response.model or model or '',
+        model=model_used,
         task_type='vision',
-        input_tokens=response.usage.get('input_tokens', 0),
-        output_tokens=response.usage.get('output_tokens', 0),
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=cost_usd,
     )
 
     # Parse JSON from response

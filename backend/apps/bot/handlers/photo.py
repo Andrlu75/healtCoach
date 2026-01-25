@@ -115,6 +115,31 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
         response_model = response.model or model_name or ''
         response_provider = provider_name
 
+        # Log usage with cost calculation
+        from apps.persona.models import AIUsageLog
+        from core.ai.model_fetcher import get_cached_pricing
+        from decimal import Decimal
+
+        input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
+        output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
+
+        cost_usd = Decimal('0')
+        pricing = get_cached_pricing(provider_name, response_model)
+        if pricing and (input_tokens or output_tokens):
+            price_in, price_out = pricing
+            cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
+        await sync_to_async(AIUsageLog.objects.create)(
+            coach=bot.coach,
+            client=client,
+            provider=provider_name,
+            model=response_model,
+            task_type='text',
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=cost_usd,
+        )
+
         ai_request_log = {
             'system_prompt': persona.food_response_prompt,
             'messages': [{'role': 'user', 'content': user_message}],
