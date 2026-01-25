@@ -21,9 +21,12 @@ class MealCreateSerializer(serializers.ModelSerializer):
         model = Meal
         fields = [
             'id', 'client', 'image', 'image_type', 'dish_name', 'dish_type',
-            'calories', 'proteins', 'fats', 'carbohydrates', 'meal_time',
+            'calories', 'proteins', 'fats', 'carbohydrates', 'ingredients',
+            'ai_confidence', 'meal_time',
         ]
         read_only_fields = ['id']
         extra_kwargs = {
             'image': {'required': False},
+            'ingredients': {'required': False},
+            'ai_confidence': {'required': False},
         }

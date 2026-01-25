@@ -42,6 +42,8 @@ function AddMeal() {
   const [isCameraOpen, setIsCameraOpen] = useState(false)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const [aiResponse, setAiResponse] = useState<string | null>(null)
+  const [ingredients, setIngredients] = useState<string[]>([])
+  const [aiConfidence, setAiConfidence] = useState<number | null>(null)
 
   const {
     register,
@@ -89,8 +91,10 @@ function AddMeal() {
       if (data.fats) setValue('fats', String(data.fats))
       if (data.carbohydrates) setValue('carbohydrates', String(data.carbohydrates))
 
-      // Сохраняем текстовый ответ AI
+      // Сохраняем текстовый ответ AI и дополнительные данные
       if (data.ai_response) setAiResponse(data.ai_response)
+      if (data.ingredients) setIngredients(data.ingredients)
+      if (data.confidence) setAiConfidence(data.confidence)
 
       setStep('result')
       notification('success')
@@ -185,6 +189,8 @@ function AddMeal() {
     if (data.proteins) formData.append('proteins', data.proteins)
     if (data.fats) formData.append('fats', data.fats)
     if (data.carbohydrates) formData.append('carbohydrates', data.carbohydrates)
+    if (ingredients.length > 0) formData.append('ingredients', JSON.stringify(ingredients))
+    if (aiConfidence) formData.append('ai_confidence', String(aiConfidence))
     formData.append('image', photoFile)
 
     saveMutation.mutate(formData)
@@ -355,6 +361,25 @@ function AddMeal() {
               <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm leading-relaxed">
                 {aiResponse}
               </p>
+            </div>
+          </Card>
+        )}
+
+        {/* Состав ингредиентов */}
+        {ingredients.length > 0 && (
+          <Card variant="elevated" className="p-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Состав
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {ingredients.map((ingredient, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full text-sm text-gray-700 dark:text-gray-300"
+                >
+                  {ingredient}
+                </span>
+              ))}
             </div>
           </Card>
         )}
