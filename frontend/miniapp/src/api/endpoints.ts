@@ -27,21 +27,29 @@ export const addMealWithPhoto = (formData: FormData) =>
     },
   })
 
+export interface MealAnalysisResult {
+  dish_name: string
+  dish_type: string
+  calories: number
+  proteins: number
+  fats: number
+  carbohydrates: number
+  ingredients?: string[]
+  confidence?: number
+  ai_response?: string
+}
+
 export const analyzeMealPhoto = (formData: FormData) =>
-  api.post<{
-    dish_name: string
-    dish_type: string
-    calories: number
-    proteins: number
-    fats: number
-    carbohydrates: number
-    ingredients?: string[]
-    confidence?: number
-    ai_response?: string
-  }>('/miniapp/meals/analyze/', formData, {
+  api.post<MealAnalysisResult>('/miniapp/meals/analyze/', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
+  })
+
+export const recalculateMeal = (previousAnalysis: MealAnalysisResult, correction: string) =>
+  api.post<MealAnalysisResult>('/miniapp/meals/recalculate/', {
+    previous_analysis: previousAnalysis,
+    correction,
   })
 
 export const deleteMeal = (id: number) =>

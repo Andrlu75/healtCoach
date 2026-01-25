@@ -169,6 +169,40 @@ class ClientMealAnalyzeView(APIView):
             )
 
 
+class ClientMealRecalculateView(APIView):
+    """Recalculate meal nutrition based on user correction."""
+
+    parser_classes = [JSONParser]
+
+    def post(self, request):
+        from asgiref.sync import async_to_sync
+        from apps.meals.services import recalculate_meal_for_client
+
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        previous_analysis = request.data.get('previous_analysis')
+        correction = request.data.get('correction')
+
+        if not previous_analysis or not correction:
+            return Response(
+                {'error': 'previous_analysis and correction required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            result = async_to_sync(recalculate_meal_for_client)(
+                client, previous_analysis, correction
+            )
+            return Response(result)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
 class ClientReminderListView(APIView):
     """List reminders for the authenticated client."""
 

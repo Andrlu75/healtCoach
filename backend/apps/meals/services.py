@@ -42,6 +42,29 @@ RECALCULATE_PROMPT = """Пользователь уточнил информац
 }}
 """
 
+RECALCULATE_MINIAPP_PROMPT = """Пользователь уточнил информацию о блюде.
+
+Предыдущее распознавание:
+- Блюдо: {dish_name}
+- Тип: {dish_type}
+- Калории: {calories}, Белки: {proteins}, Жиры: {fats}, Углеводы: {carbs}
+- Ингредиенты: {ingredients}
+
+Уточнение пользователя: "{correction}"
+
+Пересчитай КБЖУ и обнови список ингредиентов с учётом уточнения. Верни JSON (без markdown-обёртки, только чистый JSON):
+{{
+  "dish_name": "уточнённое название блюда",
+  "dish_type": "тип (завтрак/обед/ужин/перекус)",
+  "calories": число_ккал,
+  "proteins": граммы_белка,
+  "fats": граммы_жиров,
+  "carbohydrates": граммы_углеводов,
+  "ingredients": ["ингредиент1", "ингредиент2", ...],
+  "confidence": число_от_1_до_100
+}}
+"""
+
 CLASSIFY_PROMPT = """Определи тип изображения. Ответь ОДНИМ словом:
 - food — если на фото еда, блюдо, напиток, продукты
 - data — если на фото цифровые данные (весы, анализы, показатели здоровья, скриншот трекера)
@@ -658,6 +681,144 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
             model=model_used,
             duration_ms=duration_ms,
         )
+
+    return data
+
+
+async def recalculate_meal_for_client(client: Client, previous_analysis: dict, correction: str) -> dict:
+    """Recalculate meal nutrition for miniapp based on user correction.
+
+    Returns updated analysis with ai_response.
+    """
+    import time
+    from core.ai.factory import get_ai_provider
+    from core.ai.model_fetcher import get_cached_pricing
+    from decimal import Decimal
+
+    start_time = time.time()
+
+    # Get client's bot/coach to access AI provider
+    bot = await sync_to_async(
+        lambda: TelegramBot.objects.filter(coach=client.coach).first()
+    )()
+    if not bot:
+        raise ValueError('No bot configured for client coach')
+
+    provider, provider_name, model, persona = await _get_vision_provider(bot)
+
+    # Build prompt with previous analysis
+    prompt = RECALCULATE_MINIAPP_PROMPT.format(
+        dish_name=previous_analysis.get('dish_name', 'Неизвестное блюдо'),
+        dish_type=previous_analysis.get('dish_type', ''),
+        calories=previous_analysis.get('calories', 0),
+        proteins=previous_analysis.get('proteins', 0),
+        fats=previous_analysis.get('fats', 0),
+        carbs=previous_analysis.get('carbohydrates', 0),
+        ingredients=', '.join(previous_analysis.get('ingredients', [])),
+        correction=correction,
+    )
+
+    response = await provider.complete(
+        messages=[{'role': 'user', 'content': prompt}],
+        system_prompt='Верни только JSON.',
+        max_tokens=300,
+        temperature=0.2,
+        model=model,
+    )
+
+    # Log usage
+    model_used = response.model or model or ''
+    input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
+    output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
+
+    cost_usd = Decimal('0')
+    pricing = get_cached_pricing(provider_name, model_used)
+    if pricing and (input_tokens or output_tokens):
+        price_in, price_out = pricing
+        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
+    await sync_to_async(AIUsageLog.objects.create)(
+        coach=client.coach,
+        provider=provider_name,
+        model=model_used,
+        task_type='text',
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=cost_usd,
+    )
+
+    # Parse JSON
+    content = response.content.strip()
+    if content.startswith('```'):
+        content = content.split('\n', 1)[1] if '\n' in content else content[3:]
+        if content.endswith('```'):
+            content = content[:-3]
+        content = content.strip()
+
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        logger.error('Failed to parse recalculation JSON: %s', content)
+        # Return previous analysis if parsing fails
+        return previous_analysis
+
+    # Generate AI response text with recommendations
+    if persona.food_response_prompt:
+        summary = await get_daily_summary(client)
+
+        text_provider_name = persona.text_provider or provider_name
+        text_model = persona.text_model or None
+
+        config = await sync_to_async(
+            lambda: AIProviderConfig.objects.filter(
+                coach=bot.coach, provider=text_provider_name, is_active=True
+            ).first()
+        )()
+        if config:
+            text_provider = get_ai_provider(text_provider_name, config.api_key)
+
+            user_message = (
+                f'Данные анализа еды (после уточнения пользователя: "{correction}"):\n'
+                f'{json.dumps(data, ensure_ascii=False)}\n\n'
+                f'Дневная сводка:\n'
+                f'{json.dumps(summary, ensure_ascii=False)}'
+            )
+
+            text_response = await text_provider.complete(
+                messages=[{'role': 'user', 'content': user_message}],
+                system_prompt=persona.food_response_prompt,
+                max_tokens=persona.max_tokens,
+                temperature=persona.temperature,
+                model=text_model,
+            )
+
+            # Log text generation usage
+            text_model_used = text_response.model or text_model or ''
+            text_input = text_response.usage.get('input_tokens', 0) or text_response.usage.get('prompt_tokens', 0)
+            text_output = text_response.usage.get('output_tokens', 0) or text_response.usage.get('completion_tokens', 0)
+
+            text_cost = Decimal('0')
+            text_pricing = get_cached_pricing(text_provider_name, text_model_used)
+            if text_pricing and (text_input or text_output):
+                price_in, price_out = text_pricing
+                text_cost = Decimal(str((text_input * price_in + text_output * price_out) / 1_000_000))
+
+            await sync_to_async(AIUsageLog.objects.create)(
+                coach=client.coach,
+                provider=text_provider_name,
+                model=text_model_used,
+                task_type='text',
+                input_tokens=text_input,
+                output_tokens=text_output,
+                cost_usd=text_cost,
+            )
+
+            data['ai_response'] = text_response.content
+
+    logger.info(
+        '[RECALCULATE] client=%s correction="%s" duration=%dms',
+        client.pk, correction[:50], int((time.time() - start_time) * 1000)
+    )
 
     return data
 

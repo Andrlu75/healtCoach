@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Camera, X, Image, Loader2, ChevronLeft } from 'lucide-react'
-import { addMealWithPhoto, analyzeMealPhoto } from '../../api/endpoints'
+import { Camera, X, Image, Loader2, ChevronLeft, RefreshCw } from 'lucide-react'
+import { addMealWithPhoto, analyzeMealPhoto, recalculateMeal, type MealAnalysisResult } from '../../api/endpoints'
 import { useTelegram, useHaptic } from '../../shared/hooks'
 import { Button, Input, Card } from '../../shared/components/ui'
 import { cn } from '../../shared/lib/cn'
@@ -26,7 +26,7 @@ const dishTypes = [
   { value: 'snack', label: 'Перекус', icon: '🍎' },
 ] as const
 
-type Step = 'photo' | 'analyzing' | 'result'
+type Step = 'photo' | 'analyzing' | 'result' | 'recalculating'
 
 function AddMeal() {
   const navigate = useNavigate()
@@ -44,6 +44,8 @@ function AddMeal() {
   const [aiResponse, setAiResponse] = useState<string | null>(null)
   const [ingredients, setIngredients] = useState<string[]>([])
   const [aiConfidence, setAiConfidence] = useState<number | null>(null)
+  const [correction, setCorrection] = useState('')
+  const [currentAnalysis, setCurrentAnalysis] = useState<MealAnalysisResult | null>(null)
 
   const {
     register,
@@ -64,6 +66,30 @@ function AddMeal() {
 
   const selectedType = watch('dish_type')
 
+  const updateFormFromAnalysis = (data: MealAnalysisResult) => {
+    if (data.dish_name) setValue('dish_name', data.dish_name)
+    if (data.dish_type) {
+      const typeMap: Record<string, MealFormData['dish_type']> = {
+        'завтрак': 'breakfast',
+        'обед': 'lunch',
+        'ужин': 'dinner',
+        'перекус': 'snack',
+      }
+      const mappedType = typeMap[data.dish_type.toLowerCase()] || 'lunch'
+      setValue('dish_type', mappedType)
+    }
+    if (data.calories) setValue('calories', String(data.calories))
+    if (data.proteins) setValue('proteins', String(data.proteins))
+    if (data.fats) setValue('fats', String(data.fats))
+    if (data.carbohydrates) setValue('carbohydrates', String(data.carbohydrates))
+
+    if (data.ai_response) setAiResponse(data.ai_response)
+    if (data.ingredients) setIngredients(data.ingredients)
+    if (data.confidence) setAiConfidence(data.confidence)
+
+    setCurrentAnalysis(data)
+  }
+
   // Анализ фото
   const analyzeMutation = useMutation({
     mutationFn: async ({ file, caption }: { file: File; caption: string }) => {
@@ -74,28 +100,7 @@ function AddMeal() {
       return response.data
     },
     onSuccess: (data) => {
-      // Заполняем форму результатами
-      if (data.dish_name) setValue('dish_name', data.dish_name)
-      if (data.dish_type) {
-        const typeMap: Record<string, MealFormData['dish_type']> = {
-          'завтрак': 'breakfast',
-          'обед': 'lunch',
-          'ужин': 'dinner',
-          'перекус': 'snack',
-        }
-        const mappedType = typeMap[data.dish_type.toLowerCase()] || 'lunch'
-        setValue('dish_type', mappedType)
-      }
-      if (data.calories) setValue('calories', String(data.calories))
-      if (data.proteins) setValue('proteins', String(data.proteins))
-      if (data.fats) setValue('fats', String(data.fats))
-      if (data.carbohydrates) setValue('carbohydrates', String(data.carbohydrates))
-
-      // Сохраняем текстовый ответ AI и дополнительные данные
-      if (data.ai_response) setAiResponse(data.ai_response)
-      if (data.ingredients) setIngredients(data.ingredients)
-      if (data.confidence) setAiConfidence(data.confidence)
-
+      updateFormFromAnalysis(data)
       setStep('result')
       notification('success')
     },
@@ -103,6 +108,25 @@ function AddMeal() {
       console.error('Failed to analyze photo:', error)
       setAnalyzeError('Не удалось распознать блюдо. Попробуйте ещё раз.')
       setStep('photo')
+      notification('error')
+    },
+  })
+
+  // Пересчёт после уточнения
+  const recalculateMutation = useMutation({
+    mutationFn: async ({ analysis, correction }: { analysis: MealAnalysisResult; correction: string }) => {
+      const response = await recalculateMeal(analysis, correction)
+      return response.data
+    },
+    onSuccess: (data) => {
+      updateFormFromAnalysis(data)
+      setCorrection('')
+      setStep('result')
+      notification('success')
+    },
+    onError: (error) => {
+      console.error('Failed to recalculate:', error)
+      setStep('result')
       notification('error')
     },
   })
@@ -168,9 +192,20 @@ function AddMeal() {
     analyzeMutation.mutate({ file: photoFile, caption })
   }
 
+  const handleRecalculate = () => {
+    if (!currentAnalysis || !correction.trim()) return
+    impact('light')
+    setStep('recalculating')
+    recalculateMutation.mutate({ analysis: currentAnalysis, correction: correction.trim() })
+  }
+
   const handleBackToPhoto = () => {
     impact('light')
     setStep('photo')
+    setCurrentAnalysis(null)
+    setAiResponse(null)
+    setIngredients([])
+    setCorrection('')
   }
 
   const handleTypeSelect = (type: typeof dishTypes[number]['value']) => {
@@ -217,7 +252,6 @@ function AddMeal() {
 
         <div className="space-y-4">
           <Card variant="elevated" className="p-4">
-            {/* Скрытый инпут для галереи */}
             <input
               ref={galleryInputRef}
               type="file"
@@ -306,8 +340,9 @@ function AddMeal() {
     )
   }
 
-  // Шаг 2: Анализ
-  if (step === 'analyzing') {
+  // Шаг 2: Анализ / Пересчёт
+  if (step === 'analyzing' || step === 'recalculating') {
+    const isRecalculating = step === 'recalculating'
     return (
       <div className="p-4 pb-8 flex flex-col items-center justify-center min-h-[60vh]">
         <div className="relative mb-6">
@@ -323,10 +358,15 @@ function AddMeal() {
           </div>
         </div>
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-          Анализируем фото...
+          {isRecalculating ? 'Пересчитываем...' : 'Анализируем фото...'}
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-          Распознаём блюдо и рассчитываем КБЖУ
+          {isRecalculating
+            ? 'Обновляем КБЖУ с учётом уточнения'
+            : 'Распознаём блюдо и рассчитываем КБЖУ'}
+        </p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-2">
+          Обычно это занимает 45-60 сек
         </p>
       </div>
     )
@@ -364,6 +404,34 @@ function AddMeal() {
             </div>
           </Card>
         )}
+
+        {/* Поле уточнения */}
+        <Card variant="elevated" className="p-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Хотите уточнить?
+          </label>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Например: без сахара, порция 200г"
+              value={correction}
+              onChange={(e) => setCorrection(e.target.value)}
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={!correction.trim() || recalculateMutation.isPending}
+              onClick={handleRecalculate}
+              className="shrink-0"
+            >
+              <RefreshCw size={16} className={recalculateMutation.isPending ? 'animate-spin' : ''} />
+            </Button>
+          </div>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Укажите, если что-то не так: другие продукты, размер порции, способ приготовления
+          </p>
+        </Card>
 
         {/* Состав ингредиентов */}
         {ingredients.length > 0 && (
