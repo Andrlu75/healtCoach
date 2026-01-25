@@ -38,7 +38,7 @@ def generate_report(client: Client, report_type: str, target_date: date = None) 
         content = collect_weekly_data(client, period_start)
 
     # Generate AI summary
-    summary = generate_ai_summary(client.coach, content, report_type)
+    summary = generate_ai_summary(client, content, report_type)
 
     # Create report
     report = Report.objects.create(
@@ -60,15 +60,18 @@ def generate_report(client: Client, report_type: str, target_date: date = None) 
     return report
 
 
-def generate_ai_summary(coach, content: dict, report_type: str) -> str:
+def generate_ai_summary(client: Client, content: dict, report_type: str) -> str:
     """Generate AI summary of the report data."""
-    persona = BotPersona.objects.filter(coach=coach).first()
+    # Use client's persona or coach's default
+    persona = client.persona
+    if not persona:
+        persona = BotPersona.objects.filter(coach=client.coach).first()
     if not persona:
         return ''
 
     provider_name = persona.text_provider or 'openai'
     config = AIProviderConfig.objects.filter(
-        coach=coach, provider=provider_name, is_active=True
+        coach=client.coach, provider=provider_name, is_active=True
     ).first()
     if not config:
         return ''

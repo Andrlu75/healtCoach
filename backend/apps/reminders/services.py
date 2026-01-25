@@ -53,9 +53,13 @@ def send_reminder_message(reminder: Reminder) -> bool:
 
 def generate_smart_text(reminder: Reminder) -> str:
     """Generate motivating reminder text using AI."""
+    client = reminder.client
     coach = reminder.coach
 
-    persona = BotPersona.objects.filter(coach=coach).first()
+    # Use client's persona or coach's default
+    persona = client.persona
+    if not persona:
+        persona = BotPersona.objects.filter(coach=coach).first()
     if not persona:
         return reminder.message or reminder.title
 
