@@ -22,7 +22,7 @@ const timezoneOptions = [
   { value: 'Asia/Kamchatka', label: 'Петропавловск-Камчатский (UTC+12)' },
 ]
 
-type Tab = 'meals' | 'metrics' | 'chat'
+type Tab = 'meals' | 'metrics' | 'chat' | 'settings'
 
 const statusLabels: Record<string, { label: string; cls: string }> = {
   active: { label: 'Активен', cls: 'bg-green-100 text-green-700' },
@@ -262,226 +262,12 @@ export default function ClientDetail() {
             </button>
           </div>
 
-          {/* Editable fields */}
-          <div className="mt-6 pt-5 border-t border-gray-100">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              <div>
-                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Имя</label>
-                <input
-                  type="text"
-                  value={profile.first_name}
-                  onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Фамилия</label>
-                <input
-                  type="text"
-                  value={profile.last_name}
-                  onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Город</label>
-                <input
-                  type="text"
-                  value={profile.city}
-                  onChange={(e) => setProfile({ ...profile, city: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  placeholder="Москва"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Статус</label>
-                <select
-                  value={profile.status}
-                  onChange={(e) => setProfile({ ...profile, status: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                >
-                  <option value="pending">Ожидает</option>
-                  <option value="active">Активен</option>
-                  <option value="paused">На паузе</option>
-                  <option value="archived">Архив</option>
-                </select>
-              </div>
-            </div>
-            <div className="mb-4">
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Часовой пояс</label>
-              <select
-                value={profile.timezone}
-                onChange={(e) => setProfile({ ...profile, timezone: e.target.value })}
-                className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              >
-                <option value="">Не указан</option>
-                {!timezoneOptions.find((tz) => tz.value === profile.timezone) && profile.timezone && (
-                  <option value={profile.timezone}>{profile.timezone}</option>
-                )}
-                {timezoneOptions.map((tz) => (
-                  <option key={tz.value} value={tz.value}>{tz.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={saveProfile}
-                disabled={savingProfile}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                <Save size={14} />
-                {savingProfile ? 'Сохранение...' : 'Сохранить'}
-              </button>
-              {profileMsg && (
-                <span className={`text-sm ${profileMsg.includes('Ошибка') ? 'text-red-600' : 'text-green-600'}`}>
-                  {profileMsg}
-                </span>
-              )}
-            </div>
-          </div>
         </div>
-      </div>
-
-      {/* Physiology */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-        <h3 className="text-sm font-medium text-gray-700 mb-3">Физиологические данные</h3>
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Рост (см)</label>
-            <input
-              type="number"
-              value={physiology.height}
-              onChange={(e) => setPhysiology({ ...physiology, height: e.target.value })}
-              className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="170"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Вес (кг)</label>
-            <input
-              type="number"
-              step="0.1"
-              value={physiology.weight}
-              onChange={(e) => setPhysiology({ ...physiology, weight: e.target.value })}
-              className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="70"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Дата рождения</label>
-            <input
-              type="date"
-              value={physiology.birth_date}
-              onChange={(e) => setPhysiology({ ...physiology, birth_date: e.target.value })}
-              className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-            />
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={savePhysiology}
-            disabled={savingPhysiology}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            <Save size={14} />
-            {savingPhysiology ? 'Сохранение...' : 'Сохранить'}
-          </button>
-          {physiologyMsg && (
-            <span className={`text-sm ${physiologyMsg.includes('Ошибка') ? 'text-red-600' : 'text-green-600'}`}>
-              {physiologyMsg}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Persona */}
-      {personas.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Персона</h3>
-          <select
-            value={client.persona ?? ''}
-            onChange={handlePersonaChange}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-          >
-            <option value="">По умолчанию</option>
-            {personas.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}{p.is_default ? ' (по умолч.)' : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Norms */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-        <h3 className="text-sm font-medium text-gray-700 mb-3">Нормы КБЖУ</h3>
-        <div className="grid grid-cols-5 gap-3">
-          <div>
-            <label className="text-xs text-gray-500">Калории</label>
-            <input
-              type="number"
-              value={norms.daily_calories}
-              onChange={(e) => setNorms({ ...norms, daily_calories: e.target.value })}
-              className="w-full mt-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
-              placeholder="2000"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500">Белки (г)</label>
-            <input
-              type="number"
-              value={norms.daily_proteins}
-              onChange={(e) => setNorms({ ...norms, daily_proteins: e.target.value })}
-              className="w-full mt-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
-              placeholder="100"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500">Жиры (г)</label>
-            <input
-              type="number"
-              value={norms.daily_fats}
-              onChange={(e) => setNorms({ ...norms, daily_fats: e.target.value })}
-              className="w-full mt-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
-              placeholder="70"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500">Углеводы (г)</label>
-            <input
-              type="number"
-              value={norms.daily_carbs}
-              onChange={(e) => setNorms({ ...norms, daily_carbs: e.target.value })}
-              className="w-full mt-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
-              placeholder="250"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500">Вода (л)</label>
-            <input
-              type="number"
-              step="0.1"
-              value={norms.daily_water}
-              onChange={(e) => setNorms({ ...norms, daily_water: e.target.value })}
-              className="w-full mt-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
-              placeholder="2.0"
-            />
-          </div>
-        </div>
-        <button
-          onClick={saveNorms}
-          disabled={saving}
-          className="mt-3 flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
-        >
-          <Save size={14} />
-          {saving ? 'Сохранение...' : 'Сохранить'}
-        </button>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 mb-4 border-b border-gray-200">
-        {(['meals', 'metrics', 'chat'] as Tab[]).map((t) => (
+        {(['meals', 'metrics', 'chat', 'settings'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -491,7 +277,7 @@ export default function ClientDetail() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            {t === 'meals' ? 'Питание' : t === 'metrics' ? 'Метрики' : 'Чат'}
+            {t === 'meals' ? 'Питание' : t === 'metrics' ? 'Метрики' : t === 'chat' ? 'Чат' : 'Настройки'}
           </button>
         ))}
       </div>
@@ -503,12 +289,34 @@ export default function ClientDetail() {
         <MealsTab meals={meals} />
       ) : tab === 'metrics' ? (
         <MetricsTab metrics={metrics} />
-      ) : (
+      ) : tab === 'chat' ? (
         <ChatTab
           messages={messages}
           client={client}
           onClientUpdate={setClient}
           onMessagesUpdate={setMessages}
+        />
+      ) : (
+        <SettingsTab
+          client={client}
+          onClientUpdate={setClient}
+          profile={profile}
+          setProfile={setProfile}
+          saveProfile={saveProfile}
+          savingProfile={savingProfile}
+          profileMsg={profileMsg}
+          physiology={physiology}
+          setPhysiology={setPhysiology}
+          savePhysiology={savePhysiology}
+          savingPhysiology={savingPhysiology}
+          physiologyMsg={physiologyMsg}
+          personas={personas}
+          handlePersonaChange={handlePersonaChange}
+          norms={norms}
+          setNorms={setNorms}
+          saveNorms={saveNorms}
+          saving={saving}
+          timezoneOptions={timezoneOptions}
         />
       )}
     </div>
@@ -853,6 +661,269 @@ function ChatTab({
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+interface SettingsTabProps {
+  client: Client
+  onClientUpdate: (c: Client) => void
+  profile: { first_name: string; last_name: string; city: string; timezone: string; status: string }
+  setProfile: (p: { first_name: string; last_name: string; city: string; timezone: string; status: string }) => void
+  saveProfile: () => Promise<void>
+  savingProfile: boolean
+  profileMsg: string
+  physiology: { height: string; weight: string; birth_date: string }
+  setPhysiology: (p: { height: string; weight: string; birth_date: string }) => void
+  savePhysiology: () => Promise<void>
+  savingPhysiology: boolean
+  physiologyMsg: string
+  personas: BotPersona[]
+  handlePersonaChange: (e: React.ChangeEvent<HTMLSelectElement>) => void
+  norms: { daily_calories: string; daily_proteins: string; daily_fats: string; daily_carbs: string; daily_water: string }
+  setNorms: (n: { daily_calories: string; daily_proteins: string; daily_fats: string; daily_carbs: string; daily_water: string }) => void
+  saveNorms: () => Promise<void>
+  saving: boolean
+  timezoneOptions: { value: string; label: string }[]
+}
+
+function SettingsTab({
+  client,
+  profile,
+  setProfile,
+  saveProfile,
+  savingProfile,
+  profileMsg,
+  physiology,
+  setPhysiology,
+  savePhysiology,
+  savingPhysiology,
+  physiologyMsg,
+  personas,
+  handlePersonaChange,
+  norms,
+  setNorms,
+  saveNorms,
+  saving,
+  timezoneOptions,
+}: SettingsTabProps) {
+  return (
+    <div className="space-y-6">
+      {/* Profile */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <h3 className="text-sm font-medium text-gray-700 mb-4">Профиль</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Имя</label>
+            <input
+              type="text"
+              value={profile.first_name}
+              onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Фамилия</label>
+            <input
+              type="text"
+              value={profile.last_name}
+              onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Город</label>
+            <input
+              type="text"
+              value={profile.city}
+              onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="Москва"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Статус</label>
+            <select
+              value={profile.status}
+              onChange={(e) => setProfile({ ...profile, status: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            >
+              <option value="pending">Ожидает</option>
+              <option value="active">Активен</option>
+              <option value="paused">На паузе</option>
+              <option value="archived">Архив</option>
+            </select>
+          </div>
+        </div>
+        <div className="mb-4">
+          <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Часовой пояс</label>
+          <select
+            value={profile.timezone}
+            onChange={(e) => setProfile({ ...profile, timezone: e.target.value })}
+            className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          >
+            <option value="">Не указан</option>
+            {!timezoneOptions.find((tz) => tz.value === profile.timezone) && profile.timezone && (
+              <option value={profile.timezone}>{profile.timezone}</option>
+            )}
+            {timezoneOptions.map((tz) => (
+              <option key={tz.value} value={tz.value}>{tz.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={saveProfile}
+            disabled={savingProfile}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            <Save size={14} />
+            {savingProfile ? 'Сохранение...' : 'Сохранить'}
+          </button>
+          {profileMsg && (
+            <span className={`text-sm ${profileMsg.includes('Ошибка') ? 'text-red-600' : 'text-green-600'}`}>
+              {profileMsg}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Physiology */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <h3 className="text-sm font-medium text-gray-700 mb-4">Физиологические данные</h3>
+        <div className="grid grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Рост (см)</label>
+            <input
+              type="number"
+              value={physiology.height}
+              onChange={(e) => setPhysiology({ ...physiology, height: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="170"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Вес (кг)</label>
+            <input
+              type="number"
+              step="0.1"
+              value={physiology.weight}
+              onChange={(e) => setPhysiology({ ...physiology, weight: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="70"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Дата рождения</label>
+            <input
+              type="date"
+              value={physiology.birth_date}
+              onChange={(e) => setPhysiology({ ...physiology, birth_date: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={savePhysiology}
+            disabled={savingPhysiology}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            <Save size={14} />
+            {savingPhysiology ? 'Сохранение...' : 'Сохранить'}
+          </button>
+          {physiologyMsg && (
+            <span className={`text-sm ${physiologyMsg.includes('Ошибка') ? 'text-red-600' : 'text-green-600'}`}>
+              {physiologyMsg}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Persona */}
+      {personas.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h3 className="text-sm font-medium text-gray-700 mb-3">Персона бота</h3>
+          <select
+            value={client.persona ?? ''}
+            onChange={handlePersonaChange}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+          >
+            <option value="">По умолчанию</option>
+            {personas.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}{p.is_default ? ' (по умолч.)' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Norms */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <h3 className="text-sm font-medium text-gray-700 mb-4">Нормы КБЖУ</h3>
+        <div className="grid grid-cols-5 gap-3 mb-4">
+          <div>
+            <label className="text-xs text-gray-500">Калории</label>
+            <input
+              type="number"
+              value={norms.daily_calories}
+              onChange={(e) => setNorms({ ...norms, daily_calories: e.target.value })}
+              className="w-full mt-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
+              placeholder="2000"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Белки (г)</label>
+            <input
+              type="number"
+              value={norms.daily_proteins}
+              onChange={(e) => setNorms({ ...norms, daily_proteins: e.target.value })}
+              className="w-full mt-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
+              placeholder="100"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Жиры (г)</label>
+            <input
+              type="number"
+              value={norms.daily_fats}
+              onChange={(e) => setNorms({ ...norms, daily_fats: e.target.value })}
+              className="w-full mt-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
+              placeholder="70"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Углеводы (г)</label>
+            <input
+              type="number"
+              value={norms.daily_carbs}
+              onChange={(e) => setNorms({ ...norms, daily_carbs: e.target.value })}
+              className="w-full mt-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
+              placeholder="250"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Вода (л)</label>
+            <input
+              type="number"
+              step="0.1"
+              value={norms.daily_water}
+              onChange={(e) => setNorms({ ...norms, daily_water: e.target.value })}
+              className="w-full mt-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
+              placeholder="2.0"
+            />
+          </div>
+        </div>
+        <button
+          onClick={saveNorms}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        >
+          <Save size={14} />
+          {saving ? 'Сохранение...' : 'Сохранить'}
+        </button>
+      </div>
     </div>
   )
 }
