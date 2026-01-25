@@ -10,15 +10,6 @@ import { Button, Input, Card } from '../../shared/components/ui'
 import { cn } from '../../shared/lib/cn'
 import { CameraCapture } from './components/CameraCapture'
 
-interface AnalysisResult {
-  dish_name: string
-  dish_type: string
-  calories: number
-  proteins: number
-  fats: number
-  carbohydrates: number
-}
-
 interface MealFormData {
   dish_name: string
   dish_type: 'breakfast' | 'lunch' | 'dinner' | 'snack'
