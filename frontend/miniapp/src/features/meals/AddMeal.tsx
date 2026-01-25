@@ -78,10 +78,10 @@ function AddMeal() {
       const mappedType = typeMap[data.dish_type.toLowerCase()] || 'lunch'
       setValue('dish_type', mappedType)
     }
-    if (data.calories) setValue('calories', String(data.calories))
-    if (data.proteins) setValue('proteins', String(data.proteins))
-    if (data.fats) setValue('fats', String(data.fats))
-    if (data.carbohydrates) setValue('carbohydrates', String(data.carbohydrates))
+    if (data.calories) setValue('calories', String(Math.round(data.calories)))
+    if (data.proteins) setValue('proteins', String(Math.round(data.proteins)))
+    if (data.fats) setValue('fats', String(Math.round(data.fats)))
+    if (data.carbohydrates) setValue('carbohydrates', String(Math.round(data.carbohydrates)))
 
     if (data.ai_response) setAiResponse(data.ai_response)
     if (data.ingredients) setIngredients(data.ingredients)
