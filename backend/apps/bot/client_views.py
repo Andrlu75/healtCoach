@@ -308,3 +308,109 @@ async def _notify_coach_about_meal_miniapp(client: Client, meal: Meal):
 
     except Exception as e:
         logger.warning('[NOTIFY] Failed to send miniapp meal notification: %s', e)
+
+
+class ClientOnboardingQuestionsView(APIView):
+    """Get onboarding questions for the client's coach."""
+
+    def get(self, request):
+        from apps.onboarding.models import OnboardingQuestion
+
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        questions = OnboardingQuestion.objects.filter(coach=client.coach).order_by('order')
+
+        return Response({
+            'questions': [
+                {
+                    'id': q.pk,
+                    'text': q.text,
+                    'type': q.question_type,
+                    'options': q.options,
+                    'is_required': q.is_required,
+                    'field_key': q.field_key,
+                }
+                for q in questions
+            ],
+            'client': {
+                'first_name': client.first_name,
+                'onboarding_completed': client.onboarding_completed,
+            },
+        })
+
+
+class ClientOnboardingSubmitView(APIView):
+    """Submit all onboarding answers at once."""
+
+    def post(self, request):
+        from apps.onboarding.services import calculate_tdee
+
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        answers = request.data.get('answers', {})
+        if not answers:
+            return Response(
+                {'error': 'answers required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Save answers to onboarding_data
+        client.onboarding_data = {
+            'started': True,
+            'completed': True,
+            'answers': answers,
+        }
+
+        # Try to calculate TDEE from standard fields
+        weight = self._to_float(answers.get('weight'))
+        height = self._to_float(answers.get('height'))
+        age = self._to_float(answers.get('age'))
+        gender = answers.get('gender', '').lower() if isinstance(answers.get('gender'), str) else ''
+        activity = answers.get('activity_level', 'moderate')
+
+        if weight and height and age:
+            norms = calculate_tdee(weight, height, age, gender, activity)
+            client.daily_calories = round(norms['calories'])
+            client.daily_proteins = round(norms['proteins'], 1)
+            client.daily_fats = round(norms['fats'], 1)
+            client.daily_carbs = round(norms['carbs'], 1)
+
+        # Save additional fields directly to client
+        if weight:
+            client.weight = weight
+        if height:
+            client.height = int(height)
+
+        client.onboarding_completed = True
+        client.status = 'active'
+        client.save()
+
+        logger.info('Onboarding completed via miniapp for client %s', client.pk)
+
+        return Response({
+            'success': True,
+            'client': {
+                'id': client.pk,
+                'first_name': client.first_name,
+                'last_name': client.last_name,
+                'daily_calories': client.daily_calories,
+                'daily_proteins': client.daily_proteins,
+                'daily_fats': client.daily_fats,
+                'daily_carbs': client.daily_carbs,
+                'daily_water': client.daily_water,
+                'onboarding_completed': client.onboarding_completed,
+            },
+        })
+
+    def _to_float(self, value) -> float | None:
+        """Safely convert value to float."""
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return None

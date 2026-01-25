@@ -83,3 +83,27 @@ export const getReminders = () =>
 
 export const toggleReminder = (id: number, is_active: boolean) =>
   api.patch('/miniapp/reminders/', { id, is_active })
+
+// Onboarding
+export interface OnboardingQuestion {
+  id: number
+  text: string
+  type: 'text' | 'number' | 'choice' | 'multi_choice' | 'date'
+  options: string[]
+  is_required: boolean
+  field_key: string
+}
+
+export interface OnboardingQuestionsResponse {
+  questions: OnboardingQuestion[]
+  client: {
+    first_name: string
+    onboarding_completed: boolean
+  }
+}
+
+export const getOnboardingQuestions = () =>
+  api.get<OnboardingQuestionsResponse>('/miniapp/onboarding/questions/')
+
+export const submitOnboarding = (answers: Record<string, unknown>) =>
+  api.post('/miniapp/onboarding/submit/', { answers })

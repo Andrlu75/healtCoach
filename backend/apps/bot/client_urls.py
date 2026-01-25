@@ -6,6 +6,8 @@ from .client_views import (
     ClientMealDetailView,
     ClientMealListView,
     ClientMealRecalculateView,
+    ClientOnboardingQuestionsView,
+    ClientOnboardingSubmitView,
     ClientReminderListView,
 )
 
@@ -16,4 +18,6 @@ urlpatterns = [
     path('meals/recalculate/', ClientMealRecalculateView.as_view(), name='client_meal_recalculate'),
     path('meals/<int:pk>/', ClientMealDetailView.as_view(), name='client_meal_detail'),
     path('reminders/', ClientReminderListView.as_view(), name='client_reminders'),
+    path('onboarding/questions/', ClientOnboardingQuestionsView.as_view(), name='client_onboarding_questions'),
+    path('onboarding/submit/', ClientOnboardingSubmitView.as_view(), name='client_onboarding_submit'),
 ]
