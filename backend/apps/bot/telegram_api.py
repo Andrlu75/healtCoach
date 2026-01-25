@@ -76,6 +76,50 @@ async def send_message(token: str, chat_id: int | str, text: str, parse_mode: st
     return last_result
 
 
+async def send_message_with_webapp(
+    token: str,
+    chat_id: int | str,
+    text: str,
+    button_text: str,
+    webapp_url: str,
+    parse_mode: str | None = 'Markdown',
+) -> dict | None:
+    """Send a message with WebApp inline button."""
+    url = f'{TELEGRAM_API}/bot{token}/sendMessage'
+
+    payload = {
+        'chat_id': chat_id,
+        'text': text,
+        'reply_markup': {
+            'inline_keyboard': [[
+                {
+                    'text': button_text,
+                    'web_app': {'url': webapp_url},
+                }
+            ]]
+        },
+    }
+    if parse_mode:
+        payload['parse_mode'] = parse_mode
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(url, json=payload)
+        result = resp.json()
+        if result.get('ok'):
+            return result.get('result')
+
+        # Fallback without parse_mode
+        if parse_mode:
+            del payload['parse_mode']
+            resp = await client.post(url, json=payload)
+            result = resp.json()
+            if result.get('ok'):
+                return result.get('result')
+
+        logger.error('Failed to send webapp message to chat %s: %s', chat_id, result)
+        return None
+
+
 async def send_chat_action(token: str, chat_id: int, action: str = 'typing') -> None:
     """Send chat action (e.g. typing indicator)."""
     url = f'{TELEGRAM_API}/bot{token}/sendChatAction'

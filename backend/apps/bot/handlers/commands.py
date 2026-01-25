@@ -1,5 +1,7 @@
 import logging
 
+from django.conf import settings
+
 from apps.accounts.models import Client
 from apps.onboarding.services import (
     format_question,
@@ -11,7 +13,7 @@ from apps.onboarding.services import (
 from apps.persona.models import TelegramBot
 
 from ..services import _get_persona
-from ..telegram_api import send_message
+from ..telegram_api import send_message, send_message_with_webapp
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +69,7 @@ async def _handle_invite_start(bot: TelegramBot, client: Client, chat_id: int, c
 
 
 async def _handle_regular_start(bot: TelegramBot, client: Client, chat_id: int):
-    """Handle regular /start — send greeting."""
+    """Handle regular /start — send greeting with miniapp button."""
     persona = await _get_persona(bot, client)
 
     if persona and persona.greeting_message:
@@ -75,4 +77,14 @@ async def _handle_regular_start(bot: TelegramBot, client: Client, chat_id: int):
     else:
         greeting = 'Привет! Я ваш персональный помощник. Чем могу помочь?'
 
-    await send_message(bot.token, chat_id, greeting)
+    miniapp_url = settings.TELEGRAM_MINIAPP_URL
+    if miniapp_url:
+        await send_message_with_webapp(
+            bot.token,
+            chat_id,
+            greeting,
+            button_text='📊 Открыть дневник',
+            webapp_url=miniapp_url,
+        )
+    else:
+        await send_message(bot.token, chat_id, greeting)
