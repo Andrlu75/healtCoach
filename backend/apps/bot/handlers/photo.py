@@ -219,6 +219,9 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
 
     await send_message(bot.token, chat_id, response_text)
 
+    # Send notification to coach's report chat
+    await _notify_coach_about_meal(bot, client, analysis, summary)
+
     # Log interaction
     await sync_to_async(InteractionLog.objects.create)(
         client=client,
@@ -374,3 +377,57 @@ async def _handle_data_photo(bot: TelegramBot, client: Client, chat_id: int, ima
         await save_metrics(client, metrics_data)
     response_text = format_metrics_response(metrics_data)
     await send_message(bot.token, chat_id, response_text)
+
+
+async def _notify_coach_about_meal(bot: TelegramBot, client: Client, analysis: dict, summary: dict):
+    """Send notification about meal to coach's report chat."""
+    try:
+        # Get coach's notification chat ID
+        coach = bot.coach
+        notification_chat_id = await sync_to_async(lambda: coach.telegram_notification_chat_id)()
+
+        if not notification_chat_id:
+            return
+
+        # Format notification message
+        client_name = await sync_to_async(lambda: f'{client.first_name} {client.last_name}'.strip() or client.telegram_username or f'Клиент #{client.pk}')()
+
+        dish_name = analysis.get('dish_name', 'Неизвестное блюдо')
+        calories = analysis.get('calories')
+        proteins = analysis.get('proteins')
+        fats = analysis.get('fats')
+        carbs = analysis.get('carbohydrates')
+
+        # Build KBJU string
+        kbju_parts = []
+        if calories:
+            kbju_parts.append(f'{int(calories)} ккал')
+        if proteins:
+            kbju_parts.append(f'Б: {int(proteins)}')
+        if fats:
+            kbju_parts.append(f'Ж: {int(fats)}')
+        if carbs:
+            kbju_parts.append(f'У: {int(carbs)}')
+        kbju_str = ' | '.join(kbju_parts) if kbju_parts else 'КБЖУ не определено'
+
+        # Daily totals from summary
+        daily_calories = summary.get('total_calories', 0)
+        daily_target = summary.get('daily_calories', 0)
+
+        message = (
+            f'🍽 <b>{client_name}</b>\n\n'
+            f'<b>{dish_name}</b>\n'
+            f'{kbju_str}\n\n'
+        )
+
+        if daily_target:
+            progress_pct = int(daily_calories / daily_target * 100) if daily_target else 0
+            message += f'📊 За день: {int(daily_calories)} / {int(daily_target)} ккал ({progress_pct}%)'
+        else:
+            message += f'📊 За день: {int(daily_calories)} ккал'
+
+        await send_message(bot.token, notification_chat_id, message, parse_mode='HTML')
+        logger.info('[NOTIFY] Sent meal notification for client=%s to chat=%s', client.pk, notification_chat_id)
+
+    except Exception as e:
+        logger.warning('[NOTIFY] Failed to send meal notification: %s', e)

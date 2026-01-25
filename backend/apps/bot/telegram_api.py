@@ -38,31 +38,32 @@ def _split_text(text: str, limit: int = TG_MSG_LIMIT) -> list[str]:
     return chunks
 
 
-async def _send_single(client: httpx.AsyncClient, url: str, chat_id: int, text: str) -> dict | None:
-    """Send a single message, trying Markdown then plain text."""
-    resp = await client.post(url, json={
-        'chat_id': chat_id,
-        'text': text,
-        'parse_mode': 'Markdown',
-    })
+async def _send_single(client: httpx.AsyncClient, url: str, chat_id: int, text: str, parse_mode: str | None = 'Markdown') -> dict | None:
+    """Send a single message, trying specified parse_mode then plain text."""
+    payload = {'chat_id': chat_id, 'text': text}
+    if parse_mode:
+        payload['parse_mode'] = parse_mode
+
+    resp = await client.post(url, json=payload)
     result = resp.json()
     if result.get('ok'):
         return result.get('result')
 
     # Fallback: send without parse_mode
-    resp = await client.post(url, json={
-        'chat_id': chat_id,
-        'text': text,
-    })
-    result = resp.json()
-    if result.get('ok'):
-        return result.get('result')
+    if parse_mode:
+        resp = await client.post(url, json={
+            'chat_id': chat_id,
+            'text': text,
+        })
+        result = resp.json()
+        if result.get('ok'):
+            return result.get('result')
 
     logger.error('Failed to send message to chat %s: %s', chat_id, result)
     return None
 
 
-async def send_message(token: str, chat_id: int, text: str) -> dict | None:
+async def send_message(token: str, chat_id: int | str, text: str, parse_mode: str | None = 'Markdown') -> dict | None:
     """Send a text message. Splits long messages into chunks."""
     url = f'{TELEGRAM_API}/bot{token}/sendMessage'
     chunks = _split_text(text)
@@ -70,7 +71,7 @@ async def send_message(token: str, chat_id: int, text: str) -> dict | None:
     last_result = None
     async with httpx.AsyncClient(timeout=15) as client:
         for chunk in chunks:
-            last_result = await _send_single(client, url, chat_id, chunk)
+            last_result = await _send_single(client, url, chat_id, chunk, parse_mode)
 
     return last_result
 
