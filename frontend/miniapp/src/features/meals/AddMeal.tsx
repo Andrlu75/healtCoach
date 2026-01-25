@@ -41,6 +41,7 @@ function AddMeal() {
   const [caption, setCaption] = useState('')
   const [isCameraOpen, setIsCameraOpen] = useState(false)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
+  const [aiResponse, setAiResponse] = useState<string | null>(null)
 
   const {
     register,
@@ -87,6 +88,9 @@ function AddMeal() {
       if (data.proteins) setValue('proteins', String(data.proteins))
       if (data.fats) setValue('fats', String(data.fats))
       if (data.carbohydrates) setValue('carbohydrates', String(data.carbohydrates))
+
+      // Сохраняем текстовый ответ AI
+      if (data.ai_response) setAiResponse(data.ai_response)
 
       setStep('result')
       notification('success')
@@ -342,6 +346,17 @@ function AddMeal() {
             alt="Фото блюда"
             className="w-full h-40 object-cover rounded-xl"
           />
+        )}
+
+        {/* AI ответ с рекомендациями */}
+        {aiResponse && (
+          <Card variant="elevated" className="p-4">
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm leading-relaxed">
+                {aiResponse}
+              </p>
+            </div>
+          </Card>
         )}
 
         {/* Тип приёма */}

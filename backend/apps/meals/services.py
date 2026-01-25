@@ -482,8 +482,12 @@ async def is_meal_correction(bot: TelegramBot, meal: Meal, user_text: str) -> bo
 async def analyze_food_for_client(client: Client, image_data: bytes, caption: str = '') -> dict:
     """Analyze food photo for miniapp client.
 
-    Gets vision provider through client's coach and returns nutrition data.
+    Gets vision provider through client's coach and returns nutrition data + AI response text.
     """
+    from core.ai.factory import get_ai_provider
+    from core.ai.model_fetcher import get_cached_pricing
+    from decimal import Decimal
+
     # Get client's bot/coach to access AI provider
     bot = await sync_to_async(
         lambda: TelegramBot.objects.filter(coach=client.coach).first()
@@ -505,9 +509,6 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
     )
 
     # Log usage with cost calculation
-    from core.ai.model_fetcher import get_cached_pricing
-    from decimal import Decimal
-
     model_used = response.model or model or ''
     input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
     output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
@@ -548,6 +549,64 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
             'fats': 0,
             'carbohydrates': 0,
         }
+
+    # Generate AI response text with recommendations (like in Telegram)
+    if persona.food_response_prompt:
+        # Get daily summary for context
+        summary = await get_daily_summary(client)
+
+        # Get text provider
+        text_provider_name = persona.text_provider or provider_name
+        text_model = persona.text_model or None
+
+        config = await sync_to_async(
+            lambda: AIProviderConfig.objects.filter(
+                coach=bot.coach, provider=text_provider_name, is_active=True
+            ).first()
+        )()
+        if config:
+            text_provider = get_ai_provider(text_provider_name, config.api_key)
+
+            # Build context
+            user_message = (
+                f'Данные анализа еды:\n'
+                f'{json.dumps(data, ensure_ascii=False)}\n\n'
+                f'Дневная сводка:\n'
+                f'{json.dumps(summary, ensure_ascii=False)}'
+            )
+            if caption:
+                user_message = f'Подпись пользователя: "{caption}"\n\n' + user_message
+
+            text_response = await text_provider.complete(
+                messages=[{'role': 'user', 'content': user_message}],
+                system_prompt=persona.food_response_prompt,
+                max_tokens=persona.max_tokens,
+                temperature=persona.temperature,
+                model=text_model,
+            )
+
+            # Log text generation usage
+            text_model_used = text_response.model or text_model or ''
+            text_input = text_response.usage.get('input_tokens', 0) or text_response.usage.get('prompt_tokens', 0)
+            text_output = text_response.usage.get('output_tokens', 0) or text_response.usage.get('completion_tokens', 0)
+
+            text_cost = Decimal('0')
+            text_pricing = get_cached_pricing(text_provider_name, text_model_used)
+            if text_pricing and (text_input or text_output):
+                price_in, price_out = text_pricing
+                text_cost = Decimal(str((text_input * price_in + text_output * price_out) / 1_000_000))
+
+            await sync_to_async(AIUsageLog.objects.create)(
+                coach=client.coach,
+                provider=text_provider_name,
+                model=text_model_used,
+                task_type='text',
+                input_tokens=text_input,
+                output_tokens=text_output,
+                cost_usd=text_cost,
+            )
+
+            data['ai_response'] = text_response.content
 
     return data
 

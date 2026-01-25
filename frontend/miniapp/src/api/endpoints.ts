@@ -37,6 +37,7 @@ export const analyzeMealPhoto = (formData: FormData) =>
     carbohydrates: number
     ingredients?: string[]
     confidence?: number
+    ai_response?: string
   }>('/miniapp/meals/analyze/', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
