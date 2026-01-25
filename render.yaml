@@ -46,7 +46,6 @@ services:
   - type: web
     name: healthcoach-console
     runtime: static
-    region: oregon
     rootDir: frontend/console
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
@@ -65,7 +64,6 @@ services:
   - type: web
     name: healthcoach-miniapp
     runtime: static
-    region: oregon
     rootDir: frontend/miniapp
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
