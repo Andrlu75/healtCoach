@@ -132,10 +132,10 @@ class ClientMealAnalyzeView(APIView):
 
     parser_classes = [MultiPartParser, FormParser]
 
-    async def post(self, request):
-        from asgiref.sync import sync_to_async
+    def post(self, request):
+        from asgiref.sync import async_to_sync
 
-        client = await sync_to_async(get_client_from_token)(request)
+        client = get_client_from_token(request)
         if not client:
             return Response(status=status.HTTP_403_FORBIDDEN)
 
@@ -149,7 +149,7 @@ class ClientMealAnalyzeView(APIView):
         image_data = image.read()
 
         try:
-            result = await analyze_food_for_client(client, image_data)
+            result = async_to_sync(analyze_food_for_client)(client, image_data)
             return Response(result)
         except Exception as e:
             return Response(
