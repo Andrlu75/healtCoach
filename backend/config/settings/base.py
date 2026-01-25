@@ -130,6 +130,18 @@ CORS_ALLOWED_ORIGINS = config(
     default='http://localhost:3000,http://localhost:3001',
     cast=Csv()
 )
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 # Redis
 REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/0')
