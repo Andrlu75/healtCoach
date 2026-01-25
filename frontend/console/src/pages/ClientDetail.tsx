@@ -580,15 +580,15 @@ function MealsTab({ meals }: { meals: Meal[] }) {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header with image */}
-            <div className="relative">
+            <div className="relative bg-gray-900">
               {selectedMeal.image ? (
                 <img
                   src={selectedMeal.image}
                   alt={selectedMeal.dish_name}
-                  className="w-full h-64 object-cover"
+                  className="w-full max-h-[60vh] object-contain"
                 />
               ) : (
-                <div className="w-full h-64 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                   <span className="text-gray-400 text-lg">Нет фото</span>
                 </div>
               )}
