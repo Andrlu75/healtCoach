@@ -8,7 +8,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import Client
-from apps.chat.models import InteractionLog
 from apps.meals.models import Meal
 from apps.meals.serializers import MealCreateSerializer, MealSerializer
 from apps.meals.services import analyze_food_for_client, get_daily_summary
@@ -73,9 +72,6 @@ class ClientMealListView(APIView):
         serializer = MealCreateSerializer(data=data)
         if serializer.is_valid():
             meal = serializer.save()
-
-            # Log interaction
-            _log_meal_interaction(client, meal)
 
             # Send notification to coach
             async_to_sync(_notify_coach_about_meal_miniapp)(client, meal)
@@ -207,35 +203,6 @@ class ClientReminderListView(APIView):
         reminder.is_active = is_active
         reminder.save(update_fields=['is_active'])
         return Response(ReminderSerializer(reminder).data)
-
-
-def _log_meal_interaction(client: Client, meal: Meal):
-    """Log meal creation from miniapp as interaction."""
-    try:
-        InteractionLog.objects.create(
-            client=client,
-            coach=client.coach,
-            interaction_type='miniapp',
-            client_input=f'[Miniapp] Добавлено блюдо: {meal.dish_name}',
-            ai_request={
-                'source': 'miniapp',
-                'meal_id': meal.pk,
-            },
-            ai_response={
-                'dish_name': meal.dish_name,
-                'dish_type': meal.dish_type,
-                'calories': meal.calories,
-                'proteins': meal.proteins,
-                'fats': meal.fats,
-                'carbohydrates': meal.carbohydrates,
-            },
-            client_output='Meal saved via miniapp',
-            provider='miniapp',
-            model='',
-            duration_ms=0,
-        )
-    except Exception as e:
-        logger.warning('Failed to log meal interaction: %s', e)
 
 
 async def _notify_coach_about_meal_miniapp(client: Client, meal: Meal):

@@ -484,9 +484,13 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
 
     Gets vision provider through client's coach and returns nutrition data + AI response text.
     """
+    import time
+    from apps.chat.models import InteractionLog
     from core.ai.factory import get_ai_provider
     from core.ai.model_fetcher import get_cached_pricing
     from decimal import Decimal
+
+    start_time = time.time()
 
     # Get client's bot/coach to access AI provider
     bot = await sync_to_async(
@@ -607,6 +611,53 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
             )
 
             data['ai_response'] = text_response.content
+
+            # Log interaction with full details
+            duration_ms = int((time.time() - start_time) * 1000)
+            await sync_to_async(InteractionLog.objects.create)(
+                client=client,
+                coach=client.coach,
+                interaction_type='vision',
+                client_input=caption or '[Miniapp: Фото еды]',
+                ai_request={
+                    'source': 'miniapp',
+                    'vision_prompt': ANALYZE_FOOD_PROMPT,
+                    'text_prompt': persona.food_response_prompt,
+                    'caption': caption,
+                },
+                ai_response={
+                    'analysis': data,
+                    'ai_response': text_response.content,
+                    'vision_model': model_used,
+                    'text_model': text_model_used,
+                },
+                client_output=text_response.content,
+                provider=text_provider_name,
+                model=text_model_used,
+                duration_ms=duration_ms,
+            )
+    else:
+        # Log interaction without AI response text
+        duration_ms = int((time.time() - start_time) * 1000)
+        await sync_to_async(InteractionLog.objects.create)(
+            client=client,
+            coach=client.coach,
+            interaction_type='vision',
+            client_input=caption or '[Miniapp: Фото еды]',
+            ai_request={
+                'source': 'miniapp',
+                'vision_prompt': ANALYZE_FOOD_PROMPT,
+                'caption': caption,
+            },
+            ai_response={
+                'analysis': data,
+                'vision_model': model_used,
+            },
+            client_output=json.dumps(data, ensure_ascii=False),
+            provider=provider_name,
+            model=model_used,
+            duration_ms=duration_ms,
+        )
 
     return data
 
