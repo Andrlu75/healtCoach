@@ -1,10 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Camera } from 'lucide-react'
-import { addMeal } from '../../api/endpoints'
+import { Camera, X, Image } from 'lucide-react'
+import { addMealWithPhoto } from '../../api/endpoints'
 import { useTelegram, useHaptic } from '../../shared/hooks'
 import { Button, Input, Card } from '../../shared/components/ui'
 import { cn } from '../../shared/lib/cn'
@@ -16,6 +16,7 @@ interface MealFormData {
   proteins?: string
   fats?: string
   carbohydrates?: string
+  photo?: File
 }
 
 const dishTypes = [
@@ -30,6 +31,9 @@ function AddMeal() {
   const queryClient = useQueryClient()
   const { showBackButton, hideBackButton } = useTelegram()
   const { impact, notification } = useHaptic()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
 
   const {
     register,
@@ -46,6 +50,33 @@ function AddMeal() {
 
   const selectedType = watch('dish_type')
 
+  const handlePhotoSelect = () => {
+    impact('light')
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setPhotoFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+      notification('success')
+    }
+  }
+
+  const handleRemovePhoto = () => {
+    impact('light')
+    setPhotoFile(null)
+    setPhotoPreview(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   useEffect(() => {
     showBackButton(() => {
       navigate(-1)
@@ -54,7 +85,7 @@ function AddMeal() {
   }, [showBackButton, hideBackButton, navigate])
 
   const mutation = useMutation({
-    mutationFn: addMeal,
+    mutationFn: addMealWithPhoto,
     onSuccess: () => {
       notification('success')
       queryClient.invalidateQueries({ queryKey: ['meals'] })
@@ -68,14 +99,16 @@ function AddMeal() {
 
   const onSubmit = (data: MealFormData) => {
     impact('light')
-    mutation.mutate({
-      dish_name: data.dish_name,
-      dish_type: data.dish_type,
-      calories: data.calories ? Number(data.calories) : undefined,
-      proteins: data.proteins ? Number(data.proteins) : undefined,
-      fats: data.fats ? Number(data.fats) : undefined,
-      carbohydrates: data.carbohydrates ? Number(data.carbohydrates) : undefined,
-    })
+    const formData = new FormData()
+    formData.append('dish_name', data.dish_name)
+    formData.append('dish_type', data.dish_type)
+    if (data.calories) formData.append('calories', data.calories)
+    if (data.proteins) formData.append('proteins', data.proteins)
+    if (data.fats) formData.append('fats', data.fats)
+    if (data.carbohydrates) formData.append('carbohydrates', data.carbohydrates)
+    if (photoFile) formData.append('image', photoFile)
+
+    mutation.mutate(formData)
   }
 
   const handleTypeSelect = (type: typeof dishTypes[number]['value']) => {
@@ -125,13 +158,45 @@ function AddMeal() {
             {...register('dish_name', { required: 'Введите название блюда' })}
           />
 
-          <button
-            type="button"
-            className="w-full h-24 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 dark:text-gray-500"
-          >
-            <Camera size={24} />
-            <span className="text-sm">Добавить фото</span>
-          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+
+          {photoPreview ? (
+            <div className="relative">
+              <img
+                src={photoPreview}
+                alt="Фото блюда"
+                className="w-full h-48 object-cover rounded-xl"
+              />
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.9 }}
+                onClick={handleRemovePhoto}
+                className="absolute top-2 right-2 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center"
+              >
+                <X size={16} className="text-white" />
+              </motion.button>
+            </div>
+          ) : (
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.98 }}
+              onClick={handlePhotoSelect}
+              className="w-full h-24 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 dark:text-gray-500 active:bg-gray-50 dark:active:bg-gray-800"
+            >
+              <div className="flex gap-4">
+                <Camera size={24} />
+                <Image size={24} />
+              </div>
+              <span className="text-sm">Сделать фото или выбрать</span>
+            </motion.button>
+          )}
         </Card>
 
         <Card variant="elevated" className="p-4">

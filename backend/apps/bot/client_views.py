@@ -2,6 +2,7 @@ from datetime import date
 
 from django.utils import timezone
 from rest_framework import status
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -25,6 +26,8 @@ def get_client_from_token(request):
 
 class ClientMealListView(APIView):
     """List and create meals for the authenticated client."""
+
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
         client = get_client_from_token(request)

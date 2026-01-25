@@ -20,7 +20,10 @@ class MealCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Meal
         fields = [
-            'id', 'client', 'image_type', 'dish_name', 'dish_type',
+            'id', 'client', 'image', 'image_type', 'dish_name', 'dish_type',
             'calories', 'proteins', 'fats', 'carbohydrates', 'meal_time',
         ]
         read_only_fields = ['id']
+        extra_kwargs = {
+            'image': {'required': False},
+        }

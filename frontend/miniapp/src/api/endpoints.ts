@@ -20,6 +20,13 @@ export const addMeal = (data: {
   carbohydrates?: number
 }) => api.post('/miniapp/meals/', data)
 
+export const addMealWithPhoto = (formData: FormData) =>
+  api.post('/miniapp/meals/', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+
 export const deleteMeal = (id: number) =>
   api.delete(`/miniapp/meals/${id}/`)
 
