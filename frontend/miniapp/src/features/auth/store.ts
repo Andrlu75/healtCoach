@@ -1,20 +1,10 @@
 import { create } from 'zustand'
-import { telegramAuth } from '../api/endpoints'
-
-interface ClientData {
-  id: number
-  first_name: string
-  last_name: string
-  daily_calories: number | null
-  daily_proteins: number | null
-  daily_fats: number | null
-  daily_carbs: number | null
-  daily_water: number | null
-  onboarding_completed: boolean
-}
+import { telegramAuth } from '../../api/endpoints'
+import type { ClientData, UserRole } from '../../types'
 
 interface AuthState {
   client: ClientData | null
+  role: UserRole
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
@@ -24,6 +14,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   client: null,
+  role: 'client',
   isAuthenticated: !!localStorage.getItem('access_token'),
   isLoading: false,
   error: null,
@@ -36,11 +27,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.setItem('refresh_token', data.refresh)
       set({
         client: data.client,
+        role: data.role || 'client',
         isAuthenticated: true,
         isLoading: false,
       })
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Authentication failed'
+      const message = err instanceof Error ? err.message : 'Ошибка авторизации'
       set({ error: message, isLoading: false })
     }
   },

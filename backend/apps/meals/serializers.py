@@ -12,3 +12,15 @@ class MealSerializer(serializers.ModelSerializer):
             'ingredients', 'ai_confidence', 'meal_time', 'created_at',
         ]
         read_only_fields = fields
+
+
+class MealCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating meals from miniapp."""
+
+    class Meta:
+        model = Meal
+        fields = [
+            'id', 'client', 'image_type', 'dish_name', 'dish_type',
+            'calories', 'proteins', 'fats', 'carbohydrates', 'meal_time',
+        ]
+        read_only_fields = ['id']

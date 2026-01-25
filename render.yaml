@@ -60,6 +60,25 @@ services:
         name: Cache-Control
         value: public, max-age=0, must-revalidate
 
+  - type: web
+    name: healthcoach-miniapp
+    runtime: static
+    region: oregon
+    rootDir: frontend/miniapp
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+
 databases:
   - name: healthCoach
     plan: starter

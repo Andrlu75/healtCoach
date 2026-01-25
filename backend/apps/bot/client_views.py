@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import Client
 from apps.meals.models import Meal
-from apps.meals.serializers import MealSerializer
+from apps.meals.serializers import MealCreateSerializer, MealSerializer
 from apps.reminders.models import Reminder
 from apps.reminders.serializers import ReminderSerializer
 
@@ -24,7 +24,7 @@ def get_client_from_token(request):
 
 
 class ClientMealListView(APIView):
-    """List meals for the authenticated client."""
+    """List and create meals for the authenticated client."""
 
     def get(self, request):
         client = get_client_from_token(request)
@@ -47,6 +47,40 @@ class ClientMealListView(APIView):
         meals = queryset[:50]
         serializer = MealSerializer(meals, many=True)
         return Response({'results': serializer.data})
+
+    def post(self, request):
+        """Create a new meal for the authenticated client."""
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        data = request.data.copy()
+        data['client'] = client.pk
+        data['image_type'] = 'food'
+        data['meal_time'] = timezone.now()
+
+        serializer = MealCreateSerializer(data=data)
+        if serializer.is_valid():
+            meal = serializer.save()
+            return Response(MealSerializer(meal).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ClientMealDetailView(APIView):
+    """Delete a meal for the authenticated client."""
+
+    def delete(self, request, pk):
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            meal = Meal.objects.get(pk=pk, client=client)
+        except Meal.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        meal.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ClientDailySummaryView(APIView):
