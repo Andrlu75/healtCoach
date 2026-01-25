@@ -147,6 +147,39 @@ class TelegramAuthView(APIView):
                 client.pk, invite.code[:8]
             )
 
+        elif not client.coach_id:
+            # Client exists but has no coach - need invite
+            if not start_param:
+                return Response({
+                    'status': 'need_invite',
+                    'message': 'Для регистрации необходима ссылка от коуча',
+                })
+
+            invite = self._validate_invite(start_param)
+            if not invite:
+                return Response({
+                    'status': 'invalid_invite',
+                    'message': 'Ссылка недействительна или истекла',
+                })
+
+            # Link client to coach
+            client.coach = invite.coach
+            client.onboarding_completed = False
+            client.onboarding_data = {
+                'started': True,
+                'current_question_index': 0,
+                'answers': {},
+            }
+            client.save(update_fields=['coach', 'onboarding_completed', 'onboarding_data'])
+
+            invite.uses_count += 1
+            invite.save(update_fields=['uses_count'])
+
+            logger.info(
+                'Existing client linked to coach via miniapp: client=%s, coach=%s',
+                client.pk, invite.coach_id
+            )
+
         # Get or create User for JWT
         user, created = User.objects.get_or_create(
             username=f'tg_{telegram_user_id}',

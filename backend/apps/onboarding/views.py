@@ -21,13 +21,18 @@ class InviteLinkListView(APIView):
         coach = request.user.coach_profile
         invites = InviteLink.objects.filter(coach=coach).order_by('-created_at')
 
-        # Get active bot username for deep link
+        # Get active bot for deep link
         bot = TelegramBot.objects.filter(coach=coach, is_active=True).first()
         bot_username = bot.username if bot else ''
+        miniapp_short_name = bot.miniapp_short_name if bot else ''
 
         serializer = InviteLinkSerializer(
             invites, many=True,
-            context={'request': request, 'bot_username': bot_username},
+            context={
+                'request': request,
+                'bot_username': bot_username,
+                'miniapp_short_name': miniapp_short_name,
+            },
         )
         return Response(serializer.data)
 
@@ -44,10 +49,16 @@ class InviteLinkListView(APIView):
 
         bot = TelegramBot.objects.filter(coach=coach, is_active=True).first()
         bot_username = bot.username if bot else ''
+        miniapp_short_name = bot.miniapp_short_name if bot else ''
 
         return Response(
             InviteLinkSerializer(
-                invite, context={'request': request, 'bot_username': bot_username}
+                invite,
+                context={
+                    'request': request,
+                    'bot_username': bot_username,
+                    'miniapp_short_name': miniapp_short_name,
+                },
             ).data,
             status=status.HTTP_201_CREATED,
         )

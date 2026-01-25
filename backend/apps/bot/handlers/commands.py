@@ -1,5 +1,6 @@
 import logging
 
+from asgiref.sync import sync_to_async
 from django.conf import settings
 
 from apps.accounts.models import Client
@@ -38,7 +39,7 @@ async def handle_start(bot: TelegramBot, client: Client, message: dict):
 
 
 async def _handle_invite_start(bot: TelegramBot, client: Client, chat_id: int, code: str):
-    """Handle /start with invite code — validate and begin onboarding."""
+    """Handle /start with invite code — redirect to miniapp for onboarding."""
     invite = await validate_invite(code)
 
     if not invite:
@@ -48,24 +49,50 @@ async def _handle_invite_start(bot: TelegramBot, client: Client, chat_id: int, c
     # Use invite
     await use_invite(invite)
 
-    # Start onboarding for this client
-    await start_onboarding(client, invite.coach)
+    # Link client to coach and save invite code for miniapp
+    client.coach = invite.coach
+    client.onboarding_data = {
+        'started': False,
+        'invite_code': code,
+        'answers': {},
+    }
+    client.onboarding_completed = False
+    await sync_to_async(client.save)(
+        update_fields=['coach', 'onboarding_data', 'onboarding_completed']
+    )
 
-    # Send greeting + first question
+    # Get persona for greeting
     persona = await _get_persona(bot, client)
 
     greeting = ''
     if persona and persona.greeting_message:
         greeting = persona.greeting_message + '\n\n'
 
-    # Get first question
-    question = await get_current_question(client)
-    if question:
-        text = greeting + 'Для начала ответьте на несколько вопросов:\n\n' + format_question(question)
+    # Check if miniapp is configured
+    miniapp_url = settings.TELEGRAM_MINIAPP_URL
+    if miniapp_url:
+        # Send button to open miniapp for onboarding
+        text = (
+            f'{greeting}'
+            'Добро пожаловать! 🎉\n\n'
+            'Нажмите кнопку ниже, чтобы открыть приложение и пройти быструю регистрацию.'
+        )
+        await send_message_with_webapp(
+            bot.token,
+            chat_id,
+            text,
+            button_text='📱 Открыть приложение',
+            webapp_url=miniapp_url,
+        )
     else:
-        text = greeting + 'Добро пожаловать!'
-
-    await send_message(bot.token, chat_id, text)
+        # Fallback: start onboarding in bot
+        await start_onboarding(client, invite.coach)
+        question = await get_current_question(client)
+        if question:
+            text = greeting + 'Для начала ответьте на несколько вопросов:\n\n' + format_question(question)
+        else:
+            text = greeting + 'Добро пожаловать!'
+        await send_message(bot.token, chat_id, text)
 
 
 async def _handle_regular_start(bot: TelegramBot, client: Client, chat_id: int):

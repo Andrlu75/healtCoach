@@ -81,6 +81,7 @@ class TelegramBot(models.Model):
     name = models.CharField(max_length=100)  # "Тестовый", "Продуктивный"
     username = models.CharField(max_length=100, blank=True)  # @username бота (без @)
     token = models.CharField(max_length=100)
+    miniapp_short_name = models.CharField(max_length=50, blank=True)  # Короткое имя miniapp из BotFather
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 

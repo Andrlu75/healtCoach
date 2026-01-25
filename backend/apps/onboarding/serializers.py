@@ -15,10 +15,15 @@ class InviteLinkSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'code', 'uses_count', 'created_at', 'invite_url']
 
     def get_invite_url(self, obj):
-        # Deep link for Telegram bot
-        request = self.context.get('request')
+        # Deep link for Telegram miniapp
         bot_username = self.context.get('bot_username', '')
-        if bot_username:
+        miniapp_short_name = self.context.get('miniapp_short_name', '')
+
+        if bot_username and miniapp_short_name:
+            # Direct link to miniapp with invite code
+            return f'https://t.me/{bot_username}/{miniapp_short_name}?startapp={obj.code}'
+        elif bot_username:
+            # Fallback to bot start (will show questions in bot)
             return f'https://t.me/{bot_username}?start={obj.code}'
         return f'https://t.me/BOT?start={obj.code}'
 
