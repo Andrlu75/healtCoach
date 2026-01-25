@@ -697,6 +697,11 @@ async def recalculate_meal_for_client(client: Client, previous_analysis: dict, c
 
     start_time = time.time()
 
+    logger.info(
+        '[RECALCULATE] Starting: client=%s, correction="%s", previous=%s',
+        client.pk, correction, previous_analysis
+    )
+
     # Get client's bot/coach to access AI provider
     bot = await sync_to_async(
         lambda: TelegramBot.objects.filter(coach=client.coach).first()
@@ -704,7 +709,24 @@ async def recalculate_meal_for_client(client: Client, previous_analysis: dict, c
     if not bot:
         raise ValueError('No bot configured for client coach')
 
-    provider, provider_name, model, persona = await _get_vision_provider(bot)
+    # Get persona for text provider settings
+    persona = await sync_to_async(
+        lambda: BotPersona.objects.get(coach=bot.coach)
+    )()
+
+    # Use TEXT provider for recalculation (not vision)
+    provider_name = persona.text_provider or persona.vision_provider or 'openai'
+    model = persona.text_model or persona.vision_model or None
+
+    config = await sync_to_async(
+        lambda: AIProviderConfig.objects.filter(
+            coach=bot.coach, provider=provider_name, is_active=True
+        ).first()
+    )()
+    if not config:
+        raise ValueError(f'No API key for provider: {provider_name}')
+
+    provider = get_ai_provider(provider_name, config.api_key)
 
     # Build prompt with previous analysis
     prompt = RECALCULATE_MINIAPP_PROMPT.format(
@@ -718,6 +740,9 @@ async def recalculate_meal_for_client(client: Client, previous_analysis: dict, c
         correction=correction,
     )
 
+    logger.info('[RECALCULATE] Using provider=%s model=%s', provider_name, model)
+    logger.info('[RECALCULATE] Prompt: %s', prompt[:500])
+
     response = await provider.complete(
         messages=[{'role': 'user', 'content': prompt}],
         system_prompt='Верни только JSON.',
@@ -725,6 +750,8 @@ async def recalculate_meal_for_client(client: Client, previous_analysis: dict, c
         temperature=0.2,
         model=model,
     )
+
+    logger.info('[RECALCULATE] AI raw response: %s', response.content)
 
     # Log usage
     model_used = response.model or model or ''
@@ -757,8 +784,9 @@ async def recalculate_meal_for_client(client: Client, previous_analysis: dict, c
 
     try:
         data = json.loads(content)
+        logger.info('[RECALCULATE] Parsed data: %s', data)
     except json.JSONDecodeError:
-        logger.error('Failed to parse recalculation JSON: %s', content)
+        logger.error('[RECALCULATE] Failed to parse JSON: %s', content)
         # Return previous analysis if parsing fails
         return previous_analysis
 

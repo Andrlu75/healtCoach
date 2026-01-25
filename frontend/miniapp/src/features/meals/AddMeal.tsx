@@ -115,10 +115,13 @@ function AddMeal() {
   // Пересчёт после уточнения
   const recalculateMutation = useMutation({
     mutationFn: async ({ analysis, correction }: { analysis: MealAnalysisResult; correction: string }) => {
+      console.log('[RECALCULATE] Sending:', { analysis, correction })
       const response = await recalculateMeal(analysis, correction)
+      console.log('[RECALCULATE] Response:', response.data)
       return response.data
     },
     onSuccess: (data) => {
+      console.log('[RECALCULATE] Success, updating form with:', data)
       updateFormFromAnalysis(data)
       setCorrection('')
       setStep('result')

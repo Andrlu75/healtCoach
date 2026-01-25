@@ -185,6 +185,11 @@ class ClientMealRecalculateView(APIView):
         previous_analysis = request.data.get('previous_analysis')
         correction = request.data.get('correction')
 
+        logger.info(
+            '[RECALCULATE VIEW] Received: correction="%s", previous_analysis=%s',
+            correction, previous_analysis
+        )
+
         if not previous_analysis or not correction:
             return Response(
                 {'error': 'previous_analysis and correction required'},
@@ -195,6 +200,7 @@ class ClientMealRecalculateView(APIView):
             result = async_to_sync(recalculate_meal_for_client)(
                 client, previous_analysis, correction
             )
+            logger.info('[RECALCULATE VIEW] Result: %s', result)
             return Response(result)
         except Exception as e:
             return Response(
