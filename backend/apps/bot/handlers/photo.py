@@ -50,7 +50,7 @@ async def handle_photo(bot: TelegramBot, client: Client, message: dict):
             return
 
         # Send acknowledgment message
-        await send_message(bot.token, chat_id, '📸 Фото получил, анализирую...')
+        await send_message(bot.token, chat_id, '📸 Фото получил! Анализирую, это займёт около минуты...')
 
         # Classify and analyze in one call
         result = await classify_and_analyze(bot, image_data, caption)
