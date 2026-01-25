@@ -130,12 +130,61 @@ def get_cached_pricing(provider: str, model_id: str) -> tuple[float, float] | No
     """Возвращает (price_input, price_output) за 1M токенов из кэша, или None."""
     metadata = _openrouter_cache['data']
     if not metadata:
+        # Try to fetch synchronously if cache is empty
+        _fetch_openrouter_metadata_sync()
+        metadata = _openrouter_cache['data']
+    if not metadata:
         return None
     or_prefix = OPENROUTER_PROVIDER_MAP.get(provider, provider)
     meta = _find_openrouter_meta(model_id, or_prefix, metadata)
     if meta:
         return (meta['price_input'], meta['price_output'])
     return None
+
+
+def _fetch_openrouter_metadata_sync() -> None:
+    """Synchronous version to populate cache if needed."""
+    import time as time_module
+    now = time_module.time()
+    if _openrouter_cache['data'] and (now - _openrouter_cache['fetched_at']) < _CACHE_TTL:
+        return
+
+    try:
+        with httpx.Client(timeout=20) as client:
+            resp = client.get('https://openrouter.ai/api/v1/models')
+            resp.raise_for_status()
+            data = resp.json()
+
+        result = {}
+        for m in data.get('data', []):
+            or_id = m.get('id', '')
+            parts = or_id.split('/', 1)
+            if len(parts) != 2:
+                continue
+            provider_prefix, model_id = parts
+
+            pricing = m.get('pricing', {})
+            architecture = m.get('architecture', {})
+            input_modalities = architecture.get('input_modalities', [])
+            output_modalities = architecture.get('output_modalities', [])
+
+            prompt_price = float(pricing.get('prompt', 0) or 0)
+            completion_price = float(pricing.get('completion', 0) or 0)
+
+            result[f"{provider_prefix}/{model_id}"] = {
+                'price_input': round(prompt_price * 1_000_000, 4),
+                'price_output': round(completion_price * 1_000_000, 4),
+                'supports_text': 'text' in input_modalities,
+                'supports_vision': 'image' in input_modalities,
+                'supports_audio': 'audio' in input_modalities,
+                'context_length': m.get('context_length', 0),
+                'name': m.get('name', ''),
+            }
+
+        _openrouter_cache['data'] = result
+        _openrouter_cache['fetched_at'] = now
+    except Exception:
+        pass
 
 
 async def fetch_models(provider: str, api_key: str) -> list[dict]:
