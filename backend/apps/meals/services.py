@@ -325,16 +325,26 @@ async def save_meal(client: Client, image_data: bytes, analysis: dict) -> Meal:
 
 async def get_daily_summary(client: Client, target_date: date = None) -> dict:
     """Calculate daily nutrition summary: consumed vs remaining."""
+    import zoneinfo
+
+    # Use client's timezone for "today" calculation
+    client_obj = await sync_to_async(lambda: Client.objects.get(pk=client.pk))()
+    try:
+        client_tz = zoneinfo.ZoneInfo(client_obj.timezone or 'Europe/Moscow')
+    except Exception:
+        client_tz = zoneinfo.ZoneInfo('Europe/Moscow')
+
     if target_date is None:
-        target_date = timezone.localdate()
+        # Get current date in client's timezone
+        now_in_client_tz = timezone.now().astimezone(client_tz)
+        target_date = now_in_client_tz.date()
 
     day_start = datetime.combine(target_date, time.min)
     day_end = datetime.combine(target_date, time.max)
 
-    # Make timezone-aware
-    tz = timezone.get_current_timezone()
-    day_start = timezone.make_aware(day_start, tz)
-    day_end = timezone.make_aware(day_end, tz)
+    # Make timezone-aware using client's timezone
+    day_start = day_start.replace(tzinfo=client_tz)
+    day_end = day_end.replace(tzinfo=client_tz)
 
     meals = await sync_to_async(
         lambda: list(
@@ -354,11 +364,7 @@ async def get_daily_summary(client: Client, target_date: date = None) -> dict:
         'meals_count': len(meals),
     }
 
-    # Get client norms
-    client_obj = await sync_to_async(
-        lambda: Client.objects.get(pk=client.pk)
-    )()
-
+    # Client norms (client_obj already fetched above for timezone)
     norms = {
         'calories': client_obj.daily_calories or 2000,
         'proteins': client_obj.daily_proteins or 80,
