@@ -19,7 +19,8 @@ export interface Meal {
   fats: number | null
   carbohydrates: number | null
   meal_time: string
-  photo?: string
+  image?: string
+  ingredients?: string[]
 }
 
 export interface DailySummary {
