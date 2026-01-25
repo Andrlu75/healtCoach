@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 
 from django.utils import timezone
@@ -7,11 +8,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import Client
+from apps.chat.models import InteractionLog
 from apps.meals.models import Meal
 from apps.meals.serializers import MealCreateSerializer, MealSerializer
-from apps.meals.services import analyze_food_for_client
+from apps.meals.services import analyze_food_for_client, get_daily_summary
+from apps.persona.models import TelegramBot
 from apps.reminders.models import Reminder
 from apps.reminders.serializers import ReminderSerializer
+
+logger = logging.getLogger(__name__)
 
 
 def get_client_from_token(request):
@@ -54,6 +59,8 @@ class ClientMealListView(APIView):
 
     def post(self, request):
         """Create a new meal for the authenticated client."""
+        from asgiref.sync import async_to_sync
+
         client = get_client_from_token(request)
         if not client:
             return Response(status=status.HTTP_403_FORBIDDEN)
@@ -66,6 +73,13 @@ class ClientMealListView(APIView):
         serializer = MealCreateSerializer(data=data)
         if serializer.is_valid():
             meal = serializer.save()
+
+            # Log interaction
+            _log_meal_interaction(client, meal)
+
+            # Send notification to coach
+            async_to_sync(_notify_coach_about_meal_miniapp)(client, meal)
+
             return Response(MealSerializer(meal).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -193,3 +207,97 @@ class ClientReminderListView(APIView):
         reminder.is_active = is_active
         reminder.save(update_fields=['is_active'])
         return Response(ReminderSerializer(reminder).data)
+
+
+def _log_meal_interaction(client: Client, meal: Meal):
+    """Log meal creation from miniapp as interaction."""
+    try:
+        InteractionLog.objects.create(
+            client=client,
+            coach=client.coach,
+            interaction_type='miniapp',
+            client_input=f'[Miniapp] Добавлено блюдо: {meal.dish_name}',
+            ai_request={
+                'source': 'miniapp',
+                'meal_id': meal.pk,
+            },
+            ai_response={
+                'dish_name': meal.dish_name,
+                'dish_type': meal.dish_type,
+                'calories': meal.calories,
+                'proteins': meal.proteins,
+                'fats': meal.fats,
+                'carbohydrates': meal.carbohydrates,
+            },
+            client_output='Meal saved via miniapp',
+            provider='miniapp',
+            model='',
+            duration_ms=0,
+        )
+    except Exception as e:
+        logger.warning('Failed to log meal interaction: %s', e)
+
+
+async def _notify_coach_about_meal_miniapp(client: Client, meal: Meal):
+    """Send notification about meal to coach's report chat (from miniapp)."""
+    from asgiref.sync import sync_to_async
+    from apps.bot.telegram_api import send_message
+
+    try:
+        # Get bot for client's coach
+        bot = await sync_to_async(
+            lambda: TelegramBot.objects.filter(coach=client.coach).first()
+        )()
+        if not bot:
+            return
+
+        # Get coach's notification chat ID
+        notification_chat_id = await sync_to_async(lambda: client.coach.telegram_notification_chat_id)()
+        if not notification_chat_id:
+            return
+
+        # Get daily summary
+        summary = await get_daily_summary(client)
+
+        # Format notification message
+        client_name = await sync_to_async(
+            lambda: f'{client.first_name} {client.last_name}'.strip() or client.telegram_username or f'Клиент #{client.pk}'
+        )()
+
+        dish_name = meal.dish_name or 'Неизвестное блюдо'
+
+        # Build KBJU string
+        kbju_parts = []
+        if meal.calories:
+            kbju_parts.append(f'{int(meal.calories)} ккал')
+        if meal.proteins:
+            kbju_parts.append(f'Б: {int(meal.proteins)}')
+        if meal.fats:
+            kbju_parts.append(f'Ж: {int(meal.fats)}')
+        if meal.carbohydrates:
+            kbju_parts.append(f'У: {int(meal.carbohydrates)}')
+        kbju_str = ' | '.join(kbju_parts) if kbju_parts else 'КБЖУ не определено'
+
+        # Daily totals from summary
+        consumed = summary.get('consumed', {})
+        norms = summary.get('norms', {})
+        daily_calories = consumed.get('calories', 0)
+        daily_target = norms.get('calories', 0)
+
+        message = (
+            f'🍽 <b>{client_name}</b> (miniapp)\n\n'
+            f'<b>{dish_name}</b>\n'
+            f'{kbju_str}\n\n'
+        )
+
+        if daily_target:
+            progress_pct = int(daily_calories / daily_target * 100) if daily_target else 0
+            message += f'📊 За день: {int(daily_calories)} / {int(daily_target)} ккал ({progress_pct}%)'
+        else:
+            message += f'📊 За день: {int(daily_calories)} ккал'
+
+        await send_message(bot.token, notification_chat_id, message, parse_mode='HTML')
+        logger.info('[NOTIFY] Sent miniapp meal notification for client=%s to chat=%s', client.pk, notification_chat_id)
+
+    except Exception as e:
+        logger.warning('[NOTIFY] Failed to send miniapp meal notification: %s', e)
