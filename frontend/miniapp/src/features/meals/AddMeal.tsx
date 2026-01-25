@@ -387,55 +387,55 @@ function AddMeal() {
         <span className="text-sm">Назад к фото</span>
       </button>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {/* Превью фото */}
-        {photoPreview && (
-          <img
-            src={photoPreview}
-            alt="Фото блюда"
-            className="w-full h-40 object-cover rounded-xl"
-          />
-        )}
+      {/* Превью фото */}
+      {photoPreview && (
+        <img
+          src={photoPreview}
+          alt="Фото блюда"
+          className="w-full h-40 object-cover rounded-xl mb-4"
+        />
+      )}
 
-        {/* AI ответ с рекомендациями */}
-        {aiResponse && (
-          <Card variant="elevated" className="p-4">
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm leading-relaxed">
-                {aiResponse}
-              </p>
-            </div>
-          </Card>
-        )}
-
-        {/* Поле уточнения */}
-        <Card variant="elevated" className="p-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Хотите уточнить?
-          </label>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Например: без сахара, порция 200г"
-              value={correction}
-              onChange={(e) => setCorrection(e.target.value)}
-              className="flex-1"
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={!correction.trim() || recalculateMutation.isPending}
-              onClick={handleRecalculate}
-              className="shrink-0"
-            >
-              <RefreshCw size={16} className={recalculateMutation.isPending ? 'animate-spin' : ''} />
-            </Button>
+      {/* AI ответ с рекомендациями */}
+      {aiResponse && (
+        <Card variant="elevated" className="p-4 mb-4">
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm leading-relaxed">
+              {aiResponse}
+            </p>
           </div>
-          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            Укажите, если что-то не так: другие продукты, размер порции, способ приготовления
-          </p>
         </Card>
+      )}
 
+      {/* Поле уточнения - вне формы */}
+      <Card variant="elevated" className="p-4 mb-4">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Хотите уточнить?
+        </label>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Например: без сахара, порция 200г"
+            value={correction}
+            onChange={(e) => setCorrection(e.target.value)}
+            className="flex-1"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={!correction.trim() || recalculateMutation.isPending}
+            onClick={handleRecalculate}
+            className="shrink-0"
+          >
+            <RefreshCw size={16} className={recalculateMutation.isPending ? 'animate-spin' : ''} />
+          </Button>
+        </div>
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          Укажите, если что-то не так: другие продукты, размер порции, способ приготовления
+        </p>
+      </Card>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* Состав ингредиентов */}
         {ingredients.length > 0 && (
           <Card variant="elevated" className="p-4">
