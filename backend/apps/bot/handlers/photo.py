@@ -372,7 +372,7 @@ async def _handle_food_photo(bot: TelegramBot, client: Client, chat_id: int, ima
 
 async def _handle_data_photo(bot: TelegramBot, client: Client, chat_id: int, image_data: bytes):
     """Parse health metrics from photo (scales, trackers, etc.)."""
-    metrics_data = await parse_metrics_from_photo(bot, image_data)
+    metrics_data = await parse_metrics_from_photo(bot, image_data, client)
     if metrics_data:
         await save_metrics(client, metrics_data)
     response_text = format_metrics_response(metrics_data)

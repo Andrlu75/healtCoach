@@ -37,11 +37,18 @@ PARSE_METRICS_PROMPT = """Проанализируй фото и извлеки 
 """
 
 
-async def parse_metrics_from_photo(bot: TelegramBot, image_data: bytes) -> list[dict]:
+async def parse_metrics_from_photo(bot: TelegramBot, image_data: bytes, client: Client = None) -> list[dict]:
     """Use AI vision to extract health metrics from a photo."""
-    persona = await sync_to_async(
-        lambda: BotPersona.objects.filter(coach=bot.coach).first()
-    )()
+    # Use client's persona or coach's default
+    persona = None
+    if client:
+        persona = await sync_to_async(lambda: client.persona)()
+
+    if not persona:
+        persona = await sync_to_async(
+            lambda: BotPersona.objects.filter(coach=bot.coach).first()
+        )()
+
     if not persona:
         raise ValueError(f'No BotPersona configured for coach {bot.coach_id}')
 

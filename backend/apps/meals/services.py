@@ -111,13 +111,27 @@ ANALYZE_FOOD_PROMPT = """Проанализируй фото еды и верн�
 """
 
 
-async def _get_vision_provider(bot: TelegramBot):
-    """Get vision AI provider for the bot's coach."""
-    logger.info('[VISION] Getting provider for bot=%s coach=%s', bot.pk, bot.coach_id)
+async def _get_vision_provider(bot: TelegramBot, client: Client = None):
+    """Get vision AI provider for the bot's coach.
 
-    persona = await sync_to_async(
-        lambda: BotPersona.objects.filter(coach=bot.coach).first()
-    )()
+    Uses client's persona if available, otherwise falls back to coach's default persona.
+    """
+    logger.info('[VISION] Getting provider for bot=%s coach=%s client=%s', bot.pk, bot.coach_id, client.pk if client else None)
+
+    # Try client's persona first, then fallback to coach's default
+    persona = None
+    if client:
+        persona = await sync_to_async(lambda: client.persona)()
+        if persona:
+            logger.info('[VISION] Using client persona=%s', persona.pk)
+
+    if not persona:
+        persona = await sync_to_async(
+            lambda: BotPersona.objects.filter(coach=bot.coach).first()
+        )()
+        if persona:
+            logger.info('[VISION] Using coach default persona=%s', persona.pk)
+
     if not persona:
         logger.error('[VISION] No BotPersona for coach=%s', bot.coach_id)
         raise ValueError(f'No BotPersona configured for coach {bot.coach_id}')
@@ -536,7 +550,7 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
 
     logger.info('[ANALYZE] Found bot=%s', bot.pk)
 
-    provider, provider_name, model, persona = await _get_vision_provider(bot)
+    provider, provider_name, model, persona = await _get_vision_provider(bot, client)
 
     prompt = ANALYZE_FOOD_PROMPT
     if caption:
@@ -714,10 +728,12 @@ async def recalculate_meal_for_client(client: Client, previous_analysis: dict, c
     if not bot:
         raise ValueError('No bot configured for client coach')
 
-    # Get persona for text provider settings
-    persona = await sync_to_async(
-        lambda: BotPersona.objects.filter(coach=bot.coach).first()
-    )()
+    # Get persona - client's persona or coach's default
+    persona = await sync_to_async(lambda: client.persona)()
+    if not persona:
+        persona = await sync_to_async(
+            lambda: BotPersona.objects.filter(coach=bot.coach).first()
+        )()
     if not persona:
         raise ValueError(f'No BotPersona configured for coach {bot.coach_id}')
 
