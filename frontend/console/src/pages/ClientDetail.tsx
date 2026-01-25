@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, Trash2, MapPin, Clock, Send } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, MapPin, Clock, Send, ChevronDown, ChevronRight } from 'lucide-react'
 import { clientsApi } from '../api/clients'
 import { settingsApi } from '../api/settings'
 import { mealsApi, metricsApi, chatApi } from '../api/data'
@@ -325,6 +325,44 @@ export default function ClientDetail() {
 
 function MealsTab({ meals }: { meals: Meal[] }) {
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null)
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set())
+
+  // Group meals by date
+  const mealsByDate = useMemo(() => {
+    const grouped: Record<string, Meal[]> = {}
+    meals.forEach((meal) => {
+      const date = dayjs(meal.meal_time).format('YYYY-MM-DD')
+      if (!grouped[date]) grouped[date] = []
+      grouped[date].push(meal)
+    })
+    // Sort dates descending (newest first)
+    return Object.entries(grouped).sort((a, b) => b[0].localeCompare(a[0]))
+  }, [meals])
+
+  const toggleDate = (date: string) => {
+    setExpandedDates((prev) => {
+      const next = new Set(prev)
+      if (next.has(date)) {
+        next.delete(date)
+      } else {
+        next.add(date)
+      }
+      return next
+    })
+  }
+
+  // Calculate daily totals
+  const getDayTotals = (dayMeals: Meal[]) => {
+    return dayMeals.reduce(
+      (acc, m) => ({
+        calories: acc.calories + (m.calories || 0),
+        proteins: acc.proteins + (m.proteins || 0),
+        fats: acc.fats + (m.fats || 0),
+        carbs: acc.carbs + (m.carbohydrates || 0),
+      }),
+      { calories: 0, proteins: 0, fats: 0, carbs: 0 }
+    )
+  }
 
   if (!meals.length) {
     return <p className="text-sm text-gray-400 py-4">Нет записей о питании</p>
@@ -332,49 +370,80 @@ function MealsTab({ meals }: { meals: Meal[] }) {
 
   return (
     <>
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 w-16">Фото</th>
-              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Время</th>
-              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Блюдо</th>
-              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Тип</th>
-              <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Ккал</th>
-              <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Б</th>
-              <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Ж</th>
-              <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">У</th>
-            </tr>
-          </thead>
-          <tbody>
-            {meals.map((m) => (
-              <tr key={m.id} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedMeal(m)}>
-                <td className="px-4 py-2">
-                  {m.image ? (
-                    <img
-                      src={m.image}
-                      alt={m.dish_name}
-                      className="w-12 h-12 object-cover rounded-lg hover:opacity-80 transition-opacity"
-                    />
+      <div className="space-y-3">
+        {mealsByDate.map(([date, dayMeals]) => {
+          const isExpanded = expandedDates.has(date)
+          const totals = getDayTotals(dayMeals)
+          const formattedDate = dayjs(date).format('DD MMMM YYYY')
+
+          return (
+            <div key={date} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              {/* Date header */}
+              <button
+                onClick={() => toggleDate(date)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  {isExpanded ? (
+                    <ChevronDown size={18} className="text-gray-400" />
                   ) : (
-                    <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <span className="text-gray-400 text-xs">—</span>
-                    </div>
+                    <ChevronRight size={18} className="text-gray-400" />
                   )}
-                </td>
-                <td className="px-4 py-2 text-sm text-gray-500">
-                  {dayjs(m.meal_time).format('DD.MM HH:mm')}
-                </td>
-                <td className="px-4 py-2 text-sm text-gray-900">{m.dish_name}</td>
-                <td className="px-4 py-2 text-sm text-gray-500">{m.dish_type}</td>
-                <td className="px-4 py-2 text-sm text-right">{m.calories ? Math.round(m.calories) : '—'}</td>
-                <td className="px-4 py-2 text-sm text-right">{m.proteins ? Math.round(m.proteins) : '—'}</td>
-                <td className="px-4 py-2 text-sm text-right">{m.fats ? Math.round(m.fats) : '—'}</td>
-                <td className="px-4 py-2 text-sm text-right">{m.carbohydrates ? Math.round(m.carbohydrates) : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  <span className="font-medium text-gray-900">{formattedDate}</span>
+                  <span className="text-sm text-gray-500">({dayMeals.length} приёмов пищи)</span>
+                </div>
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="text-orange-600 font-medium">{Math.round(totals.calories)} ккал</span>
+                  <span className="text-gray-500">Б: {Math.round(totals.proteins)}</span>
+                  <span className="text-gray-500">Ж: {Math.round(totals.fats)}</span>
+                  <span className="text-gray-500">У: {Math.round(totals.carbs)}</span>
+                </div>
+              </button>
+
+              {/* Meals list */}
+              {isExpanded && (
+                <div className="border-t border-gray-100">
+                  {dayMeals.map((m) => (
+                    <div
+                      key={m.id}
+                      onClick={() => setSelectedMeal(m)}
+                      className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-b-0"
+                    >
+                      {m.image ? (
+                        <img
+                          src={m.image}
+                          alt={m.dish_name}
+                          className="w-14 h-14 object-cover rounded-lg flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <span className="text-gray-400 text-xs">—</span>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-900 truncate">{m.dish_name}</span>
+                          {m.dish_type && (
+                            <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">{m.dish_type}</span>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-500 mt-0.5">
+                          {dayjs(m.meal_time).format('HH:mm')}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm text-right">
+                        <span className="text-orange-600 font-medium w-16">{m.calories ? Math.round(m.calories) : '—'}</span>
+                        <span className="text-gray-500 w-10">{m.proteins ? Math.round(m.proteins) : '—'}</span>
+                        <span className="text-gray-500 w-10">{m.fats ? Math.round(m.fats) : '—'}</span>
+                        <span className="text-gray-500 w-10">{m.carbohydrates ? Math.round(m.carbohydrates) : '—'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {/* Meal detail modal */}
