@@ -83,7 +83,7 @@ const ClientDetail = () => {
       .sort((a, b) => new Date(b.assigned_at).getTime() - new Date(a.assigned_at).getTime());
     
     let streak = 0;
-    for (const assignment of sortedCompleted) {
+    for (const _assignment of sortedCompleted) {
       streak++;
       // Simple streak - just count completed
     }

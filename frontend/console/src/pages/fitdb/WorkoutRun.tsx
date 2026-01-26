@@ -66,7 +66,7 @@ const WorkoutRun = () => {
   const startTimeRef = useRef<Date | null>(null);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const selectedExercise = exercises.find(e => e.id === selectedExerciseId);
   const completedCount = completedExercises.size;

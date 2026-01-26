@@ -62,7 +62,7 @@ const Index = () => {
     });
   }, [exercises, searchQuery, selectedMuscleGroup, selectedCategory]);
 
-  const handleSave = async (data: Omit<Exercise, 'id'> & { id?: string }, imageFile?: File) => {
+  const handleSave = async (data: Omit<Exercise, 'id'> & { id?: string }) => {
     try {
       const exerciseData = {
         name: data.name,
@@ -70,8 +70,8 @@ const Index = () => {
         muscleGroup: data.muscleGroup,
         category: data.category,
         difficulty: data.difficulty,
-        equipment: data.equipment || null,
-        imageUrl: data.imageUrl || null,
+        equipment: data.equipment || undefined,
+        imageUrl: data.imageUrl || undefined,
       };
 
       if (data.id) {

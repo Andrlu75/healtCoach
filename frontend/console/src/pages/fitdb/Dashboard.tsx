@@ -87,7 +87,7 @@ const Dashboard = () => {
       setAssignments(assignmentData);
 
       // Calculate stats per client
-      const clientStats = (clientsRes.data || []).map(client => {
+      const clientStats = (clientsRes.data || []).map((client: { id: string; name: string; email: string | null }) => {
         const clientAssignments = assignmentData.filter(a => a.client_id === client.id);
         const total = clientAssignments.length;
         const completed = clientAssignments.filter(a => a.status === 'completed').length;
@@ -286,7 +286,7 @@ const Dashboard = () => {
                         outerRadius={80}
                         paddingAngle={5}
                         dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                       >
                         {pieChartData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />

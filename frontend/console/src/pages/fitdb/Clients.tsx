@@ -10,8 +10,7 @@ import {
   Loader2,
   User,
   Phone,
-  Mail,
-  Dumbbell
+  Mail
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { clientsApi } from '@/api/fitdb';

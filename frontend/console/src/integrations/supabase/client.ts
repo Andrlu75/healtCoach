@@ -17,10 +17,6 @@ interface QueryResult<T> {
   error: Error | null;
 }
 
-interface CountResult {
-  count: number;
-}
-
 // Маппинг таблиц на Django API endpoints
 const tableEndpoints: Record<string, string> = {
   clients: '/clients/fitdb/',

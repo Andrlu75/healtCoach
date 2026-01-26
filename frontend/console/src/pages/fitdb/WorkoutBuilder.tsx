@@ -8,18 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  ArrowLeft, 
-  Plus, 
-  Save, 
-  Trash2, 
-  GripVertical, 
+import {
+  ArrowLeft,
+  Plus,
+  Save,
+  Trash2,
+  GripVertical,
   Dumbbell,
-  Clock,
   Loader2,
-  Search,
-  X,
-  Weight
+  Search
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -65,7 +62,7 @@ const WorkoutBuilder = () => {
       .order('name');
 
     if (!error && data) {
-      setExercises(data.map(e => ({
+      setExercises(data.map((e: any) => ({
         id: e.id,
         name: e.name,
         description: e.description,
