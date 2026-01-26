@@ -8,9 +8,12 @@ from rest_framework.permissions import AllowAny
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db import transaction
 
-from apps.workouts.models import WorkoutTemplate, WorkoutTemplateBlock, WorkoutTemplateExercise
+from apps.workouts.models import (
+    WorkoutTemplate, WorkoutTemplateBlock, WorkoutTemplateExercise,
+    FitDBWorkoutAssignment, FitDBWorkoutSession, FitDBExerciseLog
+)
 from apps.exercises.models import Exercise
-from apps.accounts.models import Coach
+from apps.accounts.models import Coach, Client
 
 
 class FitDBWorkoutSerializer(serializers.ModelSerializer):
@@ -252,3 +255,117 @@ class FitDBWorkoutExerciseViewSet(viewsets.ModelViewSet):
             return Response({'error': 'workout_id is required'}, status=400)
         WorkoutTemplateExercise.objects.filter(block__template_id=workout_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ============== FitDB Assignments ==============
+
+class FitDBAssignmentSerializer(serializers.ModelSerializer):
+    """Serializer for FitDB workout assignment"""
+    workout_id = serializers.PrimaryKeyRelatedField(
+        source='workout',
+        queryset=WorkoutTemplate.objects.all()
+    )
+    client_id = serializers.PrimaryKeyRelatedField(
+        source='client',
+        queryset=Client.objects.all()
+    )
+    workout_detail = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FitDBWorkoutAssignment
+        fields = ['id', 'workout_id', 'client_id', 'assigned_at', 'due_date', 'status', 'notes', 'workout_detail']
+        read_only_fields = ['assigned_at', 'workout_detail']
+
+    def get_workout_detail(self, obj):
+        return {'name': obj.workout.name} if obj.workout else None
+
+
+class FitDBAssignmentViewSet(viewsets.ModelViewSet):
+    """FitDB API for workout assignments"""
+    permission_classes = [AllowAny]
+    serializer_class = FitDBAssignmentSerializer
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['assigned_at', 'due_date', 'status']
+    ordering = ['-assigned_at']
+
+    def get_queryset(self):
+        queryset = FitDBWorkoutAssignment.objects.select_related('workout', 'client')
+        client_id = self.request.query_params.get('client_id')
+        workout_id = self.request.query_params.get('workout_id')
+        status_filter = self.request.query_params.get('status')
+
+        if client_id:
+            queryset = queryset.filter(client_id=client_id)
+        if workout_id:
+            queryset = queryset.filter(workout_id=workout_id)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        return queryset
+
+
+# ============== FitDB Sessions ==============
+
+class FitDBSessionSerializer(serializers.ModelSerializer):
+    """Serializer for FitDB workout session"""
+    workout_id = serializers.PrimaryKeyRelatedField(
+        source='workout',
+        queryset=WorkoutTemplate.objects.all()
+    )
+    workout_detail = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FitDBWorkoutSession
+        fields = ['id', 'workout_id', 'started_at', 'completed_at', 'duration_seconds', 'workout_detail']
+        read_only_fields = ['started_at', 'workout_detail']
+
+    def get_workout_detail(self, obj):
+        return {'name': obj.workout.name} if obj.workout else None
+
+
+class FitDBSessionViewSet(viewsets.ModelViewSet):
+    """FitDB API for workout sessions"""
+    permission_classes = [AllowAny]
+    serializer_class = FitDBSessionSerializer
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['started_at']
+    ordering = ['-started_at']
+
+    def get_queryset(self):
+        queryset = FitDBWorkoutSession.objects.select_related('workout')
+        workout_id = self.request.query_params.get('workout_id')
+        if workout_id:
+            queryset = queryset.filter(workout_id=workout_id)
+        return queryset
+
+
+# ============== FitDB Exercise Logs ==============
+
+class FitDBExerciseLogSerializer(serializers.ModelSerializer):
+    """Serializer for FitDB exercise log"""
+    session_id = serializers.PrimaryKeyRelatedField(
+        source='session',
+        queryset=FitDBWorkoutSession.objects.all()
+    )
+    exercise_id = serializers.PrimaryKeyRelatedField(
+        source='exercise',
+        queryset=Exercise.objects.all()
+    )
+
+    class Meta:
+        model = FitDBExerciseLog
+        fields = ['id', 'session_id', 'exercise_id', 'set_number', 'reps_completed', 'weight_kg', 'completed_at']
+        read_only_fields = ['completed_at']
+
+
+class FitDBExerciseLogViewSet(viewsets.ModelViewSet):
+    """FitDB API for exercise logs"""
+    permission_classes = [AllowAny]
+    serializer_class = FitDBExerciseLogSerializer
+
+    def get_queryset(self):
+        queryset = FitDBExerciseLog.objects.select_related('session', 'exercise')
+        session_id = self.request.query_params.get('session_id')
+        if session_id:
+            queryset = queryset.filter(session_id=session_id)
+        return queryset

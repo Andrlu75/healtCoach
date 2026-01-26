@@ -10,7 +10,10 @@ from .views import (
     TrainingProgramViewSet,
     WorkoutSessionViewSet,
 )
-from .views.fitdb import FitDBWorkoutViewSet, FitDBWorkoutExerciseViewSet
+from .views.fitdb import (
+    FitDBWorkoutViewSet, FitDBWorkoutExerciseViewSet,
+    FitDBAssignmentViewSet, FitDBSessionViewSet, FitDBExerciseLogViewSet
+)
 
 router = DefaultRouter()
 # Шаблоны
@@ -31,7 +34,14 @@ fitdb_router = DefaultRouter()
 fitdb_router.register('workouts', FitDBWorkoutViewSet, basename='fitdb-workout')
 fitdb_router.register('workout-exercises', FitDBWorkoutExerciseViewSet, basename='fitdb-workout-exercise')
 
+# FitDB assignments, sessions, logs (outside fitdb/ prefix for backwards compatibility)
+assignments_router = DefaultRouter()
+assignments_router.register('assignments', FitDBAssignmentViewSet, basename='fitdb-assignment')
+assignments_router.register('sessions', FitDBSessionViewSet, basename='fitdb-session')
+assignments_router.register('exercise-logs', FitDBExerciseLogViewSet, basename='fitdb-exercise-log')
+
 urlpatterns = [
     path('fitdb/', include(fitdb_router.urls)),
+    path('', include(assignments_router.urls)),
     path('', include(router.urls)),
 ]
