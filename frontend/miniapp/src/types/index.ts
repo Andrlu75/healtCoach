@@ -2,6 +2,10 @@ export interface ClientData {
   id: number
   first_name: string
   last_name: string
+  gender: 'male' | 'female' | null
+  age: number | null
+  height: number | null
+  weight: number | null
   daily_calories: number | null
   daily_proteins: number | null
   daily_fats: number | null

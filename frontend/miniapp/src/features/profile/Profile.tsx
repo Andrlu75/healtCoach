@@ -1,16 +1,20 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { User, Target, Moon, Sun, LogOut } from 'lucide-react'
+import { User, Target, Moon, Sun, LogOut, Check } from 'lucide-react'
 import { useAuthStore } from '../auth'
 import { useThemeStore } from '../../shared/stores/theme'
 import { useTelegram, useHaptic } from '../../shared/hooks'
 import { Card } from '../../shared/components/ui'
+import { updateProfile } from '../../api/endpoints'
 
 function Profile() {
   const client = useAuthStore((s) => s.client)
+  const setClient = useAuthStore((s) => s.setClient)
   const logout = useAuthStore((s) => s.logout)
   const { theme, setTheme } = useThemeStore()
   const { showConfirm, close } = useTelegram()
   const { impact, notification } = useHaptic()
+  const [savingGender, setSavingGender] = useState(false)
 
   const handleThemeToggle = () => {
     impact('light')
@@ -23,6 +27,24 @@ function Profile() {
       notification('success')
       logout()
       close()
+    }
+  }
+
+  const handleGenderChange = async (gender: 'male' | 'female') => {
+    if (savingGender || client?.gender === gender) return
+    impact('light')
+    setSavingGender(true)
+    try {
+      const response = await updateProfile({ gender })
+      if (client) {
+        setClient({ ...client, gender: response.data.gender })
+      }
+      notification('success')
+    } catch (error) {
+      console.error('Error updating gender:', error)
+      notification('error')
+    } finally {
+      setSavingGender(false)
     }
   }
 
@@ -49,6 +71,63 @@ function Profile() {
               Клиент
             </p>
           </div>
+        </div>
+      </Card>
+
+      {/* Gender selector */}
+      <Card variant="elevated" className="p-4">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+          Пол
+        </h3>
+        <div className="flex gap-2">
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={() => handleGenderChange('male')}
+            disabled={savingGender}
+            className={`flex-1 p-3 rounded-xl border-2 transition-colors ${
+              client?.gender === 'male'
+                ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-lg">👨</span>
+              <span className={`text-sm font-medium ${
+                client?.gender === 'male'
+                  ? 'text-blue-700 dark:text-blue-300'
+                  : 'text-gray-700 dark:text-gray-300'
+              }`}>
+                Мужской
+              </span>
+              {client?.gender === 'male' && (
+                <Check size={16} className="text-blue-600" />
+              )}
+            </div>
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={() => handleGenderChange('female')}
+            disabled={savingGender}
+            className={`flex-1 p-3 rounded-xl border-2 transition-colors ${
+              client?.gender === 'female'
+                ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-lg">👩</span>
+              <span className={`text-sm font-medium ${
+                client?.gender === 'female'
+                  ? 'text-blue-700 dark:text-blue-300'
+                  : 'text-gray-700 dark:text-gray-300'
+              }`}>
+                Женский
+              </span>
+              {client?.gender === 'female' && (
+                <Check size={16} className="text-blue-600" />
+              )}
+            </div>
+          </motion.button>
         </div>
       </Card>
 

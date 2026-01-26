@@ -440,3 +440,93 @@ class ClientOnboardingSubmitView(APIView):
             return float(value)
         except (ValueError, TypeError):
             return None
+
+
+class ClientProfileView(APIView):
+    """Get and update client profile."""
+
+    def get(self, request):
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        return Response({
+            'id': client.pk,
+            'first_name': client.first_name,
+            'last_name': client.last_name,
+            'gender': client.gender,
+            'age': client.age,
+            'height': client.height,
+            'weight': float(client.weight) if client.weight else None,
+            'daily_calories': client.daily_calories,
+            'daily_proteins': float(client.daily_proteins) if client.daily_proteins else None,
+            'daily_fats': float(client.daily_fats) if client.daily_fats else None,
+            'daily_carbs': float(client.daily_carbs) if client.daily_carbs else None,
+            'daily_water': float(client.daily_water) if client.daily_water else None,
+            'onboarding_completed': client.onboarding_completed,
+        })
+
+    def patch(self, request):
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        data = request.data
+        updated_fields = []
+
+        # Update basic profile fields
+        if 'gender' in data:
+            client.gender = data['gender']
+            updated_fields.append('gender')
+
+        if 'age' in data:
+            client.age = data['age']
+            updated_fields.append('age')
+
+        if 'height' in data:
+            client.height = data['height']
+            updated_fields.append('height')
+
+        if 'weight' in data:
+            client.weight = data['weight']
+            updated_fields.append('weight')
+
+        # Update nutrition goals
+        if 'daily_calories' in data:
+            client.daily_calories = data['daily_calories']
+            updated_fields.append('daily_calories')
+
+        if 'daily_proteins' in data:
+            client.daily_proteins = data['daily_proteins']
+            updated_fields.append('daily_proteins')
+
+        if 'daily_fats' in data:
+            client.daily_fats = data['daily_fats']
+            updated_fields.append('daily_fats')
+
+        if 'daily_carbs' in data:
+            client.daily_carbs = data['daily_carbs']
+            updated_fields.append('daily_carbs')
+
+        if 'daily_water' in data:
+            client.daily_water = data['daily_water']
+            updated_fields.append('daily_water')
+
+        if updated_fields:
+            client.save(update_fields=updated_fields)
+
+        return Response({
+            'id': client.pk,
+            'first_name': client.first_name,
+            'last_name': client.last_name,
+            'gender': client.gender,
+            'age': client.age,
+            'height': client.height,
+            'weight': float(client.weight) if client.weight else None,
+            'daily_calories': client.daily_calories,
+            'daily_proteins': float(client.daily_proteins) if client.daily_proteins else None,
+            'daily_fats': float(client.daily_fats) if client.daily_fats else None,
+            'daily_carbs': float(client.daily_carbs) if client.daily_carbs else None,
+            'daily_water': float(client.daily_water) if client.daily_water else None,
+            'onboarding_completed': client.onboarding_completed,
+        })

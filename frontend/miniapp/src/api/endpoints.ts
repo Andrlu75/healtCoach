@@ -70,6 +70,10 @@ export const getProfile = () =>
   api.get('/miniapp/profile/')
 
 export const updateProfile = (data: Partial<{
+  gender: 'male' | 'female'
+  age: number
+  height: number
+  weight: number
   daily_calories: number
   daily_proteins: number
   daily_fats: number
