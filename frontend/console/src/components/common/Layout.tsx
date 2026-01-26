@@ -1,13 +1,11 @@
 import { Link, useLocation, Outlet } from 'react-router-dom'
-import { LayoutDashboard, Users, Bot, Brain, Send, LogOut, FileText, ClipboardList, LinkIcon, ScrollText, Dumbbell, Activity, Sparkles } from 'lucide-react'
+import { LayoutDashboard, Users, Bot, Brain, Send, LogOut, FileText, ClipboardList, LinkIcon, ScrollText, Dumbbell } from 'lucide-react'
 import { useAuthStore } from '../../stores/auth'
 
 const nav: { to: string; icon: React.ComponentType<{ size?: number }>; label: string; highlight?: boolean }[] = [
   { to: '/', icon: LayoutDashboard, label: 'Дашборд' },
   { to: '/clients', icon: Users, label: 'Клиенты' },
-  { to: '/fitdb', icon: Sparkles, label: 'Тренировки', highlight: true },
-  { to: '/exercises', icon: Dumbbell, label: 'Упражнения (старое)' },
-  { to: '/workouts', icon: Activity, label: 'Тренировки (старое)' },
+  { to: '/fitdb', icon: Dumbbell, label: 'Тренировки' },
   { to: '/logs', icon: ScrollText, label: 'Логи' },
   { to: '/reports', icon: FileText, label: 'Отчёты' },
   { to: '/onboarding', icon: ClipboardList, label: 'Онбординг' },

@@ -12,16 +12,7 @@ import Logs from './pages/Logs'
 import AISettings from './pages/settings/AISettings'
 import TelegramSettings from './pages/settings/TelegramSettings'
 import PersonaSettings from './pages/settings/PersonaSettings'
-// Упражнения
-import Exercises from './pages/exercises/Exercises'
-import ExerciseEditor from './pages/exercises/ExerciseEditor'
-import ExerciseCategories from './pages/exercises/ExerciseCategories'
-import ExerciseTypes from './pages/exercises/ExerciseTypes'
-// Тренировки
-import ClientWorkouts from './pages/workouts/ClientWorkouts'
-import WorkoutBuilder from './pages/workouts/WorkoutBuilder'
-import WorkoutTemplates from './pages/workouts/WorkoutTemplates'
-// FitDB (новый интерфейс тренировок)
+// FitDB (тренировки)
 import FitdbIndex from './pages/fitdb/Index'
 import FitdbDashboard from './pages/fitdb/Dashboard'
 import FitdbWorkouts from './pages/fitdb/Workouts'
@@ -55,19 +46,6 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="clients" element={<Clients />} />
           <Route path="clients/:id" element={<ClientDetail />} />
-          {/* Упражнения */}
-          <Route path="exercises" element={<Exercises />} />
-          <Route path="exercises/new" element={<ExerciseEditor />} />
-          <Route path="exercises/:id" element={<ExerciseEditor />} />
-          <Route path="exercises/categories" element={<ExerciseCategories />} />
-          <Route path="exercises/types" element={<ExerciseTypes />} />
-          {/* Тренировки */}
-          <Route path="workouts" element={<ClientWorkouts />} />
-          <Route path="workouts/new" element={<WorkoutBuilder />} />
-          <Route path="workouts/:id" element={<WorkoutBuilder />} />
-          <Route path="workouts/templates" element={<WorkoutTemplates />} />
-          <Route path="workouts/templates/new" element={<WorkoutBuilder />} />
-          <Route path="workouts/templates/:id" element={<WorkoutBuilder />} />
           {/* Остальное */}
           <Route path="onboarding" element={<OnboardingEditor />} />
           <Route path="logs" element={<Logs />} />
@@ -76,7 +54,7 @@ function App() {
           <Route path="settings/ai" element={<AISettings />} />
           <Route path="settings/telegram" element={<TelegramSettings />} />
           <Route path="settings/persona" element={<PersonaSettings />} />
-          {/* FitDB - новый интерфейс тренировок */}
+          {/* Тренировки (FitDB) */}
           <Route path="fitdb" element={<FitdbIndex />} />
           <Route path="fitdb/dashboard" element={<FitdbDashboard />} />
           <Route path="fitdb/workouts" element={<FitdbWorkouts />} />

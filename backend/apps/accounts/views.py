@@ -327,4 +327,5 @@ class FitDBClientViewSet(viewsets.ReadOnlyModelViewSet):
     ordering = ['first_name']
 
     def get_queryset(self):
-        return Client.objects.filter(status='active')
+        # Показываем всех клиентов кроме архивных
+        return Client.objects.exclude(status='archived')
