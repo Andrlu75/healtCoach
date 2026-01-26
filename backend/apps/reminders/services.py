@@ -6,6 +6,7 @@ import pytz
 from asgiref.sync import async_to_sync
 from django.utils import timezone
 
+from apps.bot.services import _build_client_context
 from apps.persona.models import AIProviderConfig, BotPersona, TelegramBot
 from core.ai.factory import get_ai_provider
 
@@ -80,10 +81,18 @@ def generate_smart_text(reminder: Reminder) -> str:
         f'Будь дружелюбным и позитивным. Не используй emoji.'
     )
 
+    # Build system prompt with client context (including gender)
+    system_prompt = persona.system_prompt or 'Ты персональный помощник по здоровью.'
+    client_context = _build_client_context(client)
+    if client_context:
+        system_prompt = system_prompt + client_context
+        if client.gender:
+            system_prompt += '\n\nВАЖНО: Используй формы обращения с учётом пола клиента.'
+
     try:
         response = async_to_sync(provider.complete)(
             messages=[{'role': 'user', 'content': prompt}],
-            system_prompt=persona.system_prompt or 'Ты персональный помощник по здоровью.',
+            system_prompt=system_prompt,
             max_tokens=100,
             temperature=0.9,
         )

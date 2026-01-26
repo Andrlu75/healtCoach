@@ -27,6 +27,7 @@ class ClientSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'telegram_user_id', 'telegram_username',
             'first_name', 'last_name', 'full_name',
+            'gender',
             'city', 'timezone', 'status',
             'height', 'weight', 'birth_date',
             'daily_calories', 'daily_proteins', 'daily_fats', 'daily_carbs', 'daily_water',
@@ -57,3 +58,28 @@ class ClientDetailSerializer(ClientSerializer):
     def get_last_activity(self, obj):
         last_msg = obj.messages.first()
         return last_msg.created_at if last_msg else None
+
+
+class FitDBClientSerializer(serializers.ModelSerializer):
+    """Serializer for FitDB client format"""
+    name = serializers.SerializerMethodField()
+    email = serializers.SerializerMethodField()
+    phone = serializers.SerializerMethodField()
+    notes = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Client
+        fields = ['id', 'name', 'email', 'phone', 'notes', 'created_at']
+
+    def get_name(self, obj):
+        name = f'{obj.first_name} {obj.last_name}'.strip()
+        return name or obj.telegram_username or f'Клиент {obj.id}'
+
+    def get_email(self, obj):
+        return None  # Client model doesn't have email
+
+    def get_phone(self, obj):
+        return None  # Client model doesn't have phone
+
+    def get_notes(self, obj):
+        return None  # Could add notes field later

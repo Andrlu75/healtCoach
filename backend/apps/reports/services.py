@@ -8,6 +8,7 @@ from django.core.files.base import ContentFile
 from django.template.loader import render_to_string
 
 from apps.accounts.models import Client
+from apps.bot.services import _build_client_context
 from apps.persona.models import AIProviderConfig, BotPersona
 
 from .generators.daily import collect_daily_data
@@ -86,10 +87,18 @@ def generate_ai_summary(client: Client, content: dict, report_type: str) -> str:
         f'Данные:\n{json.dumps(content, ensure_ascii=False, default=str)}'
     )
 
+    # Build system prompt with client context (including gender)
+    system_prompt = 'Ты опытный нутрициолог-аналитик. Пиши кратко и по делу.'
+    client_context = _build_client_context(client)
+    if client_context:
+        system_prompt = system_prompt + client_context
+        if client.gender:
+            system_prompt += '\n\nВАЖНО: Учитывай пол клиента в рекомендациях.'
+
     try:
         response = async_to_sync(provider.complete)(
             messages=[{'role': 'user', 'content': prompt}],
-            system_prompt='Ты опытный нутрициолог-аналитик. Пиши кратко и по делу.',
+            system_prompt=system_prompt,
             max_tokens=300,
             temperature=0.7,
         )

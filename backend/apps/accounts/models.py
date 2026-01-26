@@ -37,6 +37,11 @@ class Client(models.Model):
         ('archived', 'Архив'),
     ]
 
+    GENDER_CHOICES = [
+        ('male', 'Мужской'),
+        ('female', 'Женский'),
+    ]
+
     coach = models.ForeignKey(Coach, on_delete=models.CASCADE, related_name='clients')
     persona = models.ForeignKey('persona.BotPersona', null=True, blank=True, on_delete=models.SET_NULL, related_name='clients')
     telegram_user_id = models.BigIntegerField(unique=True)
@@ -46,6 +51,7 @@ class Client(models.Model):
     city = models.CharField(max_length=100, blank=True)
     timezone = models.CharField(max_length=50, default='Europe/Moscow')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, null=True, blank=True)
 
     # Физиологические данные
     height = models.IntegerField(null=True, blank=True)  # см

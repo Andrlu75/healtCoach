@@ -12,6 +12,63 @@ from core.ai.factory import get_ai_provider
 logger = logging.getLogger(__name__)
 
 
+def _build_client_context(client: Client) -> str:
+    """Build client context string with personal info including gender."""
+    parts = []
+
+    # Gender
+    if client.gender:
+        gender_label = 'мужчина' if client.gender == 'male' else 'женщина'
+        parts.append(f'Пол клиента: {gender_label}')
+
+    # Name
+    name = f'{client.first_name} {client.last_name}'.strip()
+    if name:
+        parts.append(f'Имя: {name}')
+
+    # Age from birth_date
+    if client.birth_date:
+        from datetime import date
+        today = date.today()
+        age = today.year - client.birth_date.year - (
+            (today.month, today.day) < (client.birth_date.month, client.birth_date.day)
+        )
+        parts.append(f'Возраст: {age} лет')
+
+    # Physical data
+    if client.height:
+        parts.append(f'Рост: {client.height} см')
+    if client.weight:
+        parts.append(f'Вес: {client.weight} кг')
+
+    # Daily norms
+    if client.daily_calories:
+        parts.append(f'Норма калорий: {client.daily_calories} ккал')
+
+    if not parts:
+        return ''
+
+    return '\n\n[Данные о клиенте]\n' + '\n'.join(parts)
+
+
+def _build_system_prompt(persona_prompt: str, client: Client) -> str:
+    """Build full system prompt with persona instructions and client context."""
+    client_context = _build_client_context(client)
+
+    if client_context:
+        # Add client context and instruction to consider gender
+        gender_instruction = ''
+        if client.gender:
+            gender_instruction = (
+                '\n\nВАЖНО: При всех ответах учитывай пол клиента. '
+                'Используй соответствующие формы обращения и рекомендации, '
+                'учитывая физиологические особенности.'
+            )
+        return persona_prompt + client_context + gender_instruction
+
+    return persona_prompt
+
+
 async def _get_persona(bot: TelegramBot, client: Client | None = None) -> BotPersona:
     def _resolve():
         # Priority: client.persona → coach default → first coach persona
@@ -96,6 +153,9 @@ async def get_ai_text_response(bot: TelegramBot, client: Client, text: str) -> s
     # Load context
     context = await _get_context_messages(client)
 
+    # Build system prompt with client context (including gender)
+    system_prompt = _build_system_prompt(persona.system_prompt, client)
+
     # Get AI provider
     provider_name = persona.text_provider or 'openai'
     model = persona.text_model or None
@@ -106,7 +166,7 @@ async def get_ai_text_response(bot: TelegramBot, client: Client, text: str) -> s
     start_time = time.time()
     response = await provider.complete(
         messages=context,
-        system_prompt=persona.system_prompt,
+        system_prompt=system_prompt,
         max_tokens=persona.max_tokens,
         temperature=persona.temperature,
         model=model,
@@ -169,8 +229,9 @@ async def get_ai_vision_response(bot: TelegramBot, client: Client, image_data: b
     api_key = await _get_api_key(bot.coach, provider_name)
     provider = get_ai_provider(provider_name, api_key)
 
-    # Build prompt
-    prompt = persona.system_prompt + '\n\n'
+    # Build prompt with client context (including gender)
+    system_prompt = _build_system_prompt(persona.system_prompt, client)
+    prompt = system_prompt + '\n\n'
     if caption:
         prompt += f'Пользователь отправил фото с подписью: "{caption}". Проанализируй изображение.'
     else:

@@ -8,6 +8,7 @@ from django.core.files.base import ContentFile
 from django.utils import timezone
 
 from apps.accounts.models import Client
+from apps.bot.services import _build_client_context
 from apps.persona.models import AIProviderConfig, AIUsageLog, BotPersona, TelegramBot
 from core.ai.factory import get_ai_provider
 
@@ -639,9 +640,17 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
             if caption:
                 user_message = f'Подпись пользователя: "{caption}"\n\n' + user_message
 
+            # Build system prompt with client context (including gender)
+            food_system_prompt = persona.food_response_prompt
+            client_context = _build_client_context(client)
+            if client_context:
+                food_system_prompt = food_system_prompt + client_context
+                if client.gender:
+                    food_system_prompt += '\n\nВАЖНО: При рекомендациях учитывай пол клиента.'
+
             text_response = await text_provider.complete(
                 messages=[{'role': 'user', 'content': user_message}],
-                system_prompt=persona.food_response_prompt,
+                system_prompt=food_system_prompt,
                 max_tokens=persona.max_tokens,
                 temperature=persona.temperature,
                 model=text_model,
@@ -835,9 +844,17 @@ async def recalculate_meal_for_client(client: Client, previous_analysis: dict, c
                 f'{json.dumps(summary, ensure_ascii=False)}'
             )
 
+            # Build system prompt with client context (including gender)
+            food_system_prompt = persona.food_response_prompt
+            client_context = _build_client_context(client)
+            if client_context:
+                food_system_prompt = food_system_prompt + client_context
+                if client.gender:
+                    food_system_prompt += '\n\nВАЖНО: При рекомендациях учитывай пол клиента.'
+
             text_response = await text_provider.complete(
                 messages=[{'role': 'user', 'content': user_message}],
-                system_prompt=persona.food_response_prompt,
+                system_prompt=food_system_prompt,
                 max_tokens=persona.max_tokens,
                 temperature=persona.temperature,
                 model=text_model,
