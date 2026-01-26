@@ -886,7 +886,7 @@ function ChatTab({
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
             placeholder="Написать сообщение..."
-            className="flex-1 px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+            className="flex-1 px-4 py-2.5 text-sm bg-white text-gray-900 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow placeholder:text-gray-400"
           />
           <button
             onClick={handleSend}
@@ -1019,7 +1019,7 @@ function SettingsTab({
           <select
             value={client.persona ?? ''}
             onChange={handlePersonaChange}
-            className="w-full sm:w-auto px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+            className="w-full sm:w-auto px-4 py-2.5 text-sm bg-white text-gray-900 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
           >
             <option value="">По умолчанию</option>
             {personas.map((p) => (
@@ -1110,7 +1110,7 @@ function FormField({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           step={step}
-          className={`w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow ${
+          className={`w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow placeholder:text-gray-400 ${
             Icon ? 'pl-9' : ''
           } ${suffix ? 'pr-12' : ''}`}
         />
@@ -1142,7 +1142,7 @@ function FormSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+        className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
