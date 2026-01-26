@@ -42,9 +42,16 @@ class Command(BaseCommand):
 
         # Load fixture
         fixture_path = Path(__file__).resolve().parent.parent.parent / 'fixtures' / 'exercises_full.json'
+        self.stdout.write(f'Looking for fixture at: {fixture_path}')
         if not fixture_path.exists():
             self.stdout.write(self.style.ERROR(f'Fixture not found: {fixture_path}'))
-            return
+            # Try alternative path
+            alt_path = Path(__file__).resolve().parent.parent.parent.parent / 'exercises' / 'fixtures' / 'exercises_full.json'
+            self.stdout.write(f'Trying alternative path: {alt_path}')
+            if alt_path.exists():
+                fixture_path = alt_path
+            else:
+                return
 
         with open(fixture_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
