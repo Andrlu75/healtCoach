@@ -104,7 +104,17 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
     first_call_input = meta.get('usage', {}).get('input_tokens') or meta.get('usage', {}).get('prompt_tokens') or 0
     first_call_output = meta.get('usage', {}).get('output_tokens') or meta.get('usage', {}).get('completion_tokens') or 0
 
-    await save_meal(client, image_data, analysis)
+    logger.info(
+        '[PHOTO] Saving meal: client=%s (%s) dish="%s"',
+        client.pk, client.telegram_username, analysis.get('dish_name', 'unknown')
+    )
+    try:
+        meal = await save_meal(client, image_data, analysis)
+        logger.info('[PHOTO] Meal saved: client=%s meal_id=%s', client.pk, meal.pk)
+    except Exception as e:
+        logger.exception('[PHOTO] Failed to save meal: client=%s error=%s', client.pk, str(e))
+        raise
+
     summary = await get_daily_summary(client)
 
     # Check if persona has food_response_prompt

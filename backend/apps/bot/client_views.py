@@ -62,21 +62,42 @@ class ClientMealListView(APIView):
 
         client = get_client_from_token(request)
         if not client:
+            logger.warning('[MEAL CREATE] No client from token')
             return Response(status=status.HTTP_403_FORBIDDEN)
+
+        logger.info(
+            '[MEAL CREATE] Starting: client=%s (%s), content_type=%s',
+            client.pk, client.telegram_username, request.content_type
+        )
 
         data = request.data.copy()
         data['client'] = client.pk
         data['image_type'] = 'food'
         data['meal_time'] = timezone.now()
 
+        # Log incoming data (without image binary)
+        log_data = {k: v for k, v in data.items() if k != 'image'}
+        if 'image' in request.FILES:
+            log_data['image'] = f"<File: {request.FILES['image'].name}, {request.FILES['image'].size} bytes>"
+        logger.info('[MEAL CREATE] Data: %s', log_data)
+
         serializer = MealCreateSerializer(data=data)
         if serializer.is_valid():
             meal = serializer.save()
+            logger.info(
+                '[MEAL CREATE] Success: client=%s meal_id=%s dish="%s"',
+                client.pk, meal.pk, meal.dish_name
+            )
 
             # Send notification to coach
             async_to_sync(_notify_coach_about_meal_miniapp)(client, meal)
 
             return Response(MealSerializer(meal).data, status=status.HTTP_201_CREATED)
+
+        logger.error(
+            '[MEAL CREATE] Validation failed: client=%s errors=%s',
+            client.pk, serializer.errors
+        )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -148,10 +169,17 @@ class ClientMealAnalyzeView(APIView):
 
         client = get_client_from_token(request)
         if not client:
+            logger.warning('[MEAL ANALYZE] No client from token')
             return Response(status=status.HTTP_403_FORBIDDEN)
+
+        logger.info(
+            '[MEAL ANALYZE] Starting: client=%s (%s)',
+            client.pk, client.telegram_username
+        )
 
         image = request.FILES.get('image')
         if not image:
+            logger.warning('[MEAL ANALYZE] No image in request: client=%s', client.pk)
             return Response(
                 {'error': 'Image is required'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -160,8 +188,17 @@ class ClientMealAnalyzeView(APIView):
         image_data = image.read()
         caption = request.data.get('caption', '')
 
+        logger.info(
+            '[MEAL ANALYZE] Image: %s, %d bytes, caption="%s"',
+            image.name, len(image_data), caption[:50] if caption else ''
+        )
+
         try:
             result = async_to_sync(analyze_food_for_client)(client, image_data, caption)
+            logger.info(
+                '[MEAL ANALYZE] Success: client=%s dish="%s"',
+                client.pk, result.get('dish_name', 'unknown')
+            )
             return Response(result)
         except Exception as e:
             logger.exception(
