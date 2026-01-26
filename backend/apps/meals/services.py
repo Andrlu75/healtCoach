@@ -949,6 +949,11 @@ async def recalculate_meal(bot: TelegramBot, meal: Meal, user_text: str) -> dict
     if pricing and (input_tokens or output_tokens):
         price_in, price_out = pricing
         cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+    elif input_tokens or output_tokens:
+        logger.warning(
+            '[RECALCULATE] Missing pricing for provider=%s model=%s tokens_in=%s tokens_out=%s',
+            provider_name, model_used, input_tokens, output_tokens
+        )
 
     await sync_to_async(AIUsageLog.objects.create)(
         coach=bot.coach,

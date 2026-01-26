@@ -1,5 +1,6 @@
 import json
 import logging
+from decimal import Decimal
 
 from asgiref.sync import sync_to_async
 from django.utils import timezone
@@ -7,6 +8,7 @@ from django.utils import timezone
 from apps.accounts.models import Client
 from apps.persona.models import AIProviderConfig, AIUsageLog, BotPersona, TelegramBot
 from core.ai.factory import get_ai_provider
+from core.ai.model_fetcher import get_cached_pricing
 
 from .models import HealthMetric
 
@@ -73,13 +75,24 @@ async def parse_metrics_from_photo(bot: TelegramBot, image_data: bytes, client: 
     )
 
     # Log usage
+    usage = response.usage or {}
+    input_tokens = usage.get('input_tokens') or usage.get('prompt_tokens') or 0
+    output_tokens = usage.get('output_tokens') or usage.get('completion_tokens') or 0
+
+    cost_usd = Decimal('0')
+    pricing = get_cached_pricing(provider_name, response.model or model or '')
+    if pricing and (input_tokens or output_tokens):
+        price_in, price_out = pricing
+        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
     await sync_to_async(AIUsageLog.objects.create)(
         coach=bot.coach,
         provider=provider_name,
         model=response.model or model or '',
         task_type='vision',
-        input_tokens=response.usage.get('input_tokens', 0),
-        output_tokens=response.usage.get('output_tokens', 0),
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=cost_usd,
     )
 
     # Parse JSON

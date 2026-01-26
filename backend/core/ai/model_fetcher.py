@@ -2,6 +2,7 @@ import re
 import time
 import httpx
 
+from .pricing import MODEL_PRICING
 
 # OpenRouter provider prefixes for mapping model IDs
 OPENROUTER_PROVIDER_MAP = {
@@ -134,12 +135,28 @@ def get_cached_pricing(provider: str, model_id: str) -> tuple[float, float] | No
     if not metadata:
         _fetch_openrouter_metadata_sync()
         metadata = _openrouter_cache['data']
+    # Normalize model id for static pricing: strip provider prefix and date suffixes
+    def _normalize(mid: str) -> str:
+        base = mid.split('/', 1)[-1]  # drop provider prefix if present
+        base = re.sub(r'-\d{4}-\d{2}-\d{2}$', '', base)  # -YYYY-MM-DD
+        base = re.sub(r'-\d{8}$', '', base)  # -YYYYMMDD
+        return base
+
+    normalized_id = _normalize(model_id)
+
     if not metadata:
+        static_pricing = MODEL_PRICING.get(normalized_id)
+        if static_pricing:
+            return (static_pricing['input'], static_pricing['output'])
         return None
     or_prefix = OPENROUTER_PROVIDER_MAP.get(provider, provider)
     meta = _find_openrouter_meta(model_id, or_prefix, metadata)
     if meta:
         return (meta['price_input'], meta['price_output'])
+    # Fallback to static pricing table (per 1M tokens) if OpenRouter has no data
+    static_pricing = MODEL_PRICING.get(normalized_id)
+    if static_pricing:
+        return (static_pricing['input'], static_pricing['output'])
     return None
 
 
@@ -237,5 +254,3 @@ async def _fetch_deepseek_models(api_key: str) -> list[dict]:
 
     models.sort(key=lambda x: x['id'])
     return models
-
-

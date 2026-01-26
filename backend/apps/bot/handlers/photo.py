@@ -313,6 +313,36 @@ async def _handle_food_photo(bot: TelegramBot, client: Client, chat_id: int, ima
         response_model = response.model or model_name or ''
         response_provider = provider_name
 
+        # Log usage for second (text) call
+        from apps.persona.models import AIUsageLog
+        from core.ai.model_fetcher import get_cached_pricing
+        from decimal import Decimal
+
+        second_call_input = response.usage.get('input_tokens') or response.usage.get('prompt_tokens') or 0
+        second_call_output = response.usage.get('output_tokens') or response.usage.get('completion_tokens') or 0
+
+        second_cost = Decimal('0')
+        pricing = get_cached_pricing(response_provider, response_model)
+        if pricing and (second_call_input or second_call_output):
+            price_in, price_out = pricing
+            second_cost = Decimal(str((second_call_input * price_in + second_call_output * price_out) / 1_000_000))
+        elif second_call_input or second_call_output:
+            logger.warning(
+                '[PHOTO LEGACY] Missing pricing for provider=%s model=%s, tokens_in=%s tokens_out=%s',
+                response_provider, response_model, second_call_input, second_call_output
+            )
+
+        await sync_to_async(AIUsageLog.objects.create)(
+            coach=bot.coach,
+            client=client,
+            provider=response_provider,
+            model=response_model,
+            task_type='text',
+            input_tokens=second_call_input,
+            output_tokens=second_call_output,
+            cost_usd=second_cost,
+        )
+
         ai_request_log = {
             'system_prompt': persona.food_response_prompt,
             'messages': [{'role': 'user', 'content': user_message}],

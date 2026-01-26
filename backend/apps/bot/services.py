@@ -130,6 +130,11 @@ async def _log_usage(coach, client, provider_name: str, model: str, task_type: s
         if pricing:
             price_in, price_out = pricing
             cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+        else:
+            logger.warning(
+                '[AI USAGE] No pricing found for provider=%s model=%s, tokens_in=%s tokens_out=%s -> cost=$0',
+                provider_name, model, input_tokens, output_tokens
+            )
 
     await sync_to_async(AIUsageLog.objects.create)(
         coach=coach,
