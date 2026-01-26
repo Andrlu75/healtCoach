@@ -19,7 +19,7 @@ import {
   Search
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { exercisesApi, workoutsApi, workoutExercisesApi } from '@/api/fitdb';
 import {
   Dialog,
   DialogContent,
@@ -56,66 +56,71 @@ const WorkoutBuilder = () => {
   }, [id]);
 
   const fetchExercises = async () => {
-    const { data, error } = await supabase
-      .from('exercises')
-      .select('*')
-      .order('name');
-
-    if (!error && data) {
-      setExercises(data.map((e: any) => ({
-        id: e.id,
+    try {
+      const data = await exercisesApi.list({ ordering: 'name' });
+      setExercises((data || []).map((e: any) => ({
+        id: String(e.id),
         name: e.name,
         description: e.description,
-        muscleGroup: e.muscle_group as MuscleGroup,
-        category: e.category as ExerciseCategory,
-        difficulty: e.difficulty as Exercise['difficulty'],
+        muscleGroup: (e.muscleGroup || 'chest') as MuscleGroup,
+        category: (e.category || 'strength') as ExerciseCategory,
+        difficulty: (e.difficulty || 'intermediate') as Exercise['difficulty'],
         equipment: e.equipment || undefined,
-        imageUrl: e.image_url || undefined,
+        imageUrl: e.imageUrl || undefined,
       })));
+    } catch (error) {
+      console.error('Error fetching exercises:', error);
     }
   };
 
   const fetchWorkout = async (workoutId: string) => {
     try {
-      const { data: workout, error: workoutError } = await supabase
-        .from('workouts')
-        .select('*')
-        .eq('id', workoutId)
-        .single();
-
-      if (workoutError) throw workoutError;
-
+      const workout = await workoutsApi.get(workoutId);
       setName(workout.name);
       setDescription(workout.description || '');
 
-      const { data: items, error: itemsError } = await supabase
-        .from('workout_exercises')
-        .select('*, exercises(*)')
-        .eq('workout_id', workoutId)
-        .order('order_index');
+      const items = await workoutExercisesApi.list(workoutId);
 
-      if (itemsError) throw itemsError;
+      // Fetch exercise details for each workout exercise
+      const exerciseIds: string[] = Array.from(new Set((items || []).map((item: any) => String(item.exercise_id || item.exercise))));
+      const exerciseDetails: Record<string, any> = {};
 
-      const mappedItems: WorkoutItem[] = (items || []).map((item: any) => ({
-        id: item.id,
-        exerciseId: item.exercise_id,
-        sets: item.sets,
-        reps: item.reps,
-        restSeconds: item.rest_seconds,
-        weightKg: item.weight_kg || undefined,
-        notes: item.notes || undefined,
-        orderIndex: item.order_index,
-        exercise: {
-          id: item.exercises.id,
-          name: item.exercises.name,
-          description: item.exercises.description,
-          muscleGroup: item.exercises.muscle_group as MuscleGroup,
-          category: item.exercises.category as ExerciseCategory,
-          difficulty: item.exercises.difficulty as Exercise['difficulty'],
-          equipment: item.exercises.equipment || undefined,
-          imageUrl: item.exercises.image_url || undefined,
-        },
+      await Promise.all(exerciseIds.map(async (exerciseId) => {
+        try {
+          const exercise = await exercisesApi.get(exerciseId);
+          exerciseDetails[exerciseId] = exercise;
+        } catch {
+          // Ignore errors
+        }
       }));
+
+      const mappedItems: WorkoutItem[] = (items || []).map((item: any) => {
+        const exerciseId = String(item.exercise_id || item.exercise);
+        const exerciseData = exerciseDetails[exerciseId] || {};
+        return {
+          id: String(item.id),
+          exerciseId,
+          sets: item.sets,
+          reps: item.reps,
+          restSeconds: item.rest_seconds,
+          weightKg: item.weight_kg || undefined,
+          notes: item.notes || undefined,
+          orderIndex: item.order_index || item.order || 0,
+          exercise: {
+            id: exerciseId,
+            name: exerciseData.name || 'Упражнение',
+            description: exerciseData.description || '',
+            muscleGroup: (exerciseData.muscleGroup || 'chest') as MuscleGroup,
+            category: (exerciseData.category || 'strength') as ExerciseCategory,
+            difficulty: (exerciseData.difficulty || 'intermediate') as Exercise['difficulty'],
+            equipment: exerciseData.equipment || undefined,
+            imageUrl: exerciseData.imageUrl || undefined,
+          },
+        };
+      });
+
+      // Sort by order_index
+      mappedItems.sort((a, b) => a.orderIndex - b.orderIndex);
 
       setWorkoutItems(mappedItems);
     } catch (error) {
@@ -189,45 +194,32 @@ const WorkoutBuilder = () => {
 
       if (id) {
         // Update existing
-        const { error } = await supabase
-          .from('workouts')
-          .update({ name, description: description || null })
-          .eq('id', id);
-        if (error) throw error;
+        await workoutsApi.update(id, { name, description: description || undefined });
 
         // Delete old exercises
-        await supabase
-          .from('workout_exercises')
-          .delete()
-          .eq('workout_id', id);
+        await workoutExercisesApi.deleteByWorkout(id);
       } else {
         // Create new
-        const { data, error } = await supabase
-          .from('workouts')
-          .insert({ name, description: description || null })
-          .select()
-          .single();
-        if (error) throw error;
-        workoutId = data.id;
+        const data = await workoutsApi.create({ name, description: description || undefined });
+        workoutId = String(data.id);
       }
 
       // Insert exercises
       const exerciseInserts = workoutItems.map((item, index) => ({
-        workout_id: workoutId,
+        workout_id: workoutId!,
         exercise_id: item.exerciseId,
         sets: item.sets,
         reps: item.reps,
         rest_seconds: item.restSeconds,
-        weight_kg: item.weightKg || null,
-        notes: item.notes || null,
+        weight_kg: item.weightKg,
+        notes: item.notes,
         order_index: index,
       }));
 
-      const { error: exerciseError } = await supabase
-        .from('workout_exercises')
-        .insert(exerciseInserts);
-
-      if (exerciseError) throw exerciseError;
+      // Insert exercises one by one or in bulk
+      for (const exerciseData of exerciseInserts) {
+        await workoutExercisesApi.create(exerciseData);
+      }
 
       toast({
         title: 'Успешно!',

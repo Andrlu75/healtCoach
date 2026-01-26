@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { clientsApi, assignmentsApi, workoutsApi } from '@/api/fitdb';
 import { AssignWithCustomization } from '@/components/AssignWithCustomization';
 
 interface Client {
@@ -108,13 +108,7 @@ const ClientDetail = () => {
 
   const fetchClient = async (clientId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', clientId)
-        .maybeSingle();
-
-      if (error) throw error;
+      const data = await clientsApi.get(clientId);
       if (!data) {
         toast({
           title: 'Клиент не найден',
@@ -123,7 +117,14 @@ const ClientDetail = () => {
         navigate('/fitdb/clients');
         return;
       }
-      setClient(data);
+      setClient({
+        id: String(data.id),
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        notes: data.notes,
+        created_at: data.created_at,
+      });
     } catch (error) {
       console.error('Error fetching client:', error);
       navigate('/fitdb/clients');
@@ -134,26 +135,36 @@ const ClientDetail = () => {
 
   const fetchAssignments = async (clientId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('workout_assignments')
-        .select(`
-          *,
-          workouts(name)
-        `)
-        .eq('client_id', clientId)
-        .order('assigned_at', { ascending: false });
+      const data = await assignmentsApi.list({ client_id: clientId });
 
-      if (error) throw error;
+      // Fetch workout names for assignments
+      const workoutIds: string[] = Array.from(new Set((data || []).map((a: any) => String(a.workout_id || a.workout))));
+      const workoutNames: Record<string, string> = {};
 
-      const mapped: Assignment[] = (data || []).map((a: any) => ({
-        id: a.id,
-        workout_id: a.workout_id,
-        workout_name: a.workouts?.name || 'Тренировка',
-        assigned_at: a.assigned_at,
-        due_date: a.due_date,
-        status: a.status,
-        notes: a.notes,
+      await Promise.all(workoutIds.map(async (workoutId) => {
+        try {
+          const workout = await workoutsApi.get(workoutId);
+          workoutNames[workoutId] = workout.name;
+        } catch {
+          workoutNames[workoutId] = 'Тренировка';
+        }
       }));
+
+      const mapped: Assignment[] = (data || []).map((a: any) => {
+        const workoutId = String(a.workout_id || a.workout);
+        return {
+          id: String(a.id),
+          workout_id: workoutId,
+          workout_name: workoutNames[workoutId] || 'Тренировка',
+          assigned_at: a.assigned_at || a.created_at,
+          due_date: a.due_date,
+          status: a.status,
+          notes: a.notes,
+        };
+      });
+
+      // Sort by assigned_at descending
+      mapped.sort((a, b) => new Date(b.assigned_at).getTime() - new Date(a.assigned_at).getTime());
 
       setAssignments(mapped);
     } catch (error) {
@@ -163,14 +174,9 @@ const ClientDetail = () => {
 
   const updateStatus = async (assignmentId: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('workout_assignments')
-        .update({ status: newStatus })
-        .eq('id', assignmentId);
-
-      if (error) throw error;
+      await assignmentsApi.update(assignmentId, { status: newStatus });
       if (id) fetchAssignments(id);
-      
+
       if (newStatus === 'completed') {
         toast({ title: '🎉 Тренировка выполнена!' });
       }
@@ -181,12 +187,7 @@ const ClientDetail = () => {
 
   const deleteAssignment = async (assignmentId: string) => {
     try {
-      const { error } = await supabase
-        .from('workout_assignments')
-        .delete()
-        .eq('id', assignmentId);
-
-      if (error) throw error;
+      await assignmentsApi.delete(assignmentId);
       toast({ title: 'Назначение удалено' });
       if (id) fetchAssignments(id);
     } catch (error) {

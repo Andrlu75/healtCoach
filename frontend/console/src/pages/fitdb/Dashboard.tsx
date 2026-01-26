@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { clientsApi, assignmentsApi } from "@/api/fitdb";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -69,32 +69,33 @@ const Dashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [clientsRes, assignmentsRes] = await Promise.all([
-        supabase.from('clients').select('*').order('name'),
-        supabase.from('workout_assignments').select(`
-          id,
-          status,
-          client_id,
-          assigned_at,
-          clients(id, name, email)
-        `).order('assigned_at', { ascending: false })
+      const [clientsData, assignmentsData] = await Promise.all([
+        clientsApi.list({ ordering: 'name' }),
+        assignmentsApi.list()
       ]);
 
-      if (clientsRes.error) throw clientsRes.error;
-      if (assignmentsRes.error) throw assignmentsRes.error;
-
-      const assignmentData = (assignmentsRes.data || []) as unknown as Assignment[];
+      const assignmentData: Assignment[] = (assignmentsData || []).map((a: any) => ({
+        id: String(a.id),
+        status: a.status,
+        client_id: String(a.client_id || a.client),
+        assigned_at: a.assigned_at || a.created_at,
+        clients: {
+          id: String(a.client_id || a.client),
+          name: '',
+          email: null
+        }
+      }));
       setAssignments(assignmentData);
 
       // Calculate stats per client
-      const clientStats = (clientsRes.data || []).map((client: { id: string; name: string; email: string | null }) => {
-        const clientAssignments = assignmentData.filter(a => a.client_id === client.id);
+      const clientStats = (clientsData || []).map((client: { id: string; name: string; email: string | null }) => {
+        const clientAssignments = assignmentData.filter(a => a.client_id === String(client.id));
         const total = clientAssignments.length;
         const completed = clientAssignments.filter(a => a.status === 'completed').length;
         const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
         return {
-          id: client.id,
+          id: String(client.id),
           name: client.name,
           email: client.email,
           total,

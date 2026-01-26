@@ -22,7 +22,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { workoutsApi, workoutExercisesApi, exercisesApi, sessionsApi, exerciseLogsApi } from '@/api/fitdb';
 
 interface WorkoutExerciseItem {
   id: string;
@@ -77,14 +77,8 @@ const WorkoutRun = () => {
   const createSession = async (workoutId: string) => {
     try {
       startTimeRef.current = new Date();
-      const { data, error } = await supabase
-        .from('workout_sessions')
-        .insert({ workout_id: workoutId })
-        .select('id')
-        .single();
-      
-      if (error) throw error;
-      setSessionId(data.id);
+      const data = await sessionsApi.create({ workout_id: workoutId });
+      setSessionId(String(data.id));
     } catch (error) {
       console.error('Error creating session:', error);
     }
@@ -92,14 +86,14 @@ const WorkoutRun = () => {
 
   const logExerciseSet = async (exerciseId: string, setNumber: number, reps: number, weightKg?: number) => {
     if (!sessionId) return;
-    
+
     try {
-      await supabase.from('exercise_logs').insert({
+      await exerciseLogsApi.create({
         session_id: sessionId,
         exercise_id: exerciseId,
         set_number: setNumber,
         reps_completed: reps,
-        weight_kg: weightKg || null,
+        weight_kg: weightKg,
       });
     } catch (error) {
       console.error('Error logging exercise:', error);
@@ -108,16 +102,13 @@ const WorkoutRun = () => {
 
   const completeSession = async () => {
     if (!sessionId || !startTimeRef.current) return;
-    
+
     try {
       const duration = Math.round((new Date().getTime() - startTimeRef.current.getTime()) / 1000);
-      await supabase
-        .from('workout_sessions')
-        .update({
-          completed_at: new Date().toISOString(),
-          duration_seconds: duration,
-        })
-        .eq('id', sessionId);
+      await sessionsApi.update(sessionId, {
+        completed_at: new Date().toISOString(),
+        duration_seconds: duration,
+      });
     } catch (error) {
       console.error('Error completing session:', error);
     }
@@ -138,43 +129,51 @@ const WorkoutRun = () => {
 
   const fetchWorkout = async (workoutId: string) => {
     try {
-      const { data: workout, error: workoutError } = await supabase
-        .from('workouts')
-        .select('name')
-        .eq('id', workoutId)
-        .single();
-
-      if (workoutError) throw workoutError;
+      const workout = await workoutsApi.get(workoutId);
       setWorkoutName(workout.name);
 
-      const { data: items, error: itemsError } = await supabase
-        .from('workout_exercises')
-        .select('*, exercises(*)')
-        .eq('workout_id', workoutId)
-        .order('order_index');
+      const items = await workoutExercisesApi.list(workoutId);
 
-      if (itemsError) throw itemsError;
+      // Fetch exercise details for each workout exercise
+      const exerciseIds: string[] = Array.from(new Set((items || []).map((item: any) => String(item.exercise_id || item.exercise))));
+      const exerciseDetails: Record<string, any> = {};
 
-      const mappedItems: WorkoutExerciseItem[] = (items || []).map((item: any) => ({
-        id: item.id,
-        exerciseId: item.exercise_id,
-        sets: item.sets,
-        reps: item.reps,
-        restSeconds: item.rest_seconds,
-        weightKg: item.weight_kg || undefined,
-        notes: item.notes || undefined,
-        orderIndex: item.order_index,
-        exercise: {
-          id: item.exercises.id,
-          name: item.exercises.name,
-          description: item.exercises.description,
-          muscleGroup: item.exercises.muscle_group as MuscleGroup,
-          category: item.exercises.category as ExerciseCategory,
-          difficulty: item.exercises.difficulty as Exercise['difficulty'],
-          equipment: item.exercises.equipment || undefined,
-          imageUrl: item.exercises.image_url || undefined,
-        },
+      await Promise.all(exerciseIds.map(async (exerciseId) => {
+        try {
+          const exercise = await exercisesApi.get(exerciseId);
+          exerciseDetails[exerciseId] = exercise;
+        } catch {
+          // Ignore errors
+        }
       }));
+
+      const mappedItems: WorkoutExerciseItem[] = (items || []).map((item: any) => {
+        const exerciseId = String(item.exercise_id || item.exercise);
+        const exerciseData = exerciseDetails[exerciseId] || {};
+        return {
+          id: String(item.id),
+          exerciseId,
+          sets: item.sets,
+          reps: item.reps,
+          restSeconds: item.rest_seconds,
+          weightKg: item.weight_kg || undefined,
+          notes: item.notes || undefined,
+          orderIndex: item.order_index || item.order || 0,
+          exercise: {
+            id: exerciseId,
+            name: exerciseData.name || 'Упражнение',
+            description: exerciseData.description || '',
+            muscleGroup: (exerciseData.muscleGroup || 'chest') as MuscleGroup,
+            category: (exerciseData.category || 'strength') as ExerciseCategory,
+            difficulty: (exerciseData.difficulty || 'intermediate') as Exercise['difficulty'],
+            equipment: exerciseData.equipment || undefined,
+            imageUrl: exerciseData.imageUrl || undefined,
+          },
+        };
+      });
+
+      // Sort by order_index
+      mappedItems.sort((a, b) => a.orderIndex - b.orderIndex);
 
       setExercises(mappedItems);
     } catch (error) {

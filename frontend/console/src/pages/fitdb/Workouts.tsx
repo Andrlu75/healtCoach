@@ -15,7 +15,7 @@ import {
   Play
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { workoutsApi, workoutExercisesApi } from '@/api/fitdb';
 
 interface WorkoutListItem {
   id: string;
@@ -37,28 +37,29 @@ const Workouts = () => {
 
   const fetchWorkouts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('workouts')
-        .select(`
-          id,
-          name,
-          description,
-          created_at,
-          workout_exercises(count)
-        `)
-        .order('created_at', { ascending: false });
+      const data = await workoutsApi.list({ ordering: '-created_at' });
 
-      if (error) throw error;
+      // Fetch exercise counts for each workout
+      const workoutsWithCounts = await Promise.all(
+        (data || []).map(async (w: any) => {
+          let exerciseCount = 0;
+          try {
+            const exercises = await workoutExercisesApi.list(String(w.id));
+            exerciseCount = exercises.length;
+          } catch {
+            // Ignore errors for exercise count
+          }
+          return {
+            id: String(w.id),
+            name: w.name,
+            description: w.description,
+            exerciseCount,
+            createdAt: w.created_at,
+          };
+        })
+      );
 
-      const mapped: WorkoutListItem[] = (data || []).map((w: any) => ({
-        id: w.id,
-        name: w.name,
-        description: w.description,
-        exerciseCount: w.workout_exercises?.[0]?.count || 0,
-        createdAt: w.created_at,
-      }));
-
-      setWorkouts(mapped);
+      setWorkouts(workoutsWithCounts);
     } catch (error) {
       console.error('Error fetching workouts:', error);
     } finally {
@@ -68,12 +69,7 @@ const Workouts = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('workouts')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await workoutsApi.delete(id);
 
       setWorkouts(workouts.filter(w => w.id !== id));
       toast({

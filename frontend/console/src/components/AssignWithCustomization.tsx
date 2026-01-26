@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Loader2, Dumbbell } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { workoutsApi, assignmentsApi } from '@/api/fitdb';
 
 interface Workout {
   id: string;
@@ -59,13 +59,12 @@ export const AssignWithCustomization = ({
   const fetchWorkouts = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('workouts')
-        .select('id, name, description')
-        .order('name');
-
-      if (error) throw error;
-      setWorkouts(data || []);
+      const data = await workoutsApi.list({ ordering: 'name' });
+      setWorkouts((data || []).map((w: any) => ({
+        id: String(w.id),
+        name: w.name,
+        description: w.description,
+      })));
     } catch (error) {
       console.error('Error fetching workouts:', error);
     } finally {
@@ -85,17 +84,12 @@ export const AssignWithCustomization = ({
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('workout_assignments')
-        .insert({
-          client_id: clientId,
-          workout_id: selectedWorkout,
-          due_date: dueDate || null,
-          notes: notes.trim() || null,
-          status: 'pending',
-        });
-
-      if (error) throw error;
+      await assignmentsApi.create({
+        client_id: clientId,
+        workout_id: selectedWorkout,
+        due_date: dueDate || undefined,
+        notes: notes.trim() || undefined,
+      });
 
       toast({ title: 'Тренировка назначена' });
       onSuccess();

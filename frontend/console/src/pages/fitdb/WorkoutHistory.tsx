@@ -14,7 +14,7 @@ import {
   Weight
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { sessionsApi } from '@/api/fitdb';
 import {
   Collapsible,
   CollapsibleContent,
@@ -54,36 +54,16 @@ const WorkoutHistory = () => {
 
   const fetchHistory = async () => {
     try {
-      const { data: sessionsData, error: sessionsError } = await supabase
-        .from('workout_sessions')
-        .select(`
-          *,
-          workouts(name),
-          exercise_logs(
-            *,
-            exercises(name)
-          )
-        `)
-        .order('started_at', { ascending: false });
-
-      if (sessionsError) throw sessionsError;
+      const sessionsData = await sessionsApi.list({ ordering: '-started_at' });
 
       const mapped: WorkoutSession[] = (sessionsData || []).map((s: any) => ({
-        id: s.id,
-        workoutId: s.workout_id,
-        workoutName: s.workouts?.name || 'Удалённая тренировка',
+        id: String(s.id),
+        workoutId: String(s.workout_id || s.workout),
+        workoutName: s.workout?.name || s.workout_detail?.name || 'Тренировка',
         startedAt: s.started_at,
-        completedAt: s.completed_at,
+        completedAt: s.completed_at || s.finished_at,
         durationSeconds: s.duration_seconds,
-        exerciseLogs: (s.exercise_logs || []).map((log: any) => ({
-          id: log.id,
-          exerciseId: log.exercise_id,
-          exerciseName: log.exercises?.name || 'Упражнение',
-          setNumber: log.set_number,
-          repsCompleted: log.reps_completed,
-          weightKg: log.weight_kg,
-          completedAt: log.completed_at,
-        })),
+        exerciseLogs: [], // Exercise logs would need separate API
       }));
 
       setSessions(mapped);
@@ -113,12 +93,7 @@ const WorkoutHistory = () => {
 
   const deleteSession = async (sessionId: string) => {
     try {
-      const { error } = await supabase
-        .from('workout_sessions')
-        .delete()
-        .eq('id', sessionId);
-
-      if (error) throw error;
+      await sessionsApi.delete(sessionId);
 
       setSessions(sessions.filter(s => s.id !== sessionId));
       toast({
