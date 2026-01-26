@@ -50,15 +50,15 @@ export default function Reports() {
     }
   }
 
-  if (loading) return <div className="text-gray-500">Загрузка...</div>
+  if (loading) return <div className="text-muted-foreground">Загрузка...</div>
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Отчёты</h1>
+        <h1 className="text-2xl font-bold text-foreground">Отчёты</h1>
         <button
           onClick={() => setShowGenerate(true)}
-          className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+          className="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground text-sm rounded-lg hover:bg-primary/90"
         >
           <RefreshCw size={16} />
           Сгенерировать
@@ -67,15 +67,15 @@ export default function Reports() {
 
       {/* Generate modal */}
       {showGenerate && (
-        <div className="bg-white rounded-xl border border-blue-200 p-4 mb-4">
-          <h3 className="text-sm font-medium mb-3">Новый отчёт</h3>
+        <div className="bg-card rounded-xl border border-primary/30 p-4 mb-4">
+          <h3 className="text-sm font-medium text-foreground mb-3">Новый отчёт</h3>
           <div className="grid grid-cols-3 gap-3 mb-3">
             <div>
-              <label className="text-xs text-gray-500">Клиент</label>
+              <label className="text-xs text-muted-foreground">Клиент</label>
               <select
                 value={genClient}
                 onChange={(e) => setGenClient(e.target.value)}
-                className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                className="w-full mt-1 px-3 py-2 text-sm bg-background text-foreground border border-border rounded-lg"
               >
                 <option value="">Выберите...</option>
                 {clients.map((c) => (
@@ -86,23 +86,23 @@ export default function Reports() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500">Тип</label>
+              <label className="text-xs text-muted-foreground">Тип</label>
               <select
                 value={genType}
                 onChange={(e) => setGenType(e.target.value)}
-                className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                className="w-full mt-1 px-3 py-2 text-sm bg-background text-foreground border border-border rounded-lg"
               >
                 <option value="daily">Дневной</option>
                 <option value="weekly">Недельный</option>
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500">Дата</label>
+              <label className="text-xs text-muted-foreground">Дата</label>
               <input
                 type="date"
                 value={genDate}
                 onChange={(e) => setGenDate(e.target.value)}
-                className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                className="w-full mt-1 px-3 py-2 text-sm bg-background text-foreground border border-border rounded-lg"
               />
             </div>
           </div>
@@ -110,13 +110,13 @@ export default function Reports() {
             <button
               onClick={generate}
               disabled={generating || !genClient}
-              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="px-3 py-1.5 bg-primary text-primary-foreground text-sm rounded-lg hover:bg-primary/90 disabled:opacity-50"
             >
               {generating ? 'Генерация...' : 'Создать'}
             </button>
             <button
               onClick={() => setShowGenerate(false)}
-              className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="px-3 py-1.5 text-sm text-secondary-foreground hover:bg-muted rounded-lg"
             >
               Отмена
             </button>
@@ -129,7 +129,7 @@ export default function Reports() {
         <select
           value={filterClient}
           onChange={(e) => setFilterClient(e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg"
+          className="px-3 py-2 text-sm bg-card text-foreground border border-border rounded-lg"
         >
           <option value="">Все клиенты</option>
           {clients.map((c) => (
@@ -141,7 +141,7 @@ export default function Reports() {
         <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg"
+          className="px-3 py-2 text-sm bg-card text-foreground border border-border rounded-lg"
         >
           <option value="">Все типы</option>
           <option value="daily">Дневные</option>
@@ -151,39 +151,39 @@ export default function Reports() {
 
       {/* Reports list */}
       {reports.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
+        <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
           Отчёты не найдены
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Клиент</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Тип</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Период</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Сводка</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-gray-500">PDF</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Создан</th>
+              <tr className="border-b border-border bg-muted">
+                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Клиент</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Тип</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Период</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Сводка</th>
+                <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground">PDF</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Создан</th>
               </tr>
             </thead>
             <tbody>
               {reports.map((r) => (
-                <tr key={r.id} className="border-b border-gray-100">
-                  <td className="px-4 py-3 text-sm text-gray-900">{r.client_name}</td>
+                <tr key={r.id} className="border-b border-border/50">
+                  <td className="px-4 py-3 text-sm text-foreground">{r.client_name}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       r.report_type === 'daily'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-purple-100 text-purple-700'
+                        ? 'bg-blue-500/20 text-blue-400'
+                        : 'bg-purple-500/20 text-purple-400'
                     }`}>
                       {r.report_type === 'daily' ? 'Дневной' : 'Недельный'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
                     {dayjs(r.period_start).format('DD.MM')} — {dayjs(r.period_end).format('DD.MM')}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
+                  <td className="px-4 py-3 text-sm text-secondary-foreground max-w-xs truncate">
                     {r.summary || '—'}
                   </td>
                   <td className="px-4 py-3 text-center">
@@ -192,15 +192,15 @@ export default function Reports() {
                         href={r.pdf_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700"
+                        className="inline-flex items-center gap-1 text-primary hover:text-primary/80"
                       >
                         <Download size={14} />
                       </a>
                     ) : (
-                      <FileText size={14} className="text-gray-300 mx-auto" />
+                      <FileText size={14} className="text-muted-foreground/50 mx-auto" />
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-400">
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
                     {dayjs(r.created_at).format('DD.MM.YY HH:mm')}
                   </td>
                 </tr>

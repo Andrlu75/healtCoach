@@ -12,9 +12,9 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  text: 'bg-blue-100 text-blue-700',
-  vision: 'bg-green-100 text-green-700',
-  voice: 'bg-purple-100 text-purple-700',
+  text: 'bg-blue-500/20 text-blue-400',
+  vision: 'bg-green-500/20 text-green-400',
+  voice: 'bg-purple-500/20 text-purple-400',
 }
 
 export default function Logs() {
@@ -61,14 +61,14 @@ export default function Logs() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Логи взаимодействий</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Логи взаимодействий</h1>
 
       {/* Filters */}
       <div className="flex gap-3 mb-4 flex-wrap">
         <select
           value={filterClient}
           onChange={(e) => { setFilterClient(e.target.value); setPage(1) }}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg"
+          className="px-3 py-2 text-sm bg-card text-foreground border border-border rounded-lg"
         >
           <option value="">Все клиенты</option>
           {clients.map((c) => (
@@ -80,7 +80,7 @@ export default function Logs() {
         <select
           value={filterType}
           onChange={(e) => { setFilterType(e.target.value); setPage(1) }}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg"
+          className="px-3 py-2 text-sm bg-card text-foreground border border-border rounded-lg"
         >
           <option value="">Все типы</option>
           <option value="text">Текст</option>
@@ -91,97 +91,97 @@ export default function Logs() {
           type="date"
           value={filterDateFrom}
           onChange={(e) => { setFilterDateFrom(e.target.value); setPage(1) }}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg"
+          className="px-3 py-2 text-sm bg-card text-foreground border border-border rounded-lg"
           placeholder="С"
         />
         <input
           type="date"
           value={filterDateTo}
           onChange={(e) => { setFilterDateTo(e.target.value); setPage(1) }}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg"
+          className="px-3 py-2 text-sm bg-card text-foreground border border-border rounded-lg"
           placeholder="По"
         />
       </div>
 
       {loading ? (
-        <div className="text-gray-500">Загрузка...</div>
+        <div className="text-muted-foreground">Загрузка...</div>
       ) : logs.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
+        <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
           Логи не найдены
         </div>
       ) : (
         <>
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
+                <tr className="border-b border-border bg-muted">
                   <th className="w-8 px-3 py-3"></th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Время</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Клиент</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Тип</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Ввод</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Ответ</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Модель</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-500">ms</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Время</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Клиент</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Тип</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Ввод</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Ответ</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Модель</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">ms</th>
                 </tr>
               </thead>
               <tbody>
                 {logs.map((log) => (
                   <Fragment key={log.id}>
                     <tr
-                      className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                      className="border-b border-border/50 hover:bg-muted cursor-pointer"
                       onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
                     >
-                      <td className="px-3 py-3 text-gray-400">
+                      <td className="px-3 py-3 text-muted-foreground">
                         {expandedId === log.id
                           ? <ChevronDown size={14} />
                           : <ChevronRight size={14} />
                         }
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
                         {dayjs(log.created_at).format('DD.MM HH:mm:ss')}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{log.client_name}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{log.client_name}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${TYPE_COLORS[log.interaction_type] || ''}`}>
                           {TYPE_LABELS[log.interaction_type] || log.interaction_type}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">
+                      <td className="px-4 py-3 text-sm text-secondary-foreground max-w-[200px] truncate">
                         {truncate(log.client_input)}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">
+                      <td className="px-4 py-3 text-sm text-secondary-foreground max-w-[200px] truncate">
                         {truncate(log.client_output)}
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+                      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {log.provider}/{log.model}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-400 text-right">
+                      <td className="px-4 py-3 text-sm text-muted-foreground text-right">
                         {log.duration_ms}
                       </td>
                     </tr>
                     {expandedId === log.id && (
-                      <tr className="border-b border-gray-100 bg-gray-50">
+                      <tr className="border-b border-border/50 bg-muted">
                         <td colSpan={8} className="px-6 py-4">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <h4 className="text-xs font-medium text-gray-500 mb-2">AI Request</h4>
-                              <pre className="text-xs bg-white border border-gray-200 rounded-lg p-3 overflow-auto max-h-64">
+                              <h4 className="text-xs font-medium text-muted-foreground mb-2">AI Request</h4>
+                              <pre className="text-xs bg-card text-foreground border border-border rounded-lg p-3 overflow-auto max-h-64">
                                 {JSON.stringify(log.ai_request, null, 2)}
                               </pre>
                             </div>
                             <div>
-                              <h4 className="text-xs font-medium text-gray-500 mb-2">AI Response</h4>
-                              <pre className="text-xs bg-white border border-gray-200 rounded-lg p-3 overflow-auto max-h-64">
+                              <h4 className="text-xs font-medium text-muted-foreground mb-2">AI Response</h4>
+                              <pre className="text-xs bg-card text-foreground border border-border rounded-lg p-3 overflow-auto max-h-64">
                                 {JSON.stringify(log.ai_response, null, 2)}
                               </pre>
                             </div>
                           </div>
                           <div className="mt-3 grid grid-cols-2 gap-4">
                             <div>
-                              <h4 className="text-xs font-medium text-gray-500 mb-1">Полный ввод клиента</h4>
-                              <div className="bg-white border border-gray-200 rounded-lg p-3">
-                                <p className="text-sm text-gray-700">{log.client_input}</p>
+                              <h4 className="text-xs font-medium text-muted-foreground mb-1">Полный ввод клиента</h4>
+                              <div className="bg-card border border-border rounded-lg p-3">
+                                <p className="text-sm text-secondary-foreground">{log.client_input}</p>
                                 {log.image_url && (
                                   <img
                                     src={log.image_url}
@@ -192,8 +192,8 @@ export default function Logs() {
                               </div>
                             </div>
                             <div>
-                              <h4 className="text-xs font-medium text-gray-500 mb-1">Полный ответ клиенту</h4>
-                              <p className="text-sm text-gray-700 bg-white border border-gray-200 rounded-lg p-3 whitespace-pre-wrap">
+                              <h4 className="text-xs font-medium text-muted-foreground mb-1">Полный ответ клиенту</h4>
+                              <p className="text-sm text-secondary-foreground bg-card border border-border rounded-lg p-3 whitespace-pre-wrap">
                                 {log.client_output}
                               </p>
                             </div>
@@ -210,24 +210,24 @@ export default function Logs() {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-muted-foreground">
                 Всего: {count} записей
               </span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page === 1}
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                  className="px-3 py-1.5 text-sm text-foreground border border-border rounded-lg disabled:opacity-50 hover:bg-muted"
                 >
                   Назад
                 </button>
-                <span className="px-3 py-1.5 text-sm text-gray-600">
+                <span className="px-3 py-1.5 text-sm text-secondary-foreground">
                   {page} / {totalPages}
                 </span>
                 <button
                   onClick={() => setPage(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages}
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                  className="px-3 py-1.5 text-sm text-foreground border border-border rounded-lg disabled:opacity-50 hover:bg-muted"
                 >
                   Далее
                 </button>

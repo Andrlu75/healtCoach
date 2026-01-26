@@ -78,12 +78,12 @@ export default function PersonaSettings() {
     setPersonas((prev) => prev.map((p) => ({ ...p, is_default: p.id === selectedId })))
   }
 
-  if (loading) return <div className="text-gray-500">Загрузка...</div>
+  if (loading) return <div className="text-muted-foreground">Загрузка...</div>
 
   return (
     <div className="max-w-2xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Персона бота</h1>
+        <h1 className="text-2xl font-bold text-foreground">Персона бота</h1>
         <button
           onClick={handleCreate}
           className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -101,7 +101,7 @@ export default function PersonaSettings() {
               className={`px-3 py-1.5 text-sm rounded-lg border ${
                 p.id === selectedId
                   ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  : 'border-border text-secondary-foreground hover:bg-muted'
               }`}
             >
               {p.name}{p.is_default ? ' (по умолч.)' : ''}
@@ -110,84 +110,84 @@ export default function PersonaSettings() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-border p-6 space-y-5">
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Имя</label>
+            <label className="block text-sm font-medium text-secondary-foreground mb-1">Имя</label>
             <input
               type="text"
               value={data.name || ''}
               onChange={(e) => setData({ ...data, name: e.target.value })}
               placeholder="Фёдор"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Возраст</label>
+            <label className="block text-sm font-medium text-secondary-foreground mb-1">Возраст</label>
             <input
               type="number"
               value={data.age ?? ''}
               onChange={(e) => setData({ ...data, age: e.target.value ? parseInt(e.target.value) : null })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Город</label>
+            <label className="block text-sm font-medium text-secondary-foreground mb-1">Город</label>
             <input
               type="text"
               value={data.city || ''}
               onChange={(e) => setData({ ...data, city: e.target.value })}
               placeholder="Москва"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Стиль общения</label>
+          <label className="block text-sm font-medium text-secondary-foreground mb-1">Стиль общения</label>
           <textarea
             value={data.style_description || ''}
             onChange={(e) => setData({ ...data, style_description: e.target.value })}
             rows={3}
             placeholder="Дружелюбный, с юмором, поддерживающий..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Системный промпт</label>
+          <label className="block text-sm font-medium text-secondary-foreground mb-1">Системный промпт</label>
           <textarea
             value={data.system_prompt || ''}
             onChange={(e) => setData({ ...data, system_prompt: e.target.value })}
             rows={6}
             placeholder="Ты — дружелюбный помощник health-коуча..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none font-mono text-sm"
+            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none font-mono text-sm"
           />
-          <p className="text-xs text-gray-400 mt-1">Основная инструкция для AI-модели</p>
+          <p className="text-xs text-muted-foreground mt-1">Основная инструкция для AI-модели</p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Промпт ответа по еде</label>
+          <label className="block text-sm font-medium text-secondary-foreground mb-1">Промпт ответа по еде</label>
           <textarea
             value={data.food_response_prompt || ''}
             onChange={(e) => setData({ ...data, food_response_prompt: e.target.value })}
             rows={5}
             placeholder="Ты — нутрициолог. Получив данные анализа еды и дневную сводку, дай развёрнутый ответ..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none font-mono text-sm"
+            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none font-mono text-sm"
           />
-          <p className="text-xs text-gray-400 mt-1">Промпт для генерации ответа по фото еды. Получает JSON с анализом и дневной сводкой. Если пусто — используется шаблонный ответ.</p>
+          <p className="text-xs text-muted-foreground mt-1">Промпт для генерации ответа по фото еды. Получает JSON с анализом и дневной сводкой. Если пусто — используется шаблонный ответ.</p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Приветственное сообщение</label>
+          <label className="block text-sm font-medium text-secondary-foreground mb-1">Приветственное сообщение</label>
           <textarea
             value={data.greeting_message || ''}
             onChange={(e) => setData({ ...data, greeting_message: e.target.value })}
             rows={3}
             placeholder="Привет! Я Фёдор, твой помощник по здоровому питанию..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
           />
-          <p className="text-xs text-gray-400 mt-1">Отправляется новому клиенту после онбординга</p>
+          <p className="text-xs text-muted-foreground mt-1">Отправляется новому клиенту после онбординга</p>
         </div>
 
         <div className="flex items-center gap-3">

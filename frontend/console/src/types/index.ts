@@ -23,6 +23,7 @@ export interface Client {
   first_name: string
   last_name: string
   full_name: string
+  gender: 'male' | 'female' | null
   city: string
   timezone: string
   status: 'pending' | 'active' | 'paused' | 'archived'

@@ -61,15 +61,15 @@ function AddProviderModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+      <div className="bg-card rounded-xl p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
         <h3 className="text-lg font-semibold mb-4">Добавить провайдера</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Провайдер</label>
+            <label className="block text-sm font-medium text-secondary-foreground mb-1">Провайдер</label>
             <select
               value={provider}
               onChange={e => setProvider(e.target.value as ProviderType)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             >
               {availableProviders.map(p => (
                 <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
@@ -77,18 +77,18 @@ function AddProviderModal({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+            <label className="block text-sm font-medium text-secondary-foreground mb-1">API Key</label>
             <input
               type="password"
               value={apiKey}
               onChange={e => setApiKey(e.target.value)}
               placeholder={provider === 'openai' ? 'sk-...' : provider === 'anthropic' ? 'sk-ant-...' : 'API key'}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-3 justify-end">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-gray-600 hover:text-gray-800">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-secondary-foreground hover:text-foreground">
               Отмена
             </button>
             <button
@@ -184,15 +184,15 @@ function AddModelsModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="bg-card rounded-xl p-6 w-full max-w-lg shadow-xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <h3 className="text-lg font-semibold mb-4">Добавить модели</h3>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Провайдер</label>
+          <label className="block text-sm font-medium text-secondary-foreground mb-1">Провайдер</label>
           <select
             value={provider}
             onChange={e => setProvider(e.target.value as ProviderType)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
           >
             {providers.map(p => (
               <option key={p.provider} value={p.provider}>{PROVIDER_LABELS[p.provider]}</option>
@@ -200,12 +200,12 @@ function AddModelsModal({
           </select>
         </div>
 
-        <p className="text-xs text-gray-400 mb-2">Т — текст, Ф — фото, Г — голос. Цена за 1M токенов (вход / выход).</p>
-        <div className="flex-1 overflow-y-auto mb-4 border border-gray-200 rounded-lg">
+        <p className="text-xs text-muted-foreground mb-2">Т — текст, Ф — фото, Г — голос. Цена за 1M токенов (вход / выход).</p>
+        <div className="flex-1 overflow-y-auto mb-4 border border-border rounded-lg">
           {loading ? (
-            <div className="p-4 text-center text-gray-500">Загрузка моделей...</div>
+            <div className="p-4 text-center text-muted-foreground">Загрузка моделей...</div>
           ) : availableModels.filter(m => m.price_input !== null).length === 0 ? (
-            <div className="p-4 text-center text-gray-500">Нет доступных моделей с известной ценой</div>
+            <div className="p-4 text-center text-muted-foreground">Нет доступных моделей с известной ценой</div>
           ) : (
             <div className="divide-y divide-gray-100">
               {availableModels.filter(m => m.price_input !== null).map(m => {
@@ -213,30 +213,30 @@ function AddModelsModal({
                 return (
                   <label
                     key={m.id}
-                    className={`flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 cursor-pointer ${added ? 'opacity-50' : ''}`}
+                    className={`flex items-center gap-3 px-4 py-2.5 hover:bg-muted cursor-pointer ${added ? 'opacity-50' : ''}`}
                   >
                     <input
                       type="checkbox"
                       checked={selected.has(m.id)}
                       disabled={added}
                       onChange={() => toggleModel(m.id)}
-                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="w-4 h-4 rounded border-border text-blue-600 focus:ring-blue-500"
                     />
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm text-gray-800">{m.name}</span>
+                      <span className="text-sm text-foreground">{m.name}</span>
                       {m.context_length && (
-                        <span className="text-xs text-gray-400 ml-2">{Math.round(m.context_length / 1000)}K</span>
+                        <span className="text-xs text-muted-foreground ml-2">{Math.round(m.context_length / 1000)}K</span>
                       )}
                     </div>
                     <span className="flex gap-1 text-xs">
-                      <span className={m.supports_text ? 'text-blue-500 font-medium' : 'text-gray-300'}>Т</span>
-                      <span className={m.supports_vision ? 'text-green-500 font-medium' : 'text-gray-300'}>Ф</span>
-                      <span className={m.supports_audio ? 'text-purple-500 font-medium' : 'text-gray-300'}>Г</span>
+                      <span className={m.supports_text ? 'text-blue-500 font-medium' : 'text-muted-foreground/50'}>Т</span>
+                      <span className={m.supports_vision ? 'text-green-500 font-medium' : 'text-muted-foreground/50'}>Ф</span>
+                      <span className={m.supports_audio ? 'text-purple-500 font-medium' : 'text-muted-foreground/50'}>Г</span>
                     </span>
-                    <span className="text-xs text-gray-400 font-mono whitespace-nowrap">
+                    <span className="text-xs text-muted-foreground font-mono whitespace-nowrap">
                       ${m.price_input} / ${m.price_output}
                     </span>
-                    {added && <span className="text-xs text-gray-400 ml-1">добавлена</span>}
+                    {added && <span className="text-xs text-muted-foreground ml-1">добавлена</span>}
                   </label>
                 )
               })}
@@ -247,7 +247,7 @@ function AddModelsModal({
         {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
 
         <div className="flex gap-3 justify-end">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-gray-600 hover:text-gray-800">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-secondary-foreground hover:text-foreground">
             Отмена
           </button>
           <button
@@ -460,12 +460,12 @@ export default function AISettings() {
     <div className="max-w-4xl">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">AI настройки</h1>
-        <p className="text-gray-500 mt-1">Управляйте провайдерами, моделями и назначениями для вашего бота</p>
+        <h1 className="text-2xl font-bold text-foreground">AI настройки</h1>
+        <p className="text-muted-foreground mt-1">Управляйте провайдерами, моделями и назначениями для вашего бота</p>
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6">
+      <div className="flex gap-1 bg-secondary p-1 rounded-xl mb-6">
         {TABS.map(tab => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
@@ -475,8 +475,8 @@ export default function AISettings() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex-1 justify-center ${
                 isActive
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  ? 'bg-card text-blue-600 shadow-sm'
+                  : 'text-muted-foreground hover:text-secondary-foreground hover:bg-muted'
               }`}
             >
               <Icon size={16} />
@@ -488,11 +488,11 @@ export default function AISettings() {
 
       {/* Tab: Providers */}
       {activeTab === 'providers' && (
-        <section className="bg-white rounded-xl border border-gray-200 p-6">
+        <section className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-lg font-semibold text-gray-800">Подключённые провайдеры</h2>
-              <p className="text-sm text-gray-500 mt-0.5">API-ключи для доступа к моделям</p>
+              <h2 className="text-lg font-semibold text-foreground">Подключённые провайдеры</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">API-ключи для доступа к моделям</p>
             </div>
             <button
               onClick={() => setShowAddProviderModal(true)}
@@ -505,20 +505,20 @@ export default function AISettings() {
           </div>
 
           {providers.length === 0 ? (
-            <div className="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-              <Key size={32} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500 text-sm">Нет подключённых провайдеров</p>
-              <p className="text-gray-400 text-xs mt-1">Добавьте хотя бы одного для работы AI</p>
+            <div className="text-center py-10 bg-muted rounded-lg border border-dashed border-border">
+              <Key size={32} className="mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground text-sm">Нет подключённых провайдеров</p>
+              <p className="text-muted-foreground text-xs mt-1">Добавьте хотя бы одного для работы AI</p>
             </div>
           ) : (
             <div className="grid gap-3">
               {providers.map(p => (
-                <div key={p.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
+                <div key={p.id} className="flex items-center justify-between p-4 bg-muted rounded-lg border border-border/50 hover:border-border transition-colors">
                   <div className="flex items-center gap-3">
                     <div className={`w-2.5 h-2.5 rounded-full ${p.is_active ? 'bg-green-500 shadow-sm shadow-green-200' : 'bg-gray-400'}`} />
                     <div>
-                      <span className="font-semibold text-gray-800">{PROVIDER_LABELS[p.provider]}</span>
-                      <div className="text-xs text-gray-400 font-mono mt-0.5">{p.masked_key}</div>
+                      <span className="font-semibold text-foreground">{PROVIDER_LABELS[p.provider]}</span>
+                      <div className="text-xs text-muted-foreground font-mono mt-0.5">{p.masked_key}</div>
                     </div>
                   </div>
                   <button
@@ -538,11 +538,11 @@ export default function AISettings() {
 
       {/* Tab: Models */}
       {activeTab === 'models' && (
-        <section className="bg-white rounded-xl border border-gray-200 p-6">
+        <section className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-lg font-semibold text-gray-800">Пул моделей проекта</h2>
-              <p className="text-sm text-gray-500 mt-0.5">Модели, доступные для назначения на задачи</p>
+              <h2 className="text-lg font-semibold text-foreground">Пул моделей проекта</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Модели, доступные для назначения на задачи</p>
             </div>
             <button
               onClick={() => setShowAddModelsModal(true)}
@@ -555,9 +555,9 @@ export default function AISettings() {
           </div>
 
           {addedModels.length === 0 ? (
-            <div className="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-              <Layers size={32} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500 text-sm">
+            <div className="text-center py-10 bg-muted rounded-lg border border-dashed border-border">
+              <Layers size={32} className="mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground text-sm">
                 {providers.length === 0
                   ? 'Сначала подключите провайдера на вкладке «Провайдеры»'
                   : 'Добавьте модели из доступных у ваших провайдеров'}
@@ -571,7 +571,7 @@ export default function AISettings() {
                 return acc
               }, {} as Record<string, typeof addedModels>)).map(([prov, models]) => (
                 <div key={prov}>
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                     {PROVIDER_LABELS[prov as ProviderType] || prov}
                   </h3>
                   <div className="grid gap-2">
@@ -582,20 +582,20 @@ export default function AISettings() {
                         (settings.voice_provider === m.provider && settings.voice_model === m.model_id)
                       )
                       return (
-                        <div key={m.id} className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${isAssigned ? 'bg-blue-50/50 border-blue-100' : 'bg-gray-50 border-gray-100 hover:border-gray-200'}`}>
+                        <div key={m.id} className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${isAssigned ? 'bg-blue-50/50 border-blue-100' : 'bg-muted border-border/50 hover:border-border'}`}>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-gray-800">{m.model_name}</span>
+                              <span className="text-sm font-medium text-foreground">{m.model_name}</span>
                               {isAssigned && <Check size={14} className="text-blue-500" />}
                             </div>
                             <div className="flex items-center gap-3 mt-1">
                               <span className="flex gap-1.5 text-xs">
-                                <span className={m.supports_text ? 'text-blue-500 font-medium' : 'text-gray-300'}>Текст</span>
-                                <span className={m.supports_vision ? 'text-green-500 font-medium' : 'text-gray-300'}>Фото</span>
-                                <span className={m.supports_audio ? 'text-purple-500 font-medium' : 'text-gray-300'}>Голос</span>
+                                <span className={m.supports_text ? 'text-blue-500 font-medium' : 'text-muted-foreground/50'}>Текст</span>
+                                <span className={m.supports_vision ? 'text-green-500 font-medium' : 'text-muted-foreground/50'}>Фото</span>
+                                <span className={m.supports_audio ? 'text-purple-500 font-medium' : 'text-muted-foreground/50'}>Голос</span>
                               </span>
                               {m.price_input !== null && (
-                                <span className="text-xs text-gray-400 font-mono">${m.price_input} / ${m.price_output}</span>
+                                <span className="text-xs text-muted-foreground font-mono">${m.price_input} / ${m.price_output}</span>
                               )}
                             </div>
                           </div>
@@ -619,16 +619,16 @@ export default function AISettings() {
 
       {/* Tab: Assignments */}
       {activeTab === 'assignments' && (
-        <section className="bg-white rounded-xl border border-gray-200 p-6">
+        <section className="bg-card rounded-xl border border-border p-6">
           <div className="mb-5">
-            <h2 className="text-lg font-semibold text-gray-800">Назначение моделей на задачи</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Выберите, какая модель будет обрабатывать каждый тип запросов</p>
+            <h2 className="text-lg font-semibold text-foreground">Назначение моделей на задачи</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">Выберите, какая модель будет обрабатывать каждый тип запросов</p>
           </div>
 
           {addedModels.length === 0 ? (
-            <div className="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-              <SlidersHorizontal size={32} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500 text-sm">Сначала добавьте модели на вкладке «Модели»</p>
+            <div className="text-center py-10 bg-muted rounded-lg border border-dashed border-border">
+              <SlidersHorizontal size={32} className="mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground text-sm">Сначала добавьте модели на вкладке «Модели»</p>
             </div>
           ) : (
             <>
@@ -644,15 +644,15 @@ export default function AISettings() {
                   const assigned = settings[provKey] && settings[modelKey]
                   const model = assigned ? addedModels.find(m => m.provider === settings[provKey] && m.model_id === settings[modelKey]) : null
                   return (
-                    <div key={task.key} className={`p-4 rounded-xl border-2 transition-all ${assigned ? task.activeClass : 'border-gray-200 bg-gray-50'}`}>
+                    <div key={task.key} className={`p-4 rounded-xl border-2 transition-all ${assigned ? task.activeClass : 'border-border bg-muted'}`}>
                       <div className="text-lg mb-1">{task.icon}</div>
-                      <div className={`text-xs font-semibold uppercase tracking-wide ${assigned ? task.activeLabel : 'text-gray-400'}`}>
+                      <div className={`text-xs font-semibold uppercase tracking-wide ${assigned ? task.activeLabel : 'text-muted-foreground'}`}>
                         {task.label}
                       </div>
-                      <div className="text-sm text-gray-800 mt-1 truncate font-medium">
-                        {model ? model.model_name : <span className="text-gray-400 italic font-normal">—</span>}
+                      <div className="text-sm text-foreground mt-1 truncate font-medium">
+                        {model ? model.model_name : <span className="text-muted-foreground italic font-normal">—</span>}
                       </div>
-                      <div className="text-xs text-gray-400 mt-0.5">{task.desc}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{task.desc}</div>
                     </div>
                   )
                 })}
@@ -680,21 +680,21 @@ export default function AISettings() {
                   return (
                     <div
                       key={m.id}
-                      className={`p-4 rounded-xl border-2 transition-all ${isAssigned ? 'border-blue-200 bg-gradient-to-r from-blue-50/50 to-white shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'}`}
+                      className={`p-4 rounded-xl border-2 transition-all ${isAssigned ? 'border-blue-200 bg-gradient-to-r from-blue-50/50 to-white shadow-sm' : 'border-border/50 bg-card hover:border-border'}`}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-gray-900">{m.model_name}</span>
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">
+                            <span className="font-semibold text-foreground">{m.model_name}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-muted-foreground font-medium">
                               {PROVIDER_LABELS[m.provider]}
                             </span>
                             {m.context_length && (
-                              <span className="text-xs text-gray-400">{Math.round(m.context_length / 1000)}K ctx</span>
+                              <span className="text-xs text-muted-foreground">{Math.round(m.context_length / 1000)}K ctx</span>
                             )}
                           </div>
                           {m.price_input !== null && (
-                            <div className="text-xs text-gray-400 mt-1">
+                            <div className="text-xs text-muted-foreground mt-1">
                               ${m.price_input} вход / ${m.price_output} выход за 1M токенов
                             </div>
                           )}
@@ -708,14 +708,14 @@ export default function AISettings() {
                             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${
                               isText
                                 ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
-                                : 'bg-gray-100 text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+                                : 'bg-secondary text-secondary-foreground hover:bg-blue-50 hover:text-blue-600'
                             }`}
                           >
                             {isText && <Check size={12} />}
                             Текст
                           </button>
                         ) : (
-                          <span className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-300 cursor-not-allowed">
+                          <span className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium bg-muted text-muted-foreground/50 cursor-not-allowed">
                             <X size={12} />
                             Текст
                           </span>
@@ -726,14 +726,14 @@ export default function AISettings() {
                             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${
                               isVision
                                 ? 'bg-green-600 text-white shadow-sm shadow-green-200'
-                                : 'bg-gray-100 text-gray-600 hover:bg-green-50 hover:text-green-600'
+                                : 'bg-secondary text-secondary-foreground hover:bg-green-50 hover:text-green-600'
                             }`}
                           >
                             {isVision && <Check size={12} />}
                             Фото
                           </button>
                         ) : (
-                          <span className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-300 cursor-not-allowed">
+                          <span className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium bg-muted text-muted-foreground/50 cursor-not-allowed">
                             <X size={12} />
                             Фото
                           </span>
@@ -744,14 +744,14 @@ export default function AISettings() {
                             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${
                               isVoice
                                 ? 'bg-purple-600 text-white shadow-sm shadow-purple-200'
-                                : 'bg-gray-100 text-gray-600 hover:bg-purple-50 hover:text-purple-600'
+                                : 'bg-secondary text-secondary-foreground hover:bg-purple-50 hover:text-purple-600'
                             }`}
                           >
                             {isVoice && <Check size={12} />}
                             Голос
                           </button>
                         ) : (
-                          <span className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-300 cursor-not-allowed">
+                          <span className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium bg-muted text-muted-foreground/50 cursor-not-allowed">
                             <X size={12} />
                             Голос
                           </span>
@@ -765,12 +765,12 @@ export default function AISettings() {
           )}
 
           {/* Parameters */}
-          <div className="mt-6 pt-5 border-t border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Параметры генерации</h3>
+          <div className="mt-6 pt-5 border-t border-border">
+            <h3 className="text-sm font-semibold text-secondary-foreground mb-4">Параметры генерации</h3>
             <div className="grid grid-cols-2 gap-6">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <label className="block text-sm text-gray-600 mb-2">
-                  Температура: <span className="font-semibold text-gray-800">{settings.temperature}</span>
+              <div className="bg-muted rounded-lg p-4">
+                <label className="block text-sm text-secondary-foreground mb-2">
+                  Температура: <span className="font-semibold text-foreground">{settings.temperature}</span>
                 </label>
                 <input
                   type="range"
@@ -779,21 +779,21 @@ export default function AISettings() {
                   onChange={e => setSettings(s => ({ ...s, temperature: parseFloat(e.target.value) }))}
                   className="w-full accent-blue-600"
                 />
-                <div className="flex justify-between text-xs text-gray-400 mt-1">
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
                   <span>Точный</span>
                   <span>Креативный</span>
                 </div>
               </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <label className="block text-sm text-gray-600 mb-2">Максимум токенов</label>
+              <div className="bg-muted rounded-lg p-4">
+                <label className="block text-sm text-secondary-foreground mb-2">Максимум токенов</label>
                 <input
                   type="number"
                   min={100} max={4000}
                   value={settings.max_tokens}
                   onChange={e => setSettings(s => ({ ...s, max_tokens: parseInt(e.target.value) || 600 }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-card"
                 />
-                <p className="text-xs text-gray-400 mt-1.5">Ограничивает длину ответа бота</p>
+                <p className="text-xs text-muted-foreground mt-1.5">Ограничивает длину ответа бота</p>
               </div>
             </div>
           </div>
@@ -819,14 +819,14 @@ export default function AISettings() {
           </div>
 
           {/* Test section */}
-          <div className="mt-6 pt-5 border-t border-gray-200">
+          <div className="mt-6 pt-5 border-t border-border">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-700">Тестирование модели</h3>
+              <h3 className="text-sm font-semibold text-secondary-foreground">Тестирование модели</h3>
               <div className="flex items-center gap-2">
                 {chatMessages.length > 0 && (
                   <button
                     onClick={() => setChatMessages([])}
-                    className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                    className="text-xs text-muted-foreground hover:text-secondary-foreground transition-colors"
                   >
                     Очистить чат
                   </button>
@@ -854,15 +854,15 @@ export default function AISettings() {
             </div>
 
             {/* Chat messages */}
-            <div className="border border-gray-200 rounded-xl bg-gray-50 mb-3">
+            <div className="border border-border rounded-xl bg-muted mb-3">
               <div className="h-64 overflow-y-auto p-4 space-y-3">
                 {chatMessages.length === 0 && (
-                  <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                     <div className="text-center">
-                      <MessageSquare size={24} className="mx-auto mb-2 text-gray-300" />
+                      <MessageSquare size={24} className="mx-auto mb-2 text-muted-foreground/50" />
                       <p>Напишите сообщение для теста текстовой модели</p>
                       {settings.text_model && (
-                        <p className="text-xs text-gray-300 mt-1">Модель: {settings.text_model}</p>
+                        <p className="text-xs text-muted-foreground/50 mt-1">Модель: {settings.text_model}</p>
                       )}
                     </div>
                   </div>
@@ -871,12 +871,12 @@ export default function AISettings() {
                   <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[80%] ${msg.role === 'user' ? '' : ''}`}>
                       {msg.role === 'assistant' && msg.model && (
-                        <div className="text-[10px] text-gray-400 mb-1 ml-1">{msg.model}</div>
+                        <div className="text-[10px] text-muted-foreground mb-1 ml-1">{msg.model}</div>
                       )}
                       <div className={`px-3.5 py-2.5 rounded-2xl text-sm whitespace-pre-wrap ${
                         msg.role === 'user'
                           ? 'bg-blue-600 text-white rounded-br-md'
-                          : 'bg-white text-gray-800 border border-gray-200 rounded-bl-md shadow-sm'
+                          : 'bg-card text-foreground border border-border rounded-bl-md shadow-sm'
                       }`}>
                         {msg.content}
                       </div>
@@ -885,7 +885,7 @@ export default function AISettings() {
                 ))}
                 {testing && (
                   <div className="flex justify-start">
-                    <div className="bg-white text-gray-400 border border-gray-200 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
+                    <div className="bg-card text-muted-foreground border border-border rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
                       <Loader2 size={16} className="animate-spin" />
                     </div>
                   </div>
@@ -894,7 +894,7 @@ export default function AISettings() {
               </div>
 
               {/* Chat input */}
-              <div className="border-t border-gray-200 p-3 bg-white rounded-b-xl">
+              <div className="border-t border-border p-3 bg-card rounded-b-xl">
                 <form
                   onSubmit={e => { e.preventDefault(); handleSendChat() }}
                   className="flex gap-2"
@@ -905,7 +905,7 @@ export default function AISettings() {
                     onChange={e => setChatInput(e.target.value)}
                     placeholder={settings.text_model ? `Сообщение для ${settings.text_model}...` : 'Сначала назначьте текстовую модель'}
                     disabled={!settings.text_model || testing === 'text'}
-                    className="flex-1 px-3.5 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-50 disabled:text-gray-400"
+                    className="flex-1 px-3.5 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-muted disabled:text-muted-foreground"
                   />
                   <button
                     type="submit"
@@ -929,16 +929,16 @@ export default function AISettings() {
 
       {/* Tab: Usage */}
       {activeTab === 'usage' && (
-        <section className="bg-white rounded-xl border border-gray-200 p-6">
+        <section className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-lg font-semibold text-gray-800">Статистика затрат</h2>
-              <p className="text-sm text-gray-500 mt-0.5">Расход токенов и стоимость по моделям</p>
+              <h2 className="text-lg font-semibold text-foreground">Статистика затрат</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Расход токенов и стоимость по моделям</p>
             </div>
             <select
               value={usagePeriod}
               onChange={e => setUsagePeriod(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              className="px-3 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-card"
             >
               <option value="today">Сегодня</option>
               <option value="week">Неделя</option>
@@ -949,42 +949,42 @@ export default function AISettings() {
 
           {totalCost > 0 && (
             <div className="mb-5 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
-              <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Общие затраты</div>
-              <div className="text-2xl font-bold text-gray-900 mt-1">${Number(totalCost).toFixed(4)}</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Общие затраты</div>
+              <div className="text-2xl font-bold text-foreground mt-1">${Number(totalCost).toFixed(4)}</div>
             </div>
           )}
 
           {usageStats.length === 0 ? (
-            <div className="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-              <BarChart3 size={32} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500 text-sm">Нет данных за выбранный период</p>
+            <div className="text-center py-10 bg-muted rounded-lg border border-dashed border-border">
+              <BarChart3 size={32} className="mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground text-sm">Нет данных за выбранный период</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Провайдер</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Модель</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Тип</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">Запросов</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">Токены</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">Стоимость</th>
+                  <tr className="bg-muted border-b border-border">
+                    <th className="text-left py-3 px-4 font-medium text-secondary-foreground">Провайдер</th>
+                    <th className="text-left py-3 px-4 font-medium text-secondary-foreground">Модель</th>
+                    <th className="text-left py-3 px-4 font-medium text-secondary-foreground">Тип</th>
+                    <th className="text-right py-3 px-4 font-medium text-secondary-foreground">Запросов</th>
+                    <th className="text-right py-3 px-4 font-medium text-secondary-foreground">Токены</th>
+                    <th className="text-right py-3 px-4 font-medium text-secondary-foreground">Стоимость</th>
                   </tr>
                 </thead>
                 <tbody>
                   {usageStats.map((row, i) => (
-                    <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="py-3 px-4 text-gray-800 font-medium">{PROVIDER_LABELS[row.provider as ProviderType] || row.provider}</td>
-                      <td className="py-3 px-4 text-gray-600 font-mono text-xs">{row.model}</td>
+                    <tr key={i} className="border-b border-border/50 hover:bg-muted transition-colors">
+                      <td className="py-3 px-4 text-foreground font-medium">{PROVIDER_LABELS[row.provider as ProviderType] || row.provider}</td>
+                      <td className="py-3 px-4 text-secondary-foreground font-mono text-xs">{row.model}</td>
                       <td className="py-3 px-4">
-                        <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">{row.task_type}</span>
+                        <span className="text-xs px-2 py-1 rounded-full bg-secondary text-secondary-foreground">{row.task_type}</span>
                       </td>
-                      <td className="py-3 px-4 text-right text-gray-800 font-medium">{row.requests_count}</td>
-                      <td className="py-3 px-4 text-right text-gray-500 text-xs font-mono">
+                      <td className="py-3 px-4 text-right text-foreground font-medium">{row.requests_count}</td>
+                      <td className="py-3 px-4 text-right text-muted-foreground text-xs font-mono">
                         {row.total_input_tokens.toLocaleString()} / {row.total_output_tokens.toLocaleString()}
                       </td>
-                      <td className="py-3 px-4 text-right text-gray-900 font-semibold">
+                      <td className="py-3 px-4 text-right text-foreground font-semibold">
                         ${Number(row.total_cost_usd).toFixed(4)}
                       </td>
                     </tr>

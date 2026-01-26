@@ -115,11 +115,11 @@ export default function TelegramSettings() {
     }
   }
 
-  if (loading) return <div className="text-gray-500">Загрузка...</div>
+  if (loading) return <div className="text-muted-foreground">Загрузка...</div>
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Настройки Telegram</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Настройки Telegram</h1>
 
       {message && (
         <div className={`mb-4 px-4 py-2 rounded-lg text-sm ${message.includes('Ошибка') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
@@ -128,9 +128,9 @@ export default function TelegramSettings() {
       )}
 
       {/* Bot list */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+      <div className="bg-card rounded-xl border border-border p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Боты</h2>
+          <h2 className="text-lg font-semibold text-foreground">Боты</h2>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
             className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -141,27 +141,27 @@ export default function TelegramSettings() {
         </div>
 
         {showAddForm && (
-          <form onSubmit={handleAddBot} className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3">
+          <form onSubmit={handleAddBot} className="mb-4 p-4 bg-muted rounded-lg space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Название</label>
+              <label className="block text-sm font-medium text-secondary-foreground mb-1">Название</label>
               <input
                 type="text"
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
                 placeholder="Тестовый"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Токен</label>
+              <label className="block text-sm font-medium text-secondary-foreground mb-1">Токен</label>
               <input
                 type="password"
                 value={newToken}
                 onChange={e => setNewToken(e.target.value)}
                 placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               />
-              <p className="text-xs text-gray-400 mt-1">Получите у @BotFather в Telegram</p>
+              <p className="text-xs text-muted-foreground mt-1">Получите у @BotFather в Telegram</p>
             </div>
             <div className="flex gap-2">
               <button
@@ -174,7 +174,7 @@ export default function TelegramSettings() {
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors"
+                className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80 transition-colors"
               >
                 Отмена
               </button>
@@ -183,24 +183,24 @@ export default function TelegramSettings() {
         )}
 
         {bots.length === 0 ? (
-          <p className="text-sm text-gray-500">Нет добавленных ботов. Нажмите «Добавить» чтобы создать первого.</p>
+          <p className="text-sm text-muted-foreground">Нет добавленных ботов. Нажмите «Добавить» чтобы создать первого.</p>
         ) : (
           <div className="space-y-3">
             {bots.map(bot => (
               <div
                 key={bot.id}
-                className={`flex items-center justify-between p-4 rounded-lg border ${bot.is_active ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'}`}
+                className={`flex items-center justify-between p-4 rounded-lg border ${bot.is_active ? 'border-blue-300 bg-blue-50' : 'border-border bg-card'}`}
               >
                 <div className="flex items-center gap-3">
-                  <Bot size={20} className={bot.is_active ? 'text-blue-600' : 'text-gray-400'} />
+                  <Bot size={20} className={bot.is_active ? 'text-blue-600' : 'text-muted-foreground'} />
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900">{bot.name}</span>
+                      <span className="font-medium text-foreground">{bot.name}</span>
                       {bot.is_active && (
                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Активный</span>
                       )}
                     </div>
-                    <span className="text-xs text-gray-400">{bot.masked_token}</span>
+                    <span className="text-xs text-muted-foreground">{bot.masked_token}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -214,7 +214,7 @@ export default function TelegramSettings() {
                   )}
                   <button
                     onClick={() => handleDelete(bot.id)}
-                    className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
+                    className="p-1.5 text-muted-foreground hover:text-red-600 transition-colors"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -226,17 +226,17 @@ export default function TelegramSettings() {
       </div>
 
       {/* Notification Chat ID */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Уведомления</h2>
+      <div className="bg-card rounded-xl border border-border p-6 mb-6">
+        <h2 className="text-lg font-semibold text-foreground mb-3">Уведомления</h2>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Chat ID для уведомлений</label>
+          <label className="block text-sm font-medium text-secondary-foreground mb-1">Chat ID для уведомлений</label>
           <div className="flex gap-2">
             <input
               type="text"
               value={notificationChatId}
               onChange={e => setNotificationChatId(e.target.value)}
               placeholder="-1001234567890"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="flex-1 px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
             <button
               onClick={handleSaveChatId}
@@ -246,14 +246,14 @@ export default function TelegramSettings() {
               {savingChat ? '...' : 'Сохранить'}
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-1">ID чата для получения отчётов и уведомлений (общий для всех ботов)</p>
+          <p className="text-xs text-muted-foreground mt-1">ID чата для получения отчётов и уведомлений (общий для всех ботов)</p>
         </div>
       </div>
 
       {/* Test connection */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Тест соединения</h2>
-        <p className="text-sm text-gray-500 mb-4">
+      <div className="bg-card rounded-xl border border-border p-6">
+        <h2 className="text-lg font-semibold text-foreground mb-3">Тест соединения</h2>
+        <p className="text-sm text-muted-foreground mb-4">
           Отправьте тестовое сообщение через активного бота в указанный чат.
         </p>
         <div className="flex items-center gap-4">

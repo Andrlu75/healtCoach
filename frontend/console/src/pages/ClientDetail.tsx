@@ -40,15 +40,15 @@ const tabs: { id: Tab; label: string; icon: typeof Utensils }[] = [
 ]
 
 const statusConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
-  active: { label: 'Активен', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
-  pending: { label: 'Ожидает', bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
-  paused: { label: 'На паузе', bg: 'bg-slate-100', text: 'text-slate-600', dot: 'bg-slate-400' },
-  archived: { label: 'Архив', bg: 'bg-red-50', text: 'text-red-600', dot: 'bg-red-400' },
+  active: { label: 'Активен', bg: 'bg-emerald-500/20', text: 'text-emerald-400', dot: 'bg-emerald-500' },
+  pending: { label: 'Ожидает', bg: 'bg-amber-500/20', text: 'text-amber-400', dot: 'bg-amber-500' },
+  paused: { label: 'На паузе', bg: 'bg-secondary', text: 'text-secondary-foreground', dot: 'bg-muted-foreground' },
+  archived: { label: 'Архив', bg: 'bg-red-500/20', text: 'text-red-400', dot: 'bg-red-400' },
 }
 
 // Loading skeleton component
 function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse bg-gray-200 rounded ${className}`} />
+  return <div className={`animate-pulse bg-muted rounded ${className}`} />
 }
 
 export default function ClientDetail() {
@@ -72,6 +72,7 @@ export default function ClientDetail() {
   })
 
   const [physiology, setPhysiology] = useState({
+    gender: '' as string,
     height: '',
     weight: '',
     birth_date: '',
@@ -109,6 +110,7 @@ export default function ClientDetail() {
           status: data.status,
         })
         setPhysiology({
+          gender: data.gender || '',
           height: data.height?.toString() || '',
           weight: data.weight?.toString() || '',
           birth_date: data.birth_date || '',
@@ -167,6 +169,7 @@ export default function ClientDetail() {
     setPhysiologyMsg('')
     try {
       const { data } = await clientsApi.update(clientId, {
+        gender: physiology.gender || null,
         height: physiology.height ? Number(physiology.height) : null,
         weight: physiology.weight ? Number(physiology.weight) : null,
         birth_date: physiology.birth_date || null,
@@ -228,11 +231,11 @@ export default function ClientDetail() {
   if (!client) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-          <User className="w-8 h-8 text-gray-400" />
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+          <User className="w-8 h-8 text-muted-foreground" />
         </div>
-        <h2 className="text-lg font-medium text-gray-900 mb-2">Клиент не найден</h2>
-        <Link to="/clients" className="text-blue-600 hover:text-blue-700 text-sm">
+        <h2 className="text-lg font-medium text-foreground mb-2">Клиент не найден</h2>
+        <Link to="/clients" className="text-primary hover:text-primary/80 text-sm">
           Вернуться к списку
         </Link>
       </div>
@@ -247,14 +250,14 @@ export default function ClientDetail() {
       {/* Back button */}
       <Link
         to="/clients"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors group"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
       >
         <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
         Клиенты
       </Link>
 
       {/* Profile card */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
         {/* Gradient banner */}
         <div className="h-28 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600" />
 
@@ -269,7 +272,7 @@ export default function ClientDetail() {
             {/* Info */}
             <div className="flex-1 min-w-0 pb-2">
               <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-foreground">
                   {client.first_name} {client.last_name}
                 </h1>
                 <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${status.bg} ${status.text}`}>
@@ -278,9 +281,9 @@ export default function ClientDetail() {
                 </span>
               </div>
 
-              <div className="flex items-center gap-4 mt-2 text-sm text-gray-500 flex-wrap">
+              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
                 {client.telegram_username && (
-                  <span className="flex items-center gap-1.5 hover:text-blue-600 transition-colors">
+                  <span className="flex items-center gap-1.5 hover:text-primary transition-colors">
                     <Send size={14} />
                     @{client.telegram_username}
                   </span>
@@ -303,7 +306,7 @@ export default function ClientDetail() {
             {/* Delete button */}
             <button
               onClick={handleDelete}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
             >
               <Trash2 size={16} />
               <span className="hidden sm:inline">Удалить</span>
@@ -312,7 +315,7 @@ export default function ClientDetail() {
 
           {/* Quick stats */}
           {client.daily_calories && (
-            <div className="mt-6 pt-6 border-t border-gray-100">
+            <div className="mt-6 pt-6 border-t border-border/50">
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 <QuickStat
                   icon={Flame}
@@ -356,8 +359,8 @@ export default function ClientDetail() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-        <div className="flex border-b border-gray-200">
+      <div className="bg-card rounded-xl border border-border shadow-sm">
+        <div className="flex border-b border-border">
           {tabs.map((t) => {
             const Icon = t.icon
             const isActive = tab === t.id
@@ -367,14 +370,14 @@ export default function ClientDetail() {
                 onClick={() => setTab(t.id)}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium transition-all relative ${
                   isActive
-                    ? 'text-blue-600'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    ? 'text-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
                 <Icon size={18} />
                 <span className="hidden sm:inline">{t.label}</span>
                 {isActive && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />
                 )}
               </button>
             )
@@ -445,11 +448,11 @@ function QuickStat({
   if (!value) return null
 
   const colors = {
-    orange: 'bg-orange-50 text-orange-600',
-    red: 'bg-red-50 text-red-600',
-    yellow: 'bg-amber-50 text-amber-600',
-    green: 'bg-emerald-50 text-emerald-600',
-    blue: 'bg-blue-50 text-blue-600',
+    orange: 'bg-orange-500/20 text-orange-400',
+    red: 'bg-red-500/20 text-red-400',
+    yellow: 'bg-amber-500/20 text-amber-400',
+    green: 'bg-emerald-500/20 text-emerald-400',
+    blue: 'bg-blue-500/20 text-blue-400',
   }
 
   return (
@@ -504,11 +507,11 @@ function MealsTab({ meals }: { meals: Meal[] }) {
   if (!meals.length) {
     return (
       <div className="text-center py-12">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Utensils className="w-8 h-8 text-gray-400" />
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+          <Utensils className="w-8 h-8 text-muted-foreground" />
         </div>
-        <h3 className="text-sm font-medium text-gray-900 mb-1">Нет записей о питании</h3>
-        <p className="text-sm text-gray-500">Данные появятся когда клиент начнёт отправлять фото еды</p>
+        <h3 className="text-sm font-medium text-foreground mb-1">Нет записей о питании</h3>
+        <p className="text-sm text-muted-foreground">Данные появятся когда клиент начнёт отправлять фото еды</p>
       </div>
     )
   }
@@ -530,7 +533,7 @@ function MealsTab({ meals }: { meals: Meal[] }) {
             <div
               key={date}
               className={`rounded-xl border transition-all ${
-                isExpanded ? 'border-blue-200 bg-blue-50/30' : 'border-gray-200 bg-white hover:border-gray-300'
+                isExpanded ? 'border-primary/30 bg-primary/5' : 'border-border bg-card hover:border-border/80'
               }`}
             >
               {/* Date header */}
@@ -540,22 +543,22 @@ function MealsTab({ meals }: { meals: Meal[] }) {
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                    isExpanded ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'
+                    isExpanded ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
                   }`}>
                     {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                   </div>
                   <div className="text-left">
-                    <span className="font-medium text-gray-900 capitalize">{dateLabel}</span>
-                    <span className="text-sm text-gray-500 ml-2">
+                    <span className="font-medium text-foreground capitalize">{dateLabel}</span>
+                    <span className="text-sm text-muted-foreground ml-2">
                       {dayMeals.length} {dayMeals.length === 1 ? 'приём' : dayMeals.length < 5 ? 'приёма' : 'приёмов'}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 sm:gap-4 text-sm">
-                  <span className="font-semibold text-orange-600">{Math.round(totals.calories)}</span>
-                  <span className="text-gray-400 hidden sm:inline">|</span>
-                  <div className="hidden sm:flex items-center gap-3 text-gray-500">
+                  <span className="font-semibold text-orange-400">{Math.round(totals.calories)}</span>
+                  <span className="text-muted-foreground hidden sm:inline">|</span>
+                  <div className="hidden sm:flex items-center gap-3 text-muted-foreground">
                     <span>Б: {Math.round(totals.proteins)}</span>
                     <span>Ж: {Math.round(totals.fats)}</span>
                     <span>У: {Math.round(totals.carbs)}</span>
@@ -565,12 +568,12 @@ function MealsTab({ meals }: { meals: Meal[] }) {
 
               {/* Meals list */}
               {isExpanded && (
-                <div className="border-t border-gray-100 divide-y divide-gray-50">
+                <div className="border-t border-border/50 divide-y divide-border/30">
                   {dayMeals.map((m) => (
                     <div
                       key={m.id}
                       onClick={() => setSelectedMeal(m)}
-                      className="flex items-center gap-4 px-4 py-3 hover:bg-white cursor-pointer transition-colors"
+                      className="flex items-center gap-4 px-4 py-3 hover:bg-muted cursor-pointer transition-colors"
                     >
                       {m.image ? (
                         <img
@@ -579,30 +582,30 @@ function MealsTab({ meals }: { meals: Meal[] }) {
                           className="w-14 h-14 object-cover rounded-xl flex-shrink-0 shadow-sm"
                         />
                       ) : (
-                        <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                          <Utensils className="w-6 h-6 text-gray-400" />
+                        <div className="w-14 h-14 bg-muted rounded-xl flex items-center justify-center flex-shrink-0">
+                          <Utensils className="w-6 h-6 text-muted-foreground" />
                         </div>
                       )}
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-gray-900 truncate">{m.dish_name}</span>
+                          <span className="font-medium text-foreground truncate">{m.dish_name}</span>
                           {m.dish_type && (
-                            <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full hidden sm:inline">
+                            <span className="text-xs px-2 py-0.5 bg-secondary text-secondary-foreground rounded-full hidden sm:inline">
                               {m.dish_type}
                             </span>
                           )}
                         </div>
-                        <div className="text-sm text-gray-500 mt-0.5">
+                        <div className="text-sm text-muted-foreground mt-0.5">
                           {dayjs(m.meal_time).format('HH:mm')}
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2 sm:gap-4 text-sm">
-                        <span className="font-medium text-orange-600 min-w-[3rem] text-right">
+                        <span className="font-medium text-orange-400 min-w-[3rem] text-right">
                           {m.calories ? Math.round(m.calories) : '—'}
                         </span>
-                        <div className="hidden sm:flex items-center gap-3 text-gray-500 text-right">
+                        <div className="hidden sm:flex items-center gap-3 text-muted-foreground text-right">
                           <span className="w-8">{m.proteins ? Math.round(m.proteins) : '—'}</span>
                           <span className="w-8">{m.fats ? Math.round(m.fats) : '—'}</span>
                           <span className="w-8">{m.carbohydrates ? Math.round(m.carbohydrates) : '—'}</span>
@@ -633,11 +636,11 @@ function MealModal({ meal, onClose }: { meal: Meal; onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        className="bg-card rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with image */}
-        <div className="relative bg-gray-900">
+        <div className="relative bg-background">
           {meal.image ? (
             <img
               src={meal.image}
@@ -645,8 +648,8 @@ function MealModal({ meal, onClose }: { meal: Meal; onClose: () => void }) {
               className="w-full max-h-[50vh] object-contain"
             />
           ) : (
-            <div className="w-full h-48 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-              <Utensils className="w-16 h-16 text-gray-600" />
+            <div className="w-full h-48 bg-gradient-to-br from-muted to-background flex items-center justify-center">
+              <Utensils className="w-16 h-16 text-muted-foreground" />
             </div>
           )}
           <button
@@ -665,12 +668,12 @@ function MealModal({ meal, onClose }: { meal: Meal; onClose: () => void }) {
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-20rem)]">
           <div className="mb-5">
-            <h2 className="text-xl font-bold text-gray-900">{meal.dish_name}</h2>
-            <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+            <h2 className="text-xl font-bold text-foreground">{meal.dish_name}</h2>
+            <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
               <Calendar size={14} />
               {dayjs(meal.meal_time).format('D MMMM YYYY, HH:mm')}
               {meal.dish_type && (
-                <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded-full text-xs">{meal.dish_type}</span>
+                <span className="ml-2 px-2 py-0.5 bg-secondary text-secondary-foreground rounded-full text-xs">{meal.dish_type}</span>
               )}
             </div>
           </div>
@@ -678,10 +681,10 @@ function MealModal({ meal, onClose }: { meal: Meal; onClose: () => void }) {
           {/* KBJU Cards */}
           <div className="grid grid-cols-4 gap-2 mb-6">
             {[
-              { label: 'ккал', value: meal.calories, color: 'bg-orange-50 text-orange-600' },
-              { label: 'белки', value: meal.proteins, color: 'bg-red-50 text-red-600' },
-              { label: 'жиры', value: meal.fats, color: 'bg-amber-50 text-amber-600' },
-              { label: 'углеводы', value: meal.carbohydrates, color: 'bg-emerald-50 text-emerald-600' },
+              { label: 'ккал', value: meal.calories, color: 'bg-orange-500/20 text-orange-400' },
+              { label: 'белки', value: meal.proteins, color: 'bg-red-500/20 text-red-400' },
+              { label: 'жиры', value: meal.fats, color: 'bg-amber-500/20 text-amber-400' },
+              { label: 'углеводы', value: meal.carbohydrates, color: 'bg-emerald-500/20 text-emerald-400' },
             ].map(({ label, value, color }) => (
               <div key={label} className={`rounded-xl p-3 text-center ${color}`}>
                 <div className="text-2xl font-bold">{value ? Math.round(value) : '—'}</div>
@@ -693,10 +696,10 @@ function MealModal({ meal, onClose }: { meal: Meal; onClose: () => void }) {
           {/* Ingredients */}
           {meal.ingredients && meal.ingredients.length > 0 && (
             <div className="mb-5">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Ингредиенты</h3>
+              <h3 className="text-sm font-medium text-secondary-foreground mb-3">Ингредиенты</h3>
               <div className="flex flex-wrap gap-2">
                 {meal.ingredients.map((ing, i) => (
-                  <span key={i} className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-full">
+                  <span key={i} className="px-3 py-1.5 bg-secondary text-secondary-foreground text-sm rounded-full">
                     {ing}
                   </span>
                 ))}
@@ -706,17 +709,17 @@ function MealModal({ meal, onClose }: { meal: Meal; onClose: () => void }) {
 
           {/* Additional info */}
           {(meal.plate_type || meal.layout || meal.decorations) && (
-            <div className="border-t border-gray-100 pt-5">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Дополнительно</h3>
-              <div className="space-y-2 text-sm">
+            <div className="border-t border-border/50 pt-5">
+              <h3 className="text-sm font-medium text-secondary-foreground mb-3">Дополнительно</h3>
+              <div className="space-y-2 text-sm text-foreground">
                 {meal.plate_type && (
-                  <div className="flex"><span className="text-gray-500 w-24">Подача:</span><span>{meal.plate_type}</span></div>
+                  <div className="flex"><span className="text-muted-foreground w-24">Подача:</span><span>{meal.plate_type}</span></div>
                 )}
                 {meal.layout && (
-                  <div className="flex"><span className="text-gray-500 w-24">Выкладка:</span><span>{meal.layout}</span></div>
+                  <div className="flex"><span className="text-muted-foreground w-24">Выкладка:</span><span>{meal.layout}</span></div>
                 )}
                 {meal.decorations && (
-                  <div className="flex"><span className="text-gray-500 w-24">Декор:</span><span>{meal.decorations}</span></div>
+                  <div className="flex"><span className="text-muted-foreground w-24">Декор:</span><span>{meal.decorations}</span></div>
                 )}
               </div>
             </div>
@@ -732,11 +735,11 @@ function MetricsTab({ metrics }: { metrics: HealthMetric[] }) {
   if (!metrics.length) {
     return (
       <div className="text-center py-12">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Activity className="w-8 h-8 text-gray-400" />
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+          <Activity className="w-8 h-8 text-muted-foreground" />
         </div>
-        <h3 className="text-sm font-medium text-gray-900 mb-1">Нет записей метрик</h3>
-        <p className="text-sm text-gray-500">Здесь будут отображаться показатели здоровья клиента</p>
+        <h3 className="text-sm font-medium text-foreground mb-1">Нет записей метрик</h3>
+        <p className="text-sm text-muted-foreground">Здесь будут отображаться показатели здоровья клиента</p>
       </div>
     )
   }
@@ -745,20 +748,20 @@ function MetricsTab({ metrics }: { metrics: HealthMetric[] }) {
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-gray-200">
-            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Тип</th>
-            <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Значение</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Источник</th>
+          <tr className="border-b border-border">
+            <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Дата</th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Тип</th>
+            <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Значение</th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Источник</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-border/50">
           {metrics.map((m) => (
-            <tr key={m.id} className="hover:bg-gray-50 transition-colors">
-              <td className="px-4 py-3 text-sm text-gray-500">{dayjs(m.recorded_at).format('D MMM YYYY, HH:mm')}</td>
-              <td className="px-4 py-3 text-sm font-medium text-gray-900">{m.metric_type}</td>
-              <td className="px-4 py-3 text-sm text-right font-medium">{m.value} <span className="text-gray-500 font-normal">{m.unit}</span></td>
-              <td className="px-4 py-3 text-sm text-gray-500">{m.source}</td>
+            <tr key={m.id} className="hover:bg-muted transition-colors">
+              <td className="px-4 py-3 text-sm text-muted-foreground">{dayjs(m.recorded_at).format('D MMM YYYY, HH:mm')}</td>
+              <td className="px-4 py-3 text-sm font-medium text-foreground">{m.metric_type}</td>
+              <td className="px-4 py-3 text-sm text-right font-medium text-foreground">{m.value} <span className="text-muted-foreground font-normal">{m.unit}</span></td>
+              <td className="px-4 py-3 text-sm text-muted-foreground">{m.source}</td>
             </tr>
           ))}
         </tbody>
@@ -823,13 +826,13 @@ function ChatTab({
   return (
     <div>
       {/* Manual mode toggle */}
-      <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-100">
+      <div className="flex items-center justify-between mb-4 pb-4 border-b border-border/50">
         <div className="flex items-center gap-3">
           <button
             onClick={toggling ? undefined : toggleManualMode}
             disabled={toggling}
             className={`relative w-11 h-6 rounded-full transition-colors ${
-              client.manual_mode ? 'bg-blue-600' : 'bg-gray-300'
+              client.manual_mode ? 'bg-primary' : 'bg-muted'
             } ${toggling ? 'opacity-50' : ''}`}
           >
             <div
@@ -838,10 +841,10 @@ function ChatTab({
               }`}
             />
           </button>
-          <span className="text-sm font-medium text-gray-700">Ручной режим</span>
+          <span className="text-sm font-medium text-secondary-foreground">Ручной режим</span>
         </div>
         {client.manual_mode && (
-          <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+          <span className="text-xs text-primary bg-primary/20 px-2 py-1 rounded-full">
             Бот отключён, вы отвечаете вручную
           </span>
         )}
@@ -851,8 +854,8 @@ function ChatTab({
       <div className="space-y-3 max-h-[400px] overflow-y-auto mb-4">
         {!messages.length && (
           <div className="text-center py-8">
-            <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-500">Нет сообщений</p>
+            <MessageCircle className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">Нет сообщений</p>
           </div>
         )}
         {messages.map((msg) => (
@@ -863,12 +866,12 @@ function ChatTab({
             <div
               className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
                 msg.role === 'user'
-                  ? 'bg-blue-600 text-white rounded-br-md'
-                  : 'bg-gray-100 text-gray-900 rounded-bl-md'
+                  ? 'bg-primary text-primary-foreground rounded-br-md'
+                  : 'bg-muted text-foreground rounded-bl-md'
               }`}
             >
               <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-              <p className={`text-xs mt-1 ${msg.role === 'user' ? 'text-blue-200' : 'text-gray-400'}`}>
+              <p className={`text-xs mt-1 ${msg.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                 {dayjs(msg.created_at).format('HH:mm')}
               </p>
             </div>
@@ -886,12 +889,12 @@ function ChatTab({
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
             placeholder="Написать сообщение..."
-            className="flex-1 px-4 py-2.5 text-sm bg-white text-gray-900 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow placeholder:text-gray-400"
+            className="flex-1 px-4 py-2.5 text-sm bg-background text-foreground border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-shadow placeholder:text-muted-foreground"
           />
           <button
             onClick={handleSend}
             disabled={sending || !inputText.trim()}
-            className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            className="px-5 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
             <Send size={16} />
           </button>
@@ -928,7 +931,7 @@ function SettingsTab({
   saveProfile: () => Promise<void>
   savingProfile: boolean
   profileMsg: string
-  physiology: { height: string; weight: string; birth_date: string }
+  physiology: { gender: string; height: string; weight: string; birth_date: string }
   setPhysiology: (p: typeof physiology) => void
   savePhysiology: () => Promise<void>
   savingPhysiology: boolean
@@ -984,7 +987,17 @@ function SettingsTab({
           <SaveButton onClick={savePhysiology} loading={savingPhysiology} message={physiologyMsg} />
         }
       >
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <FormSelect
+            label="Пол"
+            value={physiology.gender}
+            onChange={(v) => setPhysiology({ ...physiology, gender: v })}
+            options={[
+              { value: '', label: 'Не указан' },
+              { value: 'male', label: 'Мужской' },
+              { value: 'female', label: 'Женский' },
+            ]}
+          />
           <FormField
             label="Рост"
             value={physiology.height}
@@ -1019,7 +1032,7 @@ function SettingsTab({
           <select
             value={client.persona ?? ''}
             onChange={handlePersonaChange}
-            className="w-full sm:w-auto px-4 py-2.5 text-sm bg-white text-gray-900 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+            className="w-full sm:w-auto px-4 py-2.5 text-sm bg-card text-foreground border border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-shadow"
           >
             <option value="">По умолчанию</option>
             {personas.map((p) => (
@@ -1062,11 +1075,11 @@ function SettingsSection({
   action?: React.ReactNode
 }) {
   return (
-    <div className="bg-gray-50 rounded-xl p-5">
+    <div className="bg-muted rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Icon size={18} className="text-gray-500" />
-          <h3 className="font-medium text-gray-900">{title}</h3>
+          <Icon size={18} className="text-muted-foreground" />
+          <h3 className="font-medium text-foreground">{title}</h3>
         </div>
         {action}
       </div>
@@ -1099,10 +1112,10 @@ function FormField({
 }) {
   return (
     <div className={className}>
-      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">{label}</label>
+      <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">{label}</label>
       <div className="relative">
         {Icon && (
-          <Icon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Icon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         )}
         <input
           type={type}
@@ -1110,12 +1123,12 @@ function FormField({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           step={step}
-          className={`w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow placeholder:text-gray-400 ${
+          className={`w-full px-3 py-2 text-sm bg-card text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-shadow placeholder:text-muted-foreground ${
             Icon ? 'pl-9' : ''
           } ${suffix ? 'pr-12' : ''}`}
         />
         {suffix && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{suffix}</span>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{suffix}</span>
         )}
       </div>
     </div>
@@ -1138,11 +1151,11 @@ function FormSelect({
 }) {
   return (
     <div className={className}>
-      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">{label}</label>
+      <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+        className="w-full px-3 py-2 text-sm bg-card text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-shadow"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1165,14 +1178,14 @@ function SaveButton({
   return (
     <div className="flex items-center gap-2">
       {message && (
-        <span className={`text-sm ${message.includes('Ошибка') ? 'text-red-600' : 'text-green-600'}`}>
+        <span className={`text-sm ${message.includes('Ошибка') ? 'text-red-400' : 'text-green-400'}`}>
           {message}
         </span>
       )}
       <button
         onClick={onClick}
         disabled={loading}
-        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
       >
         <Save size={14} />
         {loading ? 'Сохранение...' : 'Сохранить'}

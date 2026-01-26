@@ -5,10 +5,10 @@ import { clientsApi } from '../api/clients'
 import type { Client } from '../types'
 
 const statusLabels: Record<string, { label: string; class: string }> = {
-  active: { label: 'Активен', class: 'bg-green-100 text-green-700' },
-  pending: { label: 'Ожидает', class: 'bg-yellow-100 text-yellow-700' },
-  paused: { label: 'На паузе', class: 'bg-gray-100 text-gray-700' },
-  archived: { label: 'Архив', class: 'bg-red-100 text-red-700' },
+  active: { label: 'Активен', class: 'bg-green-500/20 text-green-400' },
+  pending: { label: 'Ожидает', class: 'bg-yellow-500/20 text-yellow-400' },
+  paused: { label: 'На паузе', class: 'bg-secondary text-secondary-foreground' },
+  archived: { label: 'Архив', class: 'bg-red-500/20 text-red-400' },
 }
 
 export default function Clients() {
@@ -42,23 +42,23 @@ export default function Clients() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Клиенты</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Клиенты</h1>
 
       <div className="flex items-center gap-4 mb-4">
         <form onSubmit={handleSearch} className="flex-1 relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск по имени..."
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full pl-9 pr-3 py-2 bg-card text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none placeholder:text-muted-foreground"
           />
         </form>
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+          className="px-3 py-2 bg-card text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none"
         >
           <option value="">Все статусы</option>
           <option value="active">Активные</option>
@@ -69,43 +69,43 @@ export default function Clients() {
       </div>
 
       {loading ? (
-        <div className="text-gray-500">Загрузка...</div>
+        <div className="text-muted-foreground">Загрузка...</div>
       ) : clients.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
+        <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
           Клиенты не найдены
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Имя</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Telegram</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Статус</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Город</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Персона</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Приёмы пищи</th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">Действия</th>
+              <tr className="border-b border-border bg-muted">
+                <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Имя</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Telegram</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Статус</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Город</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Персона</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Приёмы пищи</th>
+                <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">Действия</th>
               </tr>
             </thead>
             <tbody>
               {clients.map((client) => (
-                <tr key={client.id} onClick={() => navigate(`/clients/${client.id}`)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{client.full_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">@{client.telegram_username}</td>
+                <tr key={client.id} onClick={() => navigate(`/clients/${client.id}`)} className="border-b border-border/50 hover:bg-muted cursor-pointer">
+                  <td className="px-4 py-3 text-sm font-medium text-foreground">{client.full_name}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">@{client.telegram_username}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusLabels[client.status]?.class}`}>
                       {statusLabels[client.status]?.label}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{client.city || '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{client.persona_name || '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{client.meals_count ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{client.city || '—'}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{client.persona_name || '—'}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{client.meals_count ?? '—'}</td>
                   <td className="px-4 py-3 text-right">
                     {client.status === 'active' && (
                       <button
                         onClick={(e) => handleAction(e, client.id, 'pause')}
-                        className="text-xs text-gray-500 hover:text-gray-700 mr-2"
+                        className="text-xs text-muted-foreground hover:text-foreground mr-2"
                       >
                         Пауза
                       </button>
@@ -113,7 +113,7 @@ export default function Clients() {
                     {client.status === 'paused' && (
                       <button
                         onClick={(e) => handleAction(e, client.id, 'activate')}
-                        className="text-xs text-green-600 hover:text-green-700 mr-2"
+                        className="text-xs text-green-400 hover:text-green-300 mr-2"
                       >
                         Активировать
                       </button>
@@ -121,7 +121,7 @@ export default function Clients() {
                     {client.status !== 'archived' && (
                       <button
                         onClick={(e) => handleAction(e, client.id, 'archive')}
-                        className="text-xs text-red-500 hover:text-red-700"
+                        className="text-xs text-red-400 hover:text-red-300"
                       >
                         Архив
                       </button>

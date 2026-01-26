@@ -49,15 +49,15 @@ export default function OnboardingEditor() {
     setQuestions((q) => q.filter((x) => x.id !== id))
   }
 
-  if (loading) return <div className="text-gray-500">Загрузка...</div>
+  if (loading) return <div className="text-muted-foreground">Загрузка...</div>
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Анкета онбординга</h1>
+        <h1 className="text-2xl font-bold text-foreground">Анкета онбординга</h1>
         <button
           onClick={() => { setShowNew(true); setEditingId(null) }}
-          className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+          className="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground text-sm rounded-lg hover:bg-primary/90"
         >
           <Plus size={16} />
           Добавить вопрос
@@ -73,7 +73,7 @@ export default function OnboardingEditor() {
       )}
 
       {questions.length === 0 && !showNew ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
+        <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
           Вопросы не добавлены
         </div>
       ) : (
@@ -87,40 +87,40 @@ export default function OnboardingEditor() {
                   onCancel={() => setEditingId(null)}
                 />
               ) : (
-                <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-start gap-3">
+                <div className="bg-card rounded-xl border border-border p-4 flex items-start gap-3">
                   <div className="flex flex-col gap-0.5 shrink-0">
                     <button
                       onClick={() => moveQuestion(idx, 'up')}
                       disabled={idx === 0}
-                      className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-20"
+                      className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20"
                     >
                       <ChevronUp size={14} />
                     </button>
                     <button
                       onClick={() => moveQuestion(idx, 'down')}
                       disabled={idx === questions.length - 1}
-                      className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-20"
+                      className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20"
                     >
                       <ChevronDown size={14} />
                     </button>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400 font-mono">{idx + 1}.</span>
-                      <span className="text-sm font-medium text-gray-900">{q.text}</span>
+                      <span className="text-xs text-muted-foreground font-mono">{idx + 1}.</span>
+                      <span className="text-sm font-medium text-foreground">{q.text}</span>
                       {q.is_required && (
-                        <span className="text-xs text-red-500">*</span>
+                        <span className="text-xs text-red-400">*</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs px-2 py-0.5 bg-gray-100 rounded text-gray-600">
+                      <span className="text-xs px-2 py-0.5 bg-secondary rounded text-secondary-foreground">
                         {questionTypes[q.question_type]}
                       </span>
                       {q.field_key && (
-                        <span className="text-xs text-gray-400">→ {q.field_key}</span>
+                        <span className="text-xs text-muted-foreground">→ {q.field_key}</span>
                       )}
                       {q.options.length > 0 && (
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-muted-foreground">
                           ({q.options.join(', ')})
                         </span>
                       )}
@@ -129,13 +129,13 @@ export default function OnboardingEditor() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => setEditingId(q.id)}
-                      className="text-xs text-blue-600 hover:text-blue-700 px-2 py-1"
+                      className="text-xs text-primary hover:text-primary/80 px-2 py-1"
                     >
                       Изменить
                     </button>
                     <button
                       onClick={() => deleteQuestion(q.id)}
-                      className="p-1 text-gray-400 hover:text-red-500"
+                      className="p-1 text-muted-foreground hover:text-red-400"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -192,24 +192,24 @@ function QuestionForm({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-blue-200 p-4 mb-2">
+    <div className="bg-card rounded-xl border border-primary/30 p-4 mb-2">
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
-          <label className="text-xs text-gray-500">Текст вопроса</label>
+          <label className="text-xs text-muted-foreground">Текст вопроса</label>
           <input
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
+            className="w-full mt-1 px-3 py-2 text-sm bg-background text-foreground border border-border rounded-lg placeholder:text-muted-foreground"
             placeholder="Какой у вас рост?"
           />
         </div>
         <div>
-          <label className="text-xs text-gray-500">Тип ответа</label>
+          <label className="text-xs text-muted-foreground">Тип ответа</label>
           <select
             value={questionType}
             onChange={(e) => setQuestionType(e.target.value)}
-            className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
+            className="w-full mt-1 px-3 py-2 text-sm bg-background text-foreground border border-border rounded-lg"
           >
             {Object.entries(questionTypes).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
@@ -220,11 +220,11 @@ function QuestionForm({
 
       {(questionType === 'choice' || questionType === 'multi_choice') && (
         <div className="mb-3">
-          <label className="text-xs text-gray-500">Варианты (по одному на строку)</label>
+          <label className="text-xs text-muted-foreground">Варианты (по одному на строку)</label>
           <textarea
             value={options}
             onChange={(e) => setOptions(e.target.value)}
-            className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
+            className="w-full mt-1 px-3 py-2 text-sm bg-background text-foreground border border-border rounded-lg placeholder:text-muted-foreground"
             rows={3}
             placeholder={"Вариант 1\nВариант 2\nВариант 3"}
           />
@@ -232,7 +232,7 @@ function QuestionForm({
       )}
 
       <div className="flex items-center gap-4 mb-3">
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-sm text-foreground">
           <input
             type="checkbox"
             checked={isRequired}
@@ -241,12 +241,12 @@ function QuestionForm({
           Обязательный
         </label>
         <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-500">Ключ поля</label>
+          <label className="text-xs text-muted-foreground">Ключ поля</label>
           <input
             type="text"
             value={fieldKey}
             onChange={(e) => setFieldKey(e.target.value)}
-            className="px-2 py-1 text-xs border border-gray-300 rounded"
+            className="px-2 py-1 text-xs bg-background text-foreground border border-border rounded placeholder:text-muted-foreground"
             placeholder="height"
           />
         </div>
@@ -256,14 +256,14 @@ function QuestionForm({
         <button
           onClick={handleSave}
           disabled={saving || !text.trim()}
-          className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground text-sm rounded-lg hover:bg-primary/90 disabled:opacity-50"
         >
           <Save size={14} />
           {saving ? 'Сохранение...' : 'Сохранить'}
         </button>
         <button
           onClick={onCancel}
-          className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+          className="px-3 py-1.5 text-sm text-secondary-foreground hover:bg-muted rounded-lg"
         >
           Отмена
         </button>
