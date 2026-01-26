@@ -12,6 +12,26 @@ import Logs from './pages/Logs'
 import AISettings from './pages/settings/AISettings'
 import TelegramSettings from './pages/settings/TelegramSettings'
 import PersonaSettings from './pages/settings/PersonaSettings'
+// Упражнения
+import Exercises from './pages/exercises/Exercises'
+import ExerciseEditor from './pages/exercises/ExerciseEditor'
+import ExerciseCategories from './pages/exercises/ExerciseCategories'
+import ExerciseTypes from './pages/exercises/ExerciseTypes'
+// Тренировки
+import ClientWorkouts from './pages/workouts/ClientWorkouts'
+import WorkoutBuilder from './pages/workouts/WorkoutBuilder'
+import WorkoutTemplates from './pages/workouts/WorkoutTemplates'
+// FitDB (новый интерфейс тренировок)
+import FitdbIndex from './pages/fitdb/Index'
+import FitdbDashboard from './pages/fitdb/Dashboard'
+import FitdbWorkouts from './pages/fitdb/Workouts'
+import FitdbWorkoutBuilder from './pages/fitdb/WorkoutBuilder'
+import FitdbTemplates from './pages/fitdb/WorkoutTemplates'
+import FitdbTemplateBuilder from './pages/fitdb/TemplateBuilder'
+import FitdbClients from './pages/fitdb/Clients'
+import FitdbClientDetail from './pages/fitdb/ClientDetail'
+import FitdbWorkoutRun from './pages/fitdb/WorkoutRun'
+import FitdbWorkoutHistory from './pages/fitdb/WorkoutHistory'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -35,6 +55,20 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="clients" element={<Clients />} />
           <Route path="clients/:id" element={<ClientDetail />} />
+          {/* Упражнения */}
+          <Route path="exercises" element={<Exercises />} />
+          <Route path="exercises/new" element={<ExerciseEditor />} />
+          <Route path="exercises/:id" element={<ExerciseEditor />} />
+          <Route path="exercises/categories" element={<ExerciseCategories />} />
+          <Route path="exercises/types" element={<ExerciseTypes />} />
+          {/* Тренировки */}
+          <Route path="workouts" element={<ClientWorkouts />} />
+          <Route path="workouts/new" element={<WorkoutBuilder />} />
+          <Route path="workouts/:id" element={<WorkoutBuilder />} />
+          <Route path="workouts/templates" element={<WorkoutTemplates />} />
+          <Route path="workouts/templates/new" element={<WorkoutBuilder />} />
+          <Route path="workouts/templates/:id" element={<WorkoutBuilder />} />
+          {/* Остальное */}
           <Route path="onboarding" element={<OnboardingEditor />} />
           <Route path="logs" element={<Logs />} />
           <Route path="reports" element={<Reports />} />
@@ -42,6 +76,19 @@ function App() {
           <Route path="settings/ai" element={<AISettings />} />
           <Route path="settings/telegram" element={<TelegramSettings />} />
           <Route path="settings/persona" element={<PersonaSettings />} />
+          {/* FitDB - новый интерфейс тренировок */}
+          <Route path="fitdb" element={<FitdbIndex />} />
+          <Route path="fitdb/dashboard" element={<FitdbDashboard />} />
+          <Route path="fitdb/workouts" element={<FitdbWorkouts />} />
+          <Route path="fitdb/workouts/new" element={<FitdbWorkoutBuilder />} />
+          <Route path="fitdb/workouts/:id" element={<FitdbWorkoutBuilder />} />
+          <Route path="fitdb/workouts/:id/run" element={<FitdbWorkoutRun />} />
+          <Route path="fitdb/templates" element={<FitdbTemplates />} />
+          <Route path="fitdb/templates/new" element={<FitdbTemplateBuilder />} />
+          <Route path="fitdb/templates/:id" element={<FitdbTemplateBuilder />} />
+          <Route path="fitdb/clients" element={<FitdbClients />} />
+          <Route path="fitdb/clients/:id" element={<FitdbClientDetail />} />
+          <Route path="fitdb/history" element={<FitdbWorkoutHistory />} />
         </Route>
       </Routes>
     </BrowserRouter>

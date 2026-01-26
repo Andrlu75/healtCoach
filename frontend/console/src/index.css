@@ -1,1 +1,119 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fitness Exercise Database - Dark Athletic Theme */
+
+@layer base {
+  :root {
+    --background: 220 20% 7%;
+    --foreground: 0 0% 98%;
+
+    --card: 220 18% 10%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 220 18% 12%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 82 85% 55%;
+    --primary-foreground: 220 20% 7%;
+
+    --secondary: 220 15% 16%;
+    --secondary-foreground: 0 0% 90%;
+
+    --muted: 220 15% 14%;
+    --muted-foreground: 220 10% 55%;
+
+    --accent: 15 85% 60%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 82 85% 55%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(82 85% 55%) 0%, hsl(82 75% 45%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(15 85% 60%) 0%, hsl(15 75% 50%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(220 18% 12%) 0%, hsl(220 18% 8%) 100%);
+    --shadow-glow: 0 0 30px -5px hsl(82 85% 55% / 0.3);
+    --shadow-card: 0 4px 20px -4px hsl(0 0% 0% / 0.5);
+
+    --sidebar-background: 220 18% 8%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 82 85% 55%;
+    --sidebar-primary-foreground: 220 20% 7%;
+    --sidebar-accent: 220 15% 14%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 82 85% 55%;
+  }
+
+  .dark {
+    --background: 220 20% 7%;
+    --foreground: 0 0% 98%;
+    --card: 220 18% 10%;
+    --card-foreground: 0 0% 98%;
+    --popover: 220 18% 12%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 82 85% 55%;
+    --primary-foreground: 220 20% 7%;
+    --secondary: 220 15% 16%;
+    --secondary-foreground: 0 0% 90%;
+    --muted: 220 15% 14%;
+    --muted-foreground: 220 10% 55%;
+    --accent: 15 85% 60%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 82 85% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-accent {
+    background: var(--gradient-accent);
+  }
+
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .text-gradient {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}

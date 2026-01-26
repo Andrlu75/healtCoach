@@ -251,3 +251,196 @@ export interface OnboardingQuestion {
   field_key: string
   created_at: string
 }
+
+// Упражнения
+export interface ExerciseCategory {
+  id: number
+  name: string
+  description: string
+  color: string
+  icon: string
+  order: number
+  is_active: boolean
+  exercises_count: number
+  created_at: string
+}
+
+export interface ExerciseType {
+  id: number
+  name: string
+  description: string
+  parameters: string[]
+  parameters_display: { key: string; label: string }[]
+  is_active: boolean
+  created_at: string
+}
+
+export interface Exercise {
+  id: number
+  name: string
+  description: string
+  instructions: string[]
+  category: number | null
+  category_name: string | null
+  exercise_type: number | null
+  type_name: string | null
+  type_parameters: { key: string; label: string }[]
+  image: string | null
+  video_url: string
+  media_type: 'image' | 'video'
+  default_parameters: Record<string, number>
+  muscle_groups: string[]
+  equipment: string[]
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+// Тренировки
+export interface WorkoutTemplate {
+  id: number
+  name: string
+  description: string
+  estimated_duration: number | null
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  tags: string[]
+  is_active: boolean
+  blocks_count: number
+  exercises_count: number
+  created_at: string
+  updated_at: string
+  blocks?: WorkoutTemplateBlock[]
+}
+
+export interface WorkoutTemplateBlock {
+  id: number
+  name: string
+  block_type: 'warmup' | 'main' | 'cooldown' | 'custom'
+  order: number
+  rounds: number
+  rest_between_rounds: number
+  exercises: WorkoutTemplateExercise[]
+}
+
+export interface WorkoutTemplateExercise {
+  id: number
+  exercise: number
+  exercise_detail: Exercise
+  order: number
+  parameters: Record<string, number>
+  rest_after: number
+  superset_group: number | null
+  notes: string
+}
+
+export interface ClientWorkout {
+  id: number
+  client: number
+  client_name: string
+  template: number | null
+  template_name: string | null
+  name: string
+  description: string
+  scheduled_date: string | null
+  scheduled_time: string | null
+  status: 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'skipped'
+  estimated_duration: number | null
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  notes: string
+  reminder_enabled: boolean
+  reminder_minutes_before: number
+  blocks_count: number
+  exercises_count: number
+  last_session: {
+    id: number
+    status: string
+    started_at: string
+    completion_percentage: number
+  } | null
+  created_at: string
+  updated_at: string
+  blocks?: WorkoutBlock[]
+}
+
+export interface WorkoutBlock {
+  id: number
+  name: string
+  block_type: 'warmup' | 'main' | 'cooldown' | 'custom'
+  order: number
+  rounds: number
+  rest_between_rounds: number
+  exercises: WorkoutExercise[]
+  supersets: WorkoutSuperset[]
+}
+
+export interface WorkoutSuperset {
+  id: number
+  name: string
+  order: number
+  rounds: number
+  rest_after: number
+  exercises: WorkoutExercise[]
+}
+
+export interface WorkoutExercise {
+  id: number
+  exercise: number
+  exercise_detail: Exercise
+  superset: number | null
+  order: number
+  parameters: Record<string, number>
+  rest_after: number
+  notes: string
+}
+
+export interface WorkoutSession {
+  id: number
+  workout: number
+  workout_name: string
+  started_at: string
+  finished_at: string | null
+  status: 'in_progress' | 'completed' | 'paused' | 'abandoned'
+  duration_seconds: number | null
+  total_exercises: number
+  completed_exercises: number
+  total_sets: number
+  completed_sets: number
+  completion_percentage: number
+  calories_burned: number | null
+  client_notes: string
+  client_rating: number | null
+  fatigue_level: number | null
+}
+
+export interface TrainingSchedule {
+  id: number
+  client: number
+  client_name: string
+  name: string
+  days_of_week: number[]
+  days_display: string[]
+  time: string
+  template: number | null
+  template_name: string | null
+  is_active: boolean
+  start_date: string
+  end_date: string | null
+  created_at: string
+}
+
+export interface TrainingProgram {
+  id: number
+  client: number
+  client_name: string
+  name: string
+  description: string
+  duration_weeks: number
+  status: 'draft' | 'active' | 'completed' | 'paused'
+  start_date: string | null
+  current_week: number
+  workouts_count: number
+  progress_percentage: number
+  created_at: string
+  updated_at: string
+}

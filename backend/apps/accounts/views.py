@@ -18,7 +18,7 @@ from apps.onboarding.models import InviteLink
 from apps.persona.models import BotPersona, TelegramBot
 
 from .models import Client, Coach, User
-from .serializers import ClientSerializer, ClientDetailSerializer, CoachSerializer
+from .serializers import ClientSerializer, ClientDetailSerializer, CoachSerializer, FitDBClientSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -315,3 +315,16 @@ class ClientViewSet(viewsets.ModelViewSet):
         client.persona = persona
         client.save(update_fields=['persona'])
         return Response(ClientSerializer(client).data)
+
+
+class FitDBClientViewSet(viewsets.ReadOnlyModelViewSet):
+    """Public FitDB API for clients (read-only)"""
+    permission_classes = [AllowAny]
+    serializer_class = FitDBClientSerializer
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ['first_name', 'last_name', 'telegram_username']
+    ordering_fields = ['created_at', 'first_name']
+    ordering = ['first_name']
+
+    def get_queryset(self):
+        return Client.objects.filter(status='active')

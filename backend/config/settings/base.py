@@ -34,6 +34,8 @@ INSTALLED_APPS = [
     'apps.persona',
     'apps.weather',
     'apps.bot',
+    'apps.exercises',
+    'apps.workouts',
 ]
 
 MIDDLEWARE = [
