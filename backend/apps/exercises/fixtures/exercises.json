@@ -1,0 +1,4018 @@
+[
+{
+  "model": "exercises.exercise",
+  "pk": 1,
+  "fields": {
+    "coach": 1,
+    "category": 1,
+    "exercise_type": 1,
+    "name": "Жим штанги лёжа",
+    "description": "Базовое упражнение для развития грудных мышц. Лёжа на скамье, опустите штангу к груди и выжмите вверх.",
+    "instructions": [
+      "Лягте на скамью, стопы плотно на полу",
+      "Возьмите штангу хватом шире плеч",
+      "Снимите штангу со стоек и опустите к груди",
+      "Выжмите штангу вверх до полного выпрямления рук",
+      "Контролируйте движение на всём протяжении"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 10,
+      "weight": 60
+    },
+    "muscle_groups": [
+      "грудь",
+      "трицепс",
+      "передние дельты"
+    ],
+    "equipment": [
+      "штанга",
+      "скамья"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.965Z",
+    "updated_at": "2026-01-25T20:54:39.439Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 2,
+  "fields": {
+    "coach": 1,
+    "category": 1,
+    "exercise_type": 1,
+    "name": "Жим гантелей лёжа",
+    "description": "Вариация жима с гантелями для большей амплитуды движения и проработки стабилизаторов.",
+    "instructions": [
+      "Лягте на скамью с гантелями в руках",
+      "Выжмите гантели вверх",
+      "Медленно опустите к груди, разводя локти",
+      "Выжмите обратно вверх"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 12,
+      "weight": 20
+    },
+    "muscle_groups": [
+      "грудь",
+      "трицепс"
+    ],
+    "equipment": [
+      "гантели",
+      "скамья"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.965Z",
+    "updated_at": "2026-01-25T20:54:39.443Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 3,
+  "fields": {
+    "coach": 1,
+    "category": 1,
+    "exercise_type": 1,
+    "name": "Жим штанги на наклонной скамье",
+    "description": "Акцент на верхнюю часть грудных мышц. Угол наклона 30-45 градусов.",
+    "instructions": [
+      "Установите скамью под углом 30-45 градусов",
+      "Лягте на скамью и возьмите штангу",
+      "Опустите штангу к верхней части груди",
+      "Выжмите вверх"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 10,
+      "weight": 50
+    },
+    "muscle_groups": [
+      "верх груди",
+      "передние дельты"
+    ],
+    "equipment": [
+      "штанга",
+      "наклонная скамья"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.966Z",
+    "updated_at": "2026-01-25T20:54:39.444Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 4,
+  "fields": {
+    "coach": 1,
+    "category": 1,
+    "exercise_type": 1,
+    "name": "Разводка гантелей лёжа",
+    "description": "",
+    "instructions": [
+      "Лягте на скамью с гантелями над грудью",
+      "Слегка согните локти",
+      "Разведите руки в стороны до уровня груди",
+      "Сведите руки обратно"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 12,
+      "weight": 12
+    },
+    "muscle_groups": [
+      "большая грудная"
+    ],
+    "equipment": [
+      "гантели",
+      "скамья"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.967Z",
+    "updated_at": "2026-01-25T18:37:43.967Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 5,
+  "fields": {
+    "coach": 1,
+    "category": 1,
+    "exercise_type": 2,
+    "name": "Отжимания от пола",
+    "description": "Классическое упражнение с собственным весом для груди, плеч и трицепсов.",
+    "instructions": [
+      "Примите упор лёжа, руки шире плеч",
+      "Тело держите прямым",
+      "Опуститесь, сгибая руки в локтях",
+      "Вернитесь в исходное положение"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15
+    },
+    "muscle_groups": [
+      "грудь",
+      "трицепс",
+      "кор"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.967Z",
+    "updated_at": "2026-01-25T20:54:39.445Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 6,
+  "fields": {
+    "coach": 1,
+    "category": 1,
+    "exercise_type": 1,
+    "name": "Сведение рук в кроссовере",
+    "description": "Изолирующее упражнение на блочном тренажёре для детальной проработки груди.",
+    "instructions": [
+      "Встаньте между блоками кроссовера",
+      "Возьмите рукоятки и слегка наклонитесь вперёд",
+      "Сведите руки перед собой",
+      "Медленно разведите обратно"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15,
+      "weight": 15
+    },
+    "muscle_groups": [
+      "грудь"
+    ],
+    "equipment": [
+      "кроссовер"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.968Z",
+    "updated_at": "2026-01-25T20:54:39.447Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 7,
+  "fields": {
+    "coach": 1,
+    "category": 1,
+    "exercise_type": 2,
+    "name": "Отжимания на брусьях",
+    "description": "Базовое упражнение для нижней части груди и трицепсов.",
+    "instructions": [
+      "Примите упор на брусьях",
+      "Наклоните корпус вперёд",
+      "Опуститесь, сгибая руки",
+      "Вернитесь в исходное положение"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 12
+    },
+    "muscle_groups": [
+      "грудь",
+      "трицепс"
+    ],
+    "equipment": [
+      "брусья"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.968Z",
+    "updated_at": "2026-01-25T20:54:39.447Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 8,
+  "fields": {
+    "coach": 1,
+    "category": 2,
+    "exercise_type": 2,
+    "name": "Подтягивания широким хватом",
+    "description": "Базовое упражнение для широчайших мышц спины. Развивает V-образный силуэт.",
+    "instructions": [
+      "Возьмитесь за турник широким хватом",
+      "Подтянитесь, подводя грудь к перекладине",
+      "Опуститесь контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 10
+    },
+    "muscle_groups": [
+      "широчайшие",
+      "бицепс"
+    ],
+    "equipment": [
+      "турник"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.969Z",
+    "updated_at": "2026-01-25T20:54:39.449Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 9,
+  "fields": {
+    "coach": 1,
+    "category": 2,
+    "exercise_type": 1,
+    "name": "Тяга штанги в наклоне",
+    "description": "Базовое упражнение для толщины спины. Наклонитесь и тяните штангу к поясу.",
+    "instructions": [
+      "Наклонитесь вперёд, держа штангу",
+      "Спину держите прямой",
+      "Потяните штангу к животу",
+      "Опустите контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 10,
+      "weight": 50
+    },
+    "muscle_groups": [
+      "широчайшие",
+      "трапеции"
+    ],
+    "equipment": [
+      "штанга"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.969Z",
+    "updated_at": "2026-01-25T20:54:39.449Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 10,
+  "fields": {
+    "coach": 1,
+    "category": 2,
+    "exercise_type": 1,
+    "name": "Тяга гантели в наклоне",
+    "description": "Односторонняя тяга для проработки каждой стороны спины отдельно.",
+    "instructions": [
+      "Обопритесь одной рукой и коленом на скамью",
+      "Возьмите гантель свободной рукой",
+      "Потяните гантель к поясу",
+      "Опустите контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 12,
+      "weight": 20
+    },
+    "muscle_groups": [
+      "широчайшие"
+    ],
+    "equipment": [
+      "гантель",
+      "скамья"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.970Z",
+    "updated_at": "2026-01-25T20:54:39.450Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 11,
+  "fields": {
+    "coach": 1,
+    "category": 2,
+    "exercise_type": 1,
+    "name": "Тяга верхнего блока к груди",
+    "description": "Имитация подтягиваний на блочном тренажёре. Отлично для начинающих.",
+    "instructions": [
+      "Сядьте в тренажёр, зафиксируйте бёдра",
+      "Возьмите рукоятку широким хватом",
+      "Потяните рукоятку к груди",
+      "Вернитесь в исходное положение"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 12,
+      "weight": 50
+    },
+    "muscle_groups": [
+      "широчайшие",
+      "бицепс"
+    ],
+    "equipment": [
+      "блочный тренажёр"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.970Z",
+    "updated_at": "2026-01-25T20:54:39.451Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 12,
+  "fields": {
+    "coach": 1,
+    "category": 2,
+    "exercise_type": 1,
+    "name": "Тяга нижнего блока к поясу",
+    "description": "Горизонтальная тяга для развития толщины спины.",
+    "instructions": [
+      "Сядьте в тренажёр, упритесь ногами",
+      "Возьмите V-образную рукоятку",
+      "Потяните к животу, сводя лопатки",
+      "Вернитесь в исходное положение"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 12,
+      "weight": 45
+    },
+    "muscle_groups": [
+      "широчайшие",
+      "ромбовидные"
+    ],
+    "equipment": [
+      "блочный тренажёр"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.971Z",
+    "updated_at": "2026-01-25T20:54:39.451Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 13,
+  "fields": {
+    "coach": 1,
+    "category": 2,
+    "exercise_type": 1,
+    "name": "Становая тяга",
+    "description": "Король базовых упражнений. Задействует практически все мышцы тела с акцентом на спину и ноги.",
+    "instructions": [
+      "Встаньте перед штангой, ноги на ширине плеч",
+      "Наклонитесь и возьмите гриф",
+      "Выпрямитесь, поднимая штангу",
+      "Опустите контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 8,
+      "weight": 80
+    },
+    "muscle_groups": [
+      "спина",
+      "ноги",
+      "кор"
+    ],
+    "equipment": [
+      "штанга"
+    ],
+    "difficulty": "advanced",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.972Z",
+    "updated_at": "2026-01-25T20:54:39.448Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 14,
+  "fields": {
+    "coach": 1,
+    "category": 2,
+    "exercise_type": 2,
+    "name": "Гиперэкстензия",
+    "description": "Упражнение для укрепления поясницы и разгибателей спины.",
+    "instructions": [
+      "Лягте на римский стул лицом вниз",
+      "Руки за головой или на груди",
+      "Опустите корпус вниз",
+      "Поднимитесь до прямой линии с ногами"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15
+    },
+    "muscle_groups": [
+      "поясница",
+      "ягодицы"
+    ],
+    "equipment": [
+      "римский стул"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.972Z",
+    "updated_at": "2026-01-25T20:54:39.452Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 15,
+  "fields": {
+    "coach": 1,
+    "category": 2,
+    "exercise_type": 1,
+    "name": "Шраги со штангой",
+    "description": "",
+    "instructions": [
+      "Встаньте прямо, держа штангу перед собой",
+      "Поднимите плечи максимально вверх",
+      "Задержитесь на секунду",
+      "Опустите плечи"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15,
+      "weight": 40
+    },
+    "muscle_groups": [
+      "трапеция"
+    ],
+    "equipment": [
+      "штанга"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.973Z",
+    "updated_at": "2026-01-25T18:37:43.973Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 16,
+  "fields": {
+    "coach": 1,
+    "category": 3,
+    "exercise_type": 1,
+    "name": "Приседания со штангой",
+    "description": "Король упражнений для ног. Развивает квадрицепсы, ягодицы и заднюю поверхность бедра.",
+    "instructions": [
+      "Положите штангу на трапецию",
+      "Ноги на ширине плеч",
+      "Присядьте до параллели бёдер с полом",
+      "Вернитесь в исходное положение"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 10,
+      "weight": 60
+    },
+    "muscle_groups": [
+      "квадрицепсы",
+      "ягодицы",
+      "бицепс бедра"
+    ],
+    "equipment": [
+      "штанга",
+      "стойка"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.973Z",
+    "updated_at": "2026-01-25T20:54:39.463Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 17,
+  "fields": {
+    "coach": 1,
+    "category": 3,
+    "exercise_type": 1,
+    "name": "Жим ногами в тренажёре",
+    "description": "Безопасная альтернатива приседаниям для проработки квадрицепсов.",
+    "instructions": [
+      "Сядьте в тренажёр, спина прижата",
+      "Поставьте ноги на платформу",
+      "Выжмите платформу вверх",
+      "Согните ноги, опуская платформу"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 12,
+      "weight": 100
+    },
+    "muscle_groups": [
+      "квадрицепсы",
+      "ягодицы"
+    ],
+    "equipment": [
+      "тренажёр для жима ногами"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.974Z",
+    "updated_at": "2026-01-25T20:54:39.464Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 18,
+  "fields": {
+    "coach": 1,
+    "category": 3,
+    "exercise_type": 1,
+    "name": "Выпады с гантелями",
+    "description": "Упражнение для ног и ягодиц. Можно выполнять на месте или с продвижением.",
+    "instructions": [
+      "Встаньте прямо с гантелями в руках",
+      "Сделайте шаг вперёд",
+      "Опуститесь до угла 90 градусов в колене",
+      "Вернитесь в исходное положение"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 12,
+      "weight": 12
+    },
+    "muscle_groups": [
+      "квадрицепсы",
+      "ягодицы"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.974Z",
+    "updated_at": "2026-01-25T20:54:39.464Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 19,
+  "fields": {
+    "coach": 1,
+    "category": 3,
+    "exercise_type": 1,
+    "name": "Разгибание ног в тренажёре",
+    "description": "Изолирующее упражнение для квадрицепсов.",
+    "instructions": [
+      "Сядьте в тренажёр",
+      "Зафиксируйте ноги под валиком",
+      "Разогните ноги",
+      "Согните обратно контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15,
+      "weight": 40
+    },
+    "muscle_groups": [
+      "квадрицепсы"
+    ],
+    "equipment": [
+      "тренажёр"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.975Z",
+    "updated_at": "2026-01-25T20:54:39.465Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 20,
+  "fields": {
+    "coach": 1,
+    "category": 3,
+    "exercise_type": 1,
+    "name": "Сгибание ног в тренажёре",
+    "description": "Изолирующее упражнение для бицепса бедра.",
+    "instructions": [
+      "Лягте на тренажёр лицом вниз",
+      "Зафиксируйте ноги под валиком",
+      "Согните ноги, подтягивая валик к ягодицам",
+      "Разогните контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15,
+      "weight": 35
+    },
+    "muscle_groups": [
+      "бицепс бедра"
+    ],
+    "equipment": [
+      "тренажёр"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.975Z",
+    "updated_at": "2026-01-25T20:54:39.465Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 21,
+  "fields": {
+    "coach": 1,
+    "category": 3,
+    "exercise_type": 1,
+    "name": "Румынская тяга",
+    "description": "Упражнение для задней поверхности бедра и ягодиц с акцентом на растяжение.",
+    "instructions": [
+      "Встаньте прямо со штангой",
+      "Отведите таз назад, наклоняясь вперёд",
+      "Опустите штангу вдоль ног",
+      "Вернитесь в исходное положение"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 10,
+      "weight": 50
+    },
+    "muscle_groups": [
+      "бицепс бедра",
+      "ягодицы"
+    ],
+    "equipment": [
+      "штанга"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.976Z",
+    "updated_at": "2026-01-25T20:54:39.466Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 22,
+  "fields": {
+    "coach": 1,
+    "category": 3,
+    "exercise_type": 1,
+    "name": "Болгарские сплит-приседания",
+    "description": "",
+    "instructions": [
+      "Положите заднюю ногу на скамью",
+      "Передняя нога впереди",
+      "Присядьте на передней ноге",
+      "Вернитесь в исходное положение"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 10,
+      "weight": 10
+    },
+    "muscle_groups": [
+      "квадрицепс",
+      "ягодицы"
+    ],
+    "equipment": [
+      "гантели",
+      "скамья"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.976Z",
+    "updated_at": "2026-01-25T18:37:43.976Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 23,
+  "fields": {
+    "coach": 1,
+    "category": 3,
+    "exercise_type": 1,
+    "name": "Гакк-приседания",
+    "description": "Приседания в тренажёре Гаккеншмидта для квадрицепсов.",
+    "instructions": [
+      "Встаньте в тренажёр, плечи под упоры",
+      "Ноги на платформе",
+      "Присядьте до параллели",
+      "Вернитесь в исходное положение"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 12,
+      "weight": 80
+    },
+    "muscle_groups": [
+      "квадрицепсы"
+    ],
+    "equipment": [
+      "гакк-машина"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.977Z",
+    "updated_at": "2026-01-25T20:54:39.467Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 24,
+  "fields": {
+    "coach": 1,
+    "category": 4,
+    "exercise_type": 1,
+    "name": "Жим штанги стоя",
+    "description": "",
+    "instructions": [
+      "Встаньте прямо, штанга на груди",
+      "Выжмите штангу вверх",
+      "Опустите обратно к груди"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 10,
+      "weight": 40
+    },
+    "muscle_groups": [
+      "передняя дельта",
+      "средняя дельта",
+      "трицепс"
+    ],
+    "equipment": [
+      "штанга"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.978Z",
+    "updated_at": "2026-01-25T18:37:43.978Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 25,
+  "fields": {
+    "coach": 1,
+    "category": 4,
+    "exercise_type": 1,
+    "name": "Жим гантелей сидя",
+    "description": "Жим над головой с гантелями для равномерного развития плеч.",
+    "instructions": [
+      "Сядьте на скамью с опорой для спины",
+      "Гантели на уровне плеч",
+      "Выжмите гантели вверх",
+      "Опустите обратно"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 12,
+      "weight": 16
+    },
+    "muscle_groups": [
+      "дельты",
+      "трицепс"
+    ],
+    "equipment": [
+      "гантели",
+      "скамья"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.978Z",
+    "updated_at": "2026-01-25T20:54:39.454Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 26,
+  "fields": {
+    "coach": 1,
+    "category": 4,
+    "exercise_type": 1,
+    "name": "Разводка гантелей в стороны",
+    "description": "",
+    "instructions": [
+      "Встаньте прямо, гантели в опущенных руках",
+      "Поднимите руки в стороны до уровня плеч",
+      "Опустите контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15,
+      "weight": 8
+    },
+    "muscle_groups": [
+      "средняя дельта"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.979Z",
+    "updated_at": "2026-01-25T18:37:43.979Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 27,
+  "fields": {
+    "coach": 1,
+    "category": 4,
+    "exercise_type": 1,
+    "name": "Подъём гантелей перед собой",
+    "description": "Изолирующее упражнение для передних дельт.",
+    "instructions": [
+      "Встаньте прямо, гантели перед бёдрами",
+      "Поднимите руки перед собой до уровня плеч",
+      "Опустите контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 12,
+      "weight": 8
+    },
+    "muscle_groups": [
+      "передние дельты"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.979Z",
+    "updated_at": "2026-01-25T20:54:39.455Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 28,
+  "fields": {
+    "coach": 1,
+    "category": 4,
+    "exercise_type": 1,
+    "name": "Разводка в наклоне",
+    "description": "",
+    "instructions": [
+      "Наклонитесь вперёд, гантели внизу",
+      "Разведите руки в стороны",
+      "Сведите лопатки в верхней точке",
+      "Опустите контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15,
+      "weight": 6
+    },
+    "muscle_groups": [
+      "задняя дельта"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.980Z",
+    "updated_at": "2026-01-25T18:37:43.980Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 29,
+  "fields": {
+    "coach": 1,
+    "category": 4,
+    "exercise_type": 1,
+    "name": "Тяга штанги к подбородку",
+    "description": "Базовое упражнение для трапеций и средних дельт.",
+    "instructions": [
+      "Встаньте прямо, штанга перед бёдрами",
+      "Потяните штангу вверх вдоль тела",
+      "Локти ведите выше кистей",
+      "Опустите контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 12,
+      "weight": 25
+    },
+    "muscle_groups": [
+      "трапеции",
+      "дельты"
+    ],
+    "equipment": [
+      "штанга"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.980Z",
+    "updated_at": "2026-01-25T20:54:39.456Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 30,
+  "fields": {
+    "coach": 1,
+    "category": 4,
+    "exercise_type": 1,
+    "name": "Обратные разведения в тренажёре",
+    "description": "",
+    "instructions": [
+      "Сядьте лицом к тренажёру",
+      "Возьмите рукоятки",
+      "Разведите руки назад",
+      "Вернитесь в исходное положение"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15,
+      "weight": 20
+    },
+    "muscle_groups": [
+      "задняя дельта"
+    ],
+    "equipment": [
+      "тренажёр пек-дек"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.981Z",
+    "updated_at": "2026-01-25T18:37:43.981Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 31,
+  "fields": {
+    "coach": 1,
+    "category": 5,
+    "exercise_type": 1,
+    "name": "Сгибание рук со штангой стоя",
+    "description": "",
+    "instructions": [
+      "Встаньте прямо, штанга в опущенных руках",
+      "Согните руки, поднимая штангу",
+      "Не раскачивайте корпус",
+      "Опустите контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 12,
+      "weight": 25
+    },
+    "muscle_groups": [
+      "бицепс",
+      "брахиалис"
+    ],
+    "equipment": [
+      "штанга"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.981Z",
+    "updated_at": "2026-01-25T18:37:43.981Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 32,
+  "fields": {
+    "coach": 1,
+    "category": 5,
+    "exercise_type": 1,
+    "name": "Сгибание рук с гантелями",
+    "description": "",
+    "instructions": [
+      "Встаньте или сядьте с гантелями",
+      "Согните руки, поднимая гантели",
+      "Супинируйте кисти в верхней точке",
+      "Опустите контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 12,
+      "weight": 12
+    },
+    "muscle_groups": [
+      "бицепс"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.982Z",
+    "updated_at": "2026-01-25T18:37:43.982Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 33,
+  "fields": {
+    "coach": 1,
+    "category": 5,
+    "exercise_type": 1,
+    "name": "Молотковые сгибания",
+    "description": "Подъём гантелей нейтральным хватом для брахиалиса и предплечий.",
+    "instructions": [
+      "Встаньте с гантелями, хват нейтральный",
+      "Согните руки, сохраняя положение кистей",
+      "Опустите контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 12,
+      "weight": 12
+    },
+    "muscle_groups": [
+      "бицепс",
+      "брахиалис",
+      "предплечья"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.983Z",
+    "updated_at": "2026-01-25T20:54:39.459Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 34,
+  "fields": {
+    "coach": 1,
+    "category": 5,
+    "exercise_type": 1,
+    "name": "Сгибание рук на скамье Скотта",
+    "description": "",
+    "instructions": [
+      "Сядьте за скамью Скотта",
+      "Положите руки на подушку",
+      "Согните руки с отягощением",
+      "Опустите контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 12,
+      "weight": 20
+    },
+    "muscle_groups": [
+      "бицепс"
+    ],
+    "equipment": [
+      "скамья Скотта",
+      "штанга или гантели"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.983Z",
+    "updated_at": "2026-01-25T18:37:43.983Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 35,
+  "fields": {
+    "coach": 1,
+    "category": 5,
+    "exercise_type": 1,
+    "name": "Сгибание рук на блоке",
+    "description": "",
+    "instructions": [
+      "Встаньте перед нижним блоком",
+      "Возьмите рукоятку",
+      "Согните руки",
+      "Разогните контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15,
+      "weight": 25
+    },
+    "muscle_groups": [
+      "бицепс"
+    ],
+    "equipment": [
+      "блочный тренажёр"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.984Z",
+    "updated_at": "2026-01-25T18:37:43.984Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 36,
+  "fields": {
+    "coach": 1,
+    "category": 5,
+    "exercise_type": 1,
+    "name": "Концентрированные сгибания",
+    "description": "",
+    "instructions": [
+      "Сядьте на скамью, ноги широко",
+      "Упритесь локтем во внутреннюю часть бедра",
+      "Согните руку с гантелью",
+      "Опустите контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 12,
+      "weight": 10
+    },
+    "muscle_groups": [
+      "бицепс"
+    ],
+    "equipment": [
+      "гантель",
+      "скамья"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.984Z",
+    "updated_at": "2026-01-25T18:37:43.984Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 37,
+  "fields": {
+    "coach": 1,
+    "category": 6,
+    "exercise_type": 1,
+    "name": "Французский жим лёжа",
+    "description": "Изолирующее упражнение для длинной головки трицепса.",
+    "instructions": [
+      "Лягте на скамью, штанга над головой",
+      "Согните руки, опуская штангу ко лбу",
+      "Разогните руки",
+      "Локти неподвижны"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 12,
+      "weight": 25
+    },
+    "muscle_groups": [
+      "трицепс"
+    ],
+    "equipment": [
+      "штанга",
+      "скамья"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.985Z",
+    "updated_at": "2026-01-25T20:54:39.461Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 38,
+  "fields": {
+    "coach": 1,
+    "category": 6,
+    "exercise_type": 1,
+    "name": "Разгибание рук на блоке",
+    "description": "",
+    "instructions": [
+      "Встаньте перед верхним блоком",
+      "Возьмите рукоятку, локти прижаты",
+      "Разогните руки вниз",
+      "Согните контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15,
+      "weight": 30
+    },
+    "muscle_groups": [
+      "трицепс"
+    ],
+    "equipment": [
+      "блочный тренажёр"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.985Z",
+    "updated_at": "2026-01-25T18:37:43.985Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 39,
+  "fields": {
+    "coach": 1,
+    "category": 6,
+    "exercise_type": 1,
+    "name": "Разгибание руки с гантелью из-за головы",
+    "description": "Изолирующее упражнение для длинной головки трицепса.",
+    "instructions": [
+      "Сядьте или встаньте, гантель над головой",
+      "Согните руку, опуская гантель за голову",
+      "Разогните руку",
+      "Локоть неподвижен"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 12,
+      "weight": 10
+    },
+    "muscle_groups": [
+      "трицепс"
+    ],
+    "equipment": [
+      "гантель"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.986Z",
+    "updated_at": "2026-01-25T20:54:39.462Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 40,
+  "fields": {
+    "coach": 1,
+    "category": 6,
+    "exercise_type": 2,
+    "name": "Отжимания узким хватом",
+    "description": "",
+    "instructions": [
+      "Примите упор лёжа, руки уже плеч",
+      "Опуститесь, прижимая локти к корпусу",
+      "Отожмитесь"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15
+    },
+    "muscle_groups": [
+      "трицепс",
+      "грудь"
+    ],
+    "equipment": [],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.986Z",
+    "updated_at": "2026-01-25T18:37:43.986Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 41,
+  "fields": {
+    "coach": 1,
+    "category": 6,
+    "exercise_type": 1,
+    "name": "Разгибание рук с канатом",
+    "description": "",
+    "instructions": [
+      "Возьмите канат на верхнем блоке",
+      "Локти прижаты к корпусу",
+      "Разогните руки, разводя концы каната",
+      "Согните контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15,
+      "weight": 25
+    },
+    "muscle_groups": [
+      "трицепс"
+    ],
+    "equipment": [
+      "блочный тренажёр",
+      "канатная рукоятка"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.987Z",
+    "updated_at": "2026-01-25T18:37:43.987Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 42,
+  "fields": {
+    "coach": 1,
+    "category": 6,
+    "exercise_type": 2,
+    "name": "Обратные отжимания от скамьи",
+    "description": "",
+    "instructions": [
+      "Обопритесь руками о скамью сзади",
+      "Ноги вытянуты вперёд",
+      "Опуститесь, сгибая руки",
+      "Отожмитесь"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15
+    },
+    "muscle_groups": [
+      "трицепс"
+    ],
+    "equipment": [
+      "скамья"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.987Z",
+    "updated_at": "2026-01-25T18:37:43.987Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 43,
+  "fields": {
+    "coach": 1,
+    "category": 7,
+    "exercise_type": 2,
+    "name": "Скручивания",
+    "description": "Классическое упражнение для прямой мышцы живота.",
+    "instructions": [
+      "Лягте на спину, колени согнуты",
+      "Руки за головой или на груди",
+      "Поднимите плечи, напрягая пресс",
+      "Опуститесь контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 20
+    },
+    "muscle_groups": [
+      "пресс"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.988Z",
+    "updated_at": "2026-01-25T20:54:39.471Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 44,
+  "fields": {
+    "coach": 1,
+    "category": 7,
+    "exercise_type": 2,
+    "name": "Подъём ног в висе",
+    "description": "Упражнение для нижней части пресса. Выполняется на турнике.",
+    "instructions": [
+      "Повисните на турнике",
+      "Поднимите прямые или согнутые ноги",
+      "Опустите контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15
+    },
+    "muscle_groups": [
+      "пресс",
+      "сгибатели бедра"
+    ],
+    "equipment": [
+      "турник"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.988Z",
+    "updated_at": "2026-01-25T20:54:39.472Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 45,
+  "fields": {
+    "coach": 1,
+    "category": 7,
+    "exercise_type": 4,
+    "name": "Планка",
+    "description": "Статическое упражнение для укрепления кора и стабилизаторов.",
+    "instructions": [
+      "Примите упор на предплечьях",
+      "Тело прямое от головы до пяток",
+      "Удерживайте положение"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "duration": 60
+    },
+    "muscle_groups": [
+      "кор",
+      "пресс"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.989Z",
+    "updated_at": "2026-01-25T20:54:39.473Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 46,
+  "fields": {
+    "coach": 1,
+    "category": 7,
+    "exercise_type": 4,
+    "name": "Боковая планка",
+    "description": "Статическое упражнение для косых мышц живота и стабилизаторов.",
+    "instructions": [
+      "Лягте на бок, обопритесь на предплечье",
+      "Поднимите таз, выровняв тело",
+      "Удерживайте положение"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "duration": 45
+    },
+    "muscle_groups": [
+      "косые мышцы",
+      "кор"
+    ],
+    "equipment": [],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.989Z",
+    "updated_at": "2026-01-25T20:56:14.581Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 47,
+  "fields": {
+    "coach": 1,
+    "category": 7,
+    "exercise_type": 2,
+    "name": "Велосипед",
+    "description": "Динамическое упражнение для всего пресса с имитацией кручения педалей.",
+    "instructions": [
+      "Лягте на спину, руки за головой",
+      "Поочерёдно подтягивайте колени к груди",
+      "Тянитесь локтем к противоположному колену"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 20
+    },
+    "muscle_groups": [
+      "пресс",
+      "косые мышцы"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.990Z",
+    "updated_at": "2026-01-25T20:54:39.474Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 48,
+  "fields": {
+    "coach": 1,
+    "category": 7,
+    "exercise_type": 1,
+    "name": "Скручивания на блоке",
+    "description": "Скручивания с сопротивлением для более интенсивной проработки пресса.",
+    "instructions": [
+      "Встаньте на колени перед верхним блоком",
+      "Возьмите канат за головой",
+      "Скрутитесь вниз, напрягая пресс",
+      "Вернитесь в исходное положение"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15,
+      "weight": 30
+    },
+    "muscle_groups": [
+      "пресс"
+    ],
+    "equipment": [
+      "блочный тренажёр"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.991Z",
+    "updated_at": "2026-01-25T20:54:39.474Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 49,
+  "fields": {
+    "coach": 1,
+    "category": 7,
+    "exercise_type": 2,
+    "name": "Подъём туловища на наклонной скамье",
+    "description": "",
+    "instructions": [
+      "Лягте на наклонную скамью, ноги зафиксированы",
+      "Руки за головой или на груди",
+      "Поднимите туловище",
+      "Опуститесь контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15
+    },
+    "muscle_groups": [
+      "прямая мышца живота",
+      "подвздошно-поясничная"
+    ],
+    "equipment": [
+      "наклонная скамья"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.991Z",
+    "updated_at": "2026-01-25T18:37:43.991Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 50,
+  "fields": {
+    "coach": 1,
+    "category": 8,
+    "exercise_type": 3,
+    "name": "Бег на беговой дорожке",
+    "description": "Классическое кардио упражнение для развития выносливости и сжигания калорий.",
+    "instructions": [
+      "Встаньте на дорожку",
+      "Начните с ходьбы для разминки",
+      "Увеличьте скорость до комфортного бега",
+      "Поддерживайте темп"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "duration": 1800,
+      "distance": 5000,
+      "calories": 300
+    },
+    "muscle_groups": [
+      "сердечно-сосудистая система",
+      "ноги"
+    ],
+    "equipment": [
+      "беговая дорожка"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.992Z",
+    "updated_at": "2026-01-25T20:54:39.475Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 51,
+  "fields": {
+    "coach": 1,
+    "category": 8,
+    "exercise_type": 3,
+    "name": "Велотренажёр",
+    "description": "Кардио с низкой нагрузкой на суставы. Отлично для разминки и жиросжигания.",
+    "instructions": [
+      "Отрегулируйте высоту сиденья",
+      "Начните крутить педали",
+      "Поддерживайте комфортный темп"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "duration": 1800,
+      "distance": 10000,
+      "calories": 250
+    },
+    "muscle_groups": [
+      "сердечно-сосудистая система",
+      "ноги"
+    ],
+    "equipment": [
+      "велотренажёр"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.992Z",
+    "updated_at": "2026-01-25T20:54:39.476Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 52,
+  "fields": {
+    "coach": 1,
+    "category": 8,
+    "exercise_type": 3,
+    "name": "Эллиптический тренажёр",
+    "description": "Комбинированное кардио с вовлечением рук и ног.",
+    "instructions": [
+      "Встаньте на педали",
+      "Возьмитесь за рукоятки",
+      "Двигайтесь плавно, имитируя ходьбу"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "duration": 1800,
+      "distance": 3000,
+      "calories": 280
+    },
+    "muscle_groups": [
+      "всё тело"
+    ],
+    "equipment": [
+      "эллипс"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.993Z",
+    "updated_at": "2026-01-25T20:54:39.476Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 53,
+  "fields": {
+    "coach": 1,
+    "category": 8,
+    "exercise_type": 3,
+    "name": "Гребной тренажёр",
+    "description": "Кардио с вовлечением всего тела. Развивает выносливость и силу.",
+    "instructions": [
+      "Сядьте на тренажёр, ноги зафиксированы",
+      "Возьмите рукоятку",
+      "Оттолкнитесь ногами и потяните рукоятку",
+      "Вернитесь в исходное положение"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "duration": 1200,
+      "distance": 2000,
+      "calories": 200
+    },
+    "muscle_groups": [
+      "спина",
+      "ноги",
+      "руки"
+    ],
+    "equipment": [
+      "гребной тренажёр"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.993Z",
+    "updated_at": "2026-01-25T20:54:39.477Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 54,
+  "fields": {
+    "coach": 1,
+    "category": 8,
+    "exercise_type": 3,
+    "name": "Прыжки на скакалке",
+    "description": "Высокоинтенсивное кардио для развития координации и выносливости.",
+    "instructions": [
+      "Возьмите скакалку",
+      "Прыгайте, вращая скакалку",
+      "Приземляйтесь на носки"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "duration": 600,
+      "distance": 0,
+      "calories": 150
+    },
+    "muscle_groups": [
+      "икры",
+      "сердечно-сосудистая система"
+    ],
+    "equipment": [
+      "скакалка"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.994Z",
+    "updated_at": "2026-01-25T20:54:39.478Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 55,
+  "fields": {
+    "coach": 1,
+    "category": 8,
+    "exercise_type": 5,
+    "name": "Берпи",
+    "description": "Комплексное упражнение высокой интенсивности. Сочетает присед, планку и прыжок.",
+    "instructions": [
+      "Встаньте прямо",
+      "Присядьте и упритесь руками в пол",
+      "Выпрыгните в упор лёжа",
+      "Отожмитесь и прыжком вернитесь",
+      "Выпрыгните вверх"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 10
+    },
+    "muscle_groups": [
+      "всё тело"
+    ],
+    "equipment": [],
+    "difficulty": "advanced",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.994Z",
+    "updated_at": "2026-01-25T20:54:39.478Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 56,
+  "fields": {
+    "coach": 1,
+    "category": 9,
+    "exercise_type": 2,
+    "name": "Ягодичный мостик",
+    "description": "",
+    "instructions": [
+      "Лягте на спину, колени согнуты",
+      "Поднимите таз вверх, напрягая ягодицы",
+      "Задержитесь в верхней точке",
+      "Опуститесь контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15
+    },
+    "muscle_groups": [
+      "ягодицы",
+      "бицепс бедра"
+    ],
+    "equipment": [
+      "коврик"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.995Z",
+    "updated_at": "2026-01-25T18:37:43.995Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 57,
+  "fields": {
+    "coach": 1,
+    "category": 9,
+    "exercise_type": 1,
+    "name": "Ягодичный мостик со штангой",
+    "description": "",
+    "instructions": [
+      "Обопритесь лопатками о скамью",
+      "Штанга на бёдрах",
+      "Поднимите таз вверх",
+      "Опуститесь контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 12,
+      "weight": 40
+    },
+    "muscle_groups": [
+      "ягодицы",
+      "бицепс бедра"
+    ],
+    "equipment": [
+      "штанга",
+      "скамья"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.995Z",
+    "updated_at": "2026-01-25T18:37:43.995Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 58,
+  "fields": {
+    "coach": 1,
+    "category": 9,
+    "exercise_type": 1,
+    "name": "Отведение ноги назад в кроссовере",
+    "description": "Изолирующее упражнение для ягодиц на блочном тренажёре.",
+    "instructions": [
+      "Прикрепите манжету к лодыжке",
+      "Встаньте лицом к тренажёру",
+      "Отведите ногу назад",
+      "Вернитесь в исходное положение"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15,
+      "weight": 15
+    },
+    "muscle_groups": [
+      "ягодицы"
+    ],
+    "equipment": [
+      "кроссовер"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.996Z",
+    "updated_at": "2026-01-25T20:54:39.469Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 59,
+  "fields": {
+    "coach": 1,
+    "category": 9,
+    "exercise_type": 1,
+    "name": "Разведение ног в тренажёре",
+    "description": "Изолирующее упражнение для средней ягодичной мышцы.",
+    "instructions": [
+      "Сядьте в тренажёр",
+      "Ноги на упорах",
+      "Разведите ноги в стороны",
+      "Сведите контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 15,
+      "weight": 40
+    },
+    "muscle_groups": [
+      "ягодицы"
+    ],
+    "equipment": [
+      "тренажёр"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.996Z",
+    "updated_at": "2026-01-25T20:54:39.471Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 60,
+  "fields": {
+    "coach": 1,
+    "category": 10,
+    "exercise_type": 1,
+    "name": "Подъём на носки стоя",
+    "description": "Изолирующее упражнение для икроножных мышц.",
+    "instructions": [
+      "Встаньте в тренажёр, плечи под упоры",
+      "Поднимитесь на носки",
+      "Опуститесь, растягивая икры"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 15,
+      "weight": 60
+    },
+    "muscle_groups": [
+      "икры"
+    ],
+    "equipment": [
+      "тренажёр"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.997Z",
+    "updated_at": "2026-01-25T20:54:39.466Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 61,
+  "fields": {
+    "coach": 1,
+    "category": 10,
+    "exercise_type": 1,
+    "name": "Подъём на носки сидя",
+    "description": "",
+    "instructions": [
+      "Сядьте в тренажёр, колени под упором",
+      "Поднимитесь на носки",
+      "Опуститесь контролируемо"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 4,
+      "reps": 15,
+      "weight": 40
+    },
+    "muscle_groups": [
+      "камбаловидная"
+    ],
+    "equipment": [
+      "тренажёр для икр сидя"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.997Z",
+    "updated_at": "2026-01-25T18:37:43.997Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 62,
+  "fields": {
+    "coach": 1,
+    "category": 10,
+    "exercise_type": 1,
+    "name": "Подъём на носки с гантелями",
+    "description": "Подъём на носки с гантелями в руках для икроножных.",
+    "instructions": [
+      "Встаньте носками на край платформы",
+      "Гантели в руках",
+      "Поднимитесь на носки",
+      "Опуститесь ниже уровня платформы"
+    ],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {
+      "sets": 3,
+      "reps": 20,
+      "weight": 15
+    },
+    "muscle_groups": [
+      "икры"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T18:37:43.998Z",
+    "updated_at": "2026-01-25T20:56:14.598Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 63,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Разведение гантелей лёжа",
+    "description": "Изолирующее упражнение для растяжения и проработки грудных мышц.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "грудь"
+    ],
+    "equipment": [
+      "гантели",
+      "скамья"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.445Z",
+    "updated_at": "2026-01-25T20:54:39.445Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 64,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Подтягивания обратным хватом",
+    "description": "Вариация подтягиваний с акцентом на бицепс и нижнюю часть широчайших.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "широчайшие",
+      "бицепс"
+    ],
+    "equipment": [
+      "турник"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.453Z",
+    "updated_at": "2026-01-25T20:54:39.453Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 65,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Жим штанги стоя (армейский жим)",
+    "description": "Базовое упражнение для развития дельтовидных мышц и общей силы плечевого пояса.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "дельты",
+      "трицепс"
+    ],
+    "equipment": [
+      "штанга"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.453Z",
+    "updated_at": "2026-01-25T20:54:39.453Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 66,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Разведение гантелей в стороны",
+    "description": "Изолирующее упражнение для средних дельт. Создаёт ширину плеч.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "средние дельты"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.454Z",
+    "updated_at": "2026-01-25T20:54:39.454Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 67,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Разведение гантелей в наклоне",
+    "description": "Упражнение для задних дельт. Выполняется в наклоне корпуса.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "задние дельты"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.456Z",
+    "updated_at": "2026-01-25T20:54:39.456Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 68,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Шраги с гантелями",
+    "description": "Изолирующее упражнение для трапециевидных мышц.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "трапеции"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.457Z",
+    "updated_at": "2026-01-25T20:54:39.457Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 69,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Подъём штанги на бицепс стоя",
+    "description": "Классическое упражнение для развития бицепса. Основа тренировки рук.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "бицепс"
+    ],
+    "equipment": [
+      "штанга"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.457Z",
+    "updated_at": "2026-01-25T20:54:39.457Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 70,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Подъём гантелей на бицепс",
+    "description": "Попеременный или одновременный подъём гантелей с супинацией.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "бицепс"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.458Z",
+    "updated_at": "2026-01-25T20:54:39.458Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 71,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Сгибания на скамье Скотта",
+    "description": "Изолирующее упражнение для пика бицепса на специальной скамье.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "бицепс"
+    ],
+    "equipment": [
+      "скамья Скотта",
+      "штанга"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.458Z",
+    "updated_at": "2026-01-25T20:54:39.458Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 72,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Сгибания на нижнем блоке",
+    "description": "Сгибания рук на блочном тренажёре для постоянного напряжения.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "бицепс"
+    ],
+    "equipment": [
+      "блочный тренажёр"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.459Z",
+    "updated_at": "2026-01-25T20:54:39.459Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 73,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Жим штанги узким хватом",
+    "description": "Базовое упражнение для трицепса. Хват уже ширины плеч.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "трицепс",
+      "грудь"
+    ],
+    "equipment": [
+      "штанга",
+      "скамья"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.460Z",
+    "updated_at": "2026-01-25T20:54:39.460Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 74,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Разгибание рук на верхнем блоке",
+    "description": "Классическое изолирующее упражнение для трицепса на блоке.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "трицепс"
+    ],
+    "equipment": [
+      "блочный тренажёр"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.461Z",
+    "updated_at": "2026-01-25T20:54:39.461Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 75,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Отжимания от скамьи (обратные)",
+    "description": "Упражнение с собственным весом для трицепса.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "трицепс"
+    ],
+    "equipment": [
+      "скамья"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.462Z",
+    "updated_at": "2026-01-25T20:54:39.462Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 76,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Кик-бэк с гантелью",
+    "description": "Разгибание руки назад в наклоне для проработки трицепса.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "трицепс"
+    ],
+    "equipment": [
+      "гантель"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.463Z",
+    "updated_at": "2026-01-25T20:54:39.463Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 77,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Болгарские выпады",
+    "description": "Выпады с задней ногой на возвышении. Отлично для ягодиц и баланса.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "квадрицепсы",
+      "ягодицы"
+    ],
+    "equipment": [
+      "гантели",
+      "скамья"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.468Z",
+    "updated_at": "2026-01-25T20:54:39.468Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 78,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Ягодичный мост",
+    "description": "Базовое упражнение для ягодиц. Лёжа на спине, поднимайте таз вверх.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "ягодицы"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.468Z",
+    "updated_at": "2026-01-25T20:54:39.468Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 79,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Ягодичный мост со штангой",
+    "description": "Усиленная версия ягодичного моста с дополнительным отягощением.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "ягодицы"
+    ],
+    "equipment": [
+      "штанга",
+      "скамья"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.469Z",
+    "updated_at": "2026-01-25T20:54:39.469Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 80,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Приседания плие",
+    "description": "Широкая постановка ног с разворотом носков. Акцент на внутреннюю поверхность бедра и ягодицы.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "ягодицы",
+      "приводящие мышцы"
+    ],
+    "equipment": [
+      "гантель"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.470Z",
+    "updated_at": "2026-01-25T20:54:39.470Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 81,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Русские скручивания",
+    "description": "Упражнение для косых мышц живота с поворотами корпуса.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "косые мышцы",
+      "пресс"
+    ],
+    "equipment": [],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.473Z",
+    "updated_at": "2026-01-25T20:54:39.473Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 82,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Подъём корпуса на наклонной скамье",
+    "description": "Скручивания на римском стуле для увеличения амплитуды.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "пресс"
+    ],
+    "equipment": [
+      "наклонная скамья"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.475Z",
+    "updated_at": "2026-01-25T20:54:39.475Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 83,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Прыжки на тумбу",
+    "description": "Плиометрическое упражнение для развития взрывной силы ног.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "ноги",
+      "ягодицы"
+    ],
+    "equipment": [
+      "плиобокс"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:54:39.479Z",
+    "updated_at": "2026-01-25T20:54:39.479Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 84,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Отжимания с широкой постановкой рук",
+    "description": "Акцент на внешнюю часть грудных мышц. Руки шире плеч, локти в стороны.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "грудь",
+      "трицепс"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.569Z",
+    "updated_at": "2026-01-25T20:56:14.569Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 85,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Отжимания с узкой постановкой рук (алмазные)",
+    "description": "Акцент на трицепс и внутреннюю часть груди. Руки образуют ромб под грудью.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "трицепс",
+      "грудь"
+    ],
+    "equipment": [],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.571Z",
+    "updated_at": "2026-01-25T20:56:14.571Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 86,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Отжимания с ногами на возвышении",
+    "description": "Усиленная нагрузка на верхнюю часть груди и передние дельты.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "верх груди",
+      "дельты"
+    ],
+    "equipment": [],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.572Z",
+    "updated_at": "2026-01-25T20:56:14.572Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 87,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Отжимания на одной руке",
+    "description": "Продвинутое упражнение для силы и баланса. Требует хорошей подготовки.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "грудь",
+      "кор",
+      "трицепс"
+    ],
+    "equipment": [],
+    "difficulty": "advanced",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.572Z",
+    "updated_at": "2026-01-25T20:56:14.572Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 88,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Отжимания с хлопком",
+    "description": "Плиометрические отжимания для развития взрывной силы.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "грудь",
+      "трицепс"
+    ],
+    "equipment": [],
+    "difficulty": "advanced",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.573Z",
+    "updated_at": "2026-01-25T20:56:14.573Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 89,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Обратные отжимания от пола",
+    "description": "Упор сзади, сгибание рук для проработки трицепса.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "трицепс"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.574Z",
+    "updated_at": "2026-01-25T20:56:14.574Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 90,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Супермен",
+    "description": "Лёжа на животе, одновременно поднимайте руки и ноги. Укрепляет поясницу.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "поясница",
+      "ягодицы"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.574Z",
+    "updated_at": "2026-01-25T20:56:14.574Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 91,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Обратная планка",
+    "description": "Статическое упражнение для задней цепи тела.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "спина",
+      "ягодицы",
+      "трицепс"
+    ],
+    "equipment": [],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.575Z",
+    "updated_at": "2026-01-25T20:56:14.575Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 92,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Лодочка",
+    "description": "Удержание положения с поднятыми руками и ногами лёжа на животе.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "поясница",
+      "ягодицы"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.576Z",
+    "updated_at": "2026-01-25T20:56:14.576Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 93,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Тяга полотенца к груди",
+    "description": "Имитация тяги с использованием полотенца, закреплённого на двери.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "широчайшие",
+      "бицепс"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.576Z",
+    "updated_at": "2026-01-25T20:56:14.576Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 94,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Приседания без веса",
+    "description": "Базовое упражнение для ног. Следите за техникой - колени за носками.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "квадрицепсы",
+      "ягодицы"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.577Z",
+    "updated_at": "2026-01-25T20:56:14.577Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 95,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Приседания с прыжком",
+    "description": "Плиометрические приседания для взрывной силы и сжигания калорий.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "квадрицепсы",
+      "ягодицы",
+      "икры"
+    ],
+    "equipment": [],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.578Z",
+    "updated_at": "2026-01-25T20:56:14.578Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 96,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Пистолетик (приседания на одной ноге)",
+    "description": "Сложное упражнение на баланс и силу одной ноги.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "квадрицепсы",
+      "ягодицы"
+    ],
+    "equipment": [],
+    "difficulty": "advanced",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.578Z",
+    "updated_at": "2026-01-25T20:56:14.578Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 97,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Выпады на месте",
+    "description": "Попеременные выпады вперёд без продвижения.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "квадрицепсы",
+      "ягодицы"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.579Z",
+    "updated_at": "2026-01-25T20:56:14.579Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 98,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Выпады назад",
+    "description": "Шаг назад с опусканием колена. Безопаснее для коленей, чем выпады вперёд.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "квадрицепсы",
+      "ягодицы"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.579Z",
+    "updated_at": "2026-01-25T20:56:14.579Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 99,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Боковые выпады",
+    "description": "Выпады в сторону для проработки приводящих мышц и внешней части бедра.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "приводящие мышцы",
+      "квадрицепсы"
+    ],
+    "equipment": [],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.580Z",
+    "updated_at": "2026-01-25T20:56:14.580Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 100,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Подъём на носки стоя (без веса)",
+    "description": "Простое упражнение для икр. Можно делать на возвышении для большей амплитуды.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "икры"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.580Z",
+    "updated_at": "2026-01-25T20:56:14.580Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 101,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Ходьба на ягодицах",
+    "description": "Сидя на полу, передвигайтесь вперёд, работая ягодицами.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "ягодицы"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.581Z",
+    "updated_at": "2026-01-25T20:56:14.581Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 102,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Планка с подъёмом руки",
+    "description": "Динамическая планка с попеременным подъёмом рук для баланса.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "кор",
+      "дельты"
+    ],
+    "equipment": [],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.582Z",
+    "updated_at": "2026-01-25T20:56:14.582Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 103,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Планка с подтягиванием колена",
+    "description": "Из планки подтягивайте колено к груди попеременно.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "кор",
+      "сгибатели бедра"
+    ],
+    "equipment": [],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.583Z",
+    "updated_at": "2026-01-25T20:56:14.583Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 104,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Скалолаз (Mountain Climbers)",
+    "description": "Динамическое упражнение - быстрое подтягивание коленей в планке.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "кор",
+      "сгибатели бедра"
+    ],
+    "equipment": [],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.583Z",
+    "updated_at": "2026-01-25T20:56:14.583Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 105,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Подъём ног лёжа",
+    "description": "Лёжа на спине, поднимайте прямые ноги вверх. Нагрузка на нижний пресс.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "нижний пресс",
+      "сгибатели бедра"
+    ],
+    "equipment": [],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.584Z",
+    "updated_at": "2026-01-25T20:56:14.584Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 106,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Ножницы",
+    "description": "Лёжа на спине, скрещивайте прямые ноги в воздухе.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "нижний пресс",
+      "сгибатели бедра"
+    ],
+    "equipment": [],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.585Z",
+    "updated_at": "2026-01-25T20:56:14.585Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 107,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Скручивания с касанием пяток",
+    "description": "Лёжа на спине с согнутыми ногами, касайтесь пяток попеременно.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "косые мышцы"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.585Z",
+    "updated_at": "2026-01-25T20:56:14.585Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 108,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "V-образные скручивания",
+    "description": "Одновременный подъём корпуса и ног, касание руками стоп.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "пресс"
+    ],
+    "equipment": [],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.587Z",
+    "updated_at": "2026-01-25T20:56:14.587Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 109,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Мёртвый жук (Dead Bug)",
+    "description": "Лёжа на спине, опускайте противоположную руку и ногу, сохраняя поясницу прижатой.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "кор",
+      "пресс"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.588Z",
+    "updated_at": "2026-01-25T20:56:14.588Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 110,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Ягодичный мостик на одной ноге",
+    "description": "Односторонний вариант для увеличения нагрузки.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "ягодицы"
+    ],
+    "equipment": [],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.588Z",
+    "updated_at": "2026-01-25T20:56:14.588Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 111,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Отведение ноги назад на четвереньках",
+    "description": "Из положения на четвереньках отводите прямую ногу назад.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "ягодицы"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.589Z",
+    "updated_at": "2026-01-25T20:56:14.589Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 112,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Пожарный гидрант",
+    "description": "На четвереньках отводите согнутую ногу в сторону.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "ягодицы",
+      "отводящие мышцы"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.590Z",
+    "updated_at": "2026-01-25T20:56:14.590Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 113,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Ракушка (Clamshell)",
+    "description": "Лёжа на боку с согнутыми ногами, поднимайте верхнее колено.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "ягодицы",
+      "отводящие мышцы"
+    ],
+    "equipment": [],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.590Z",
+    "updated_at": "2026-01-25T20:56:14.590Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 114,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Жим гантелей лёжа на полу",
+    "description": "Жим гантелей лёжа на полу - ограниченная амплитуда, но эффективно для дома.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "грудь",
+      "трицепс"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.591Z",
+    "updated_at": "2026-01-25T20:56:14.591Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 115,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Пуловер с гантелью",
+    "description": "Лёжа, опускайте гантель за голову и возвращайте. Растяжка груди и широчайших.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "грудь",
+      "широчайшие"
+    ],
+    "equipment": [
+      "гантель"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.591Z",
+    "updated_at": "2026-01-25T20:56:14.591Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 116,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Концентрированные сгибания на бицепс",
+    "description": "Сидя, упор локтем в бедро. Изолированная работа бицепса.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "бицепс"
+    ],
+    "equipment": [
+      "гантель"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.592Z",
+    "updated_at": "2026-01-25T20:56:14.592Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 117,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Сгибания Зоттмана",
+    "description": "Подъём гантелей с супинацией вверху и пронацией при опускании.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "бицепс",
+      "предплечья"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.592Z",
+    "updated_at": "2026-01-25T20:56:14.592Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 118,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Французский жим с гантелью стоя",
+    "description": "Разгибание рук с гантелью из-за головы стоя или сидя.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "трицепс"
+    ],
+    "equipment": [
+      "гантель"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.593Z",
+    "updated_at": "2026-01-25T20:56:14.593Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 119,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Тяга гантелей в наклоне двумя руками",
+    "description": "Наклон корпуса, тяга гантелей к поясу. Основа для домашней тренировки спины.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "back"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.594Z",
+    "updated_at": "2026-01-25T21:03:35.070Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 120,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Шраги с гантелями стоя",
+    "description": "Подъём плеч вверх с гантелями для трапециевидных мышц.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "трапеции"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.594Z",
+    "updated_at": "2026-01-25T20:56:14.594Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 121,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Становая тяга с гантелями",
+    "description": "Домашняя альтернатива становой тяге со штангой.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "спина",
+      "ноги",
+      "ягодицы"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.595Z",
+    "updated_at": "2026-01-25T20:56:14.595Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 122,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Жим Арнольда",
+    "description": "Жим гантелей с вращением - прорабатывает все пучки дельт.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "дельты"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.595Z",
+    "updated_at": "2026-01-25T20:56:14.595Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 123,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Подъём гантелей через стороны в наклоне",
+    "description": "В наклоне разводите гантели в стороны для задних дельт.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "задние дельты"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.596Z",
+    "updated_at": "2026-01-25T20:56:14.596Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 124,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Вращения гантелями (кубинский жим)",
+    "description": "Комплексное упражнение для ротаторной манжеты плеча.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "ротаторы плеча",
+      "дельты"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.596Z",
+    "updated_at": "2026-01-25T20:56:14.596Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 125,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Гоблет-приседания",
+    "description": "Приседания с гантелью у груди. Отлично для техники и нагрузки.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "квадрицепсы",
+      "ягодицы"
+    ],
+    "equipment": [
+      "гантель"
+    ],
+    "difficulty": "beginner",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.597Z",
+    "updated_at": "2026-01-25T20:56:14.597Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 126,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Румынская тяга с гантелями",
+    "description": "Тяга на прямых ногах с гантелями для задней поверхности бедра.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "бицепс бедра",
+      "ягодицы"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.597Z",
+    "updated_at": "2026-01-25T20:56:14.597Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 127,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Выпады с гантелями над головой",
+    "description": "Выпады с удержанием гантелей над головой для дополнительной нагрузки на кор.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "квадрицепсы",
+      "ягодицы",
+      "кор"
+    ],
+    "equipment": [
+      "гантели"
+    ],
+    "difficulty": "advanced",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.598Z",
+    "updated_at": "2026-01-25T20:56:14.598Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 128,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Жим штанги лёжа на полу",
+    "description": "Жим с пола - безопасный вариант без стоек. Ограниченная амплитуда.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "грудь",
+      "трицепс"
+    ],
+    "equipment": [
+      "штанга"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.599Z",
+    "updated_at": "2026-01-25T20:56:14.599Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 129,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Тяга штанги к поясу в наклоне",
+    "description": "Классическая тяга для развития толщины спины.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "chest"
+    ],
+    "equipment": [
+      "штанга"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.599Z",
+    "updated_at": "2026-01-25T21:27:57.803Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 130,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Фронтальные приседания со штангой",
+    "description": "Штанга на передних дельтах. Акцент на квадрицепсы и кор.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "квадрицепсы",
+      "кор"
+    ],
+    "equipment": [
+      "штанга"
+    ],
+    "difficulty": "advanced",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.600Z",
+    "updated_at": "2026-01-25T20:56:14.600Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 131,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Подъём штанги на грудь (Power Clean)",
+    "description": "Взрывное тяговое движение для всего тела. Требует техники.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "всё тело"
+    ],
+    "equipment": [
+      "штанга"
+    ],
+    "difficulty": "advanced",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.601Z",
+    "updated_at": "2026-01-25T20:56:14.601Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 132,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Тяга сумо со штангой",
+    "description": "Становая тяга с широкой постановкой ног. Акцент на приводящие и ягодицы.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "ягодицы",
+      "приводящие мышцы",
+      "спина"
+    ],
+    "equipment": [
+      "штанга"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.601Z",
+    "updated_at": "2026-01-25T20:56:14.601Z"
+  }
+},
+{
+  "model": "exercises.exercise",
+  "pk": 133,
+  "fields": {
+    "coach": 1,
+    "category": null,
+    "exercise_type": null,
+    "name": "Доброе утро со штангой",
+    "description": "Наклоны со штангой на плечах для задней цепи.",
+    "instructions": [],
+    "image": "",
+    "video_url": "",
+    "media_type": "image",
+    "default_parameters": {},
+    "muscle_groups": [
+      "legs"
+    ],
+    "equipment": [
+      "штанга"
+    ],
+    "difficulty": "intermediate",
+    "is_active": true,
+    "created_at": "2026-01-25T20:56:14.602Z",
+    "updated_at": "2026-01-25T21:23:06.676Z"
+  }
+}
+]
