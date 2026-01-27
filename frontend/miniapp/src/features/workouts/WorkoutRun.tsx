@@ -343,12 +343,7 @@ export default function WorkoutRun() {
           <p className="text-xs text-gray-500 dark:text-gray-400">Выполнено</p>
           <p className="font-semibold text-gray-900 dark:text-white">{currentStats.completionPercent}%</p>
         </div>
-        <button
-          onClick={() => setShowFinishConfirm(true)}
-          className="p-2 text-orange-500"
-        >
-          <Flag className="w-5 h-5" />
-        </button>
+        <div className="w-9" /> {/* Spacer for balance */}
       </div>
 
       {/* Progress Bar */}
@@ -938,14 +933,23 @@ export default function WorkoutRun() {
         <motion.button
           whileTap={{ scale: 0.97 }}
           onClick={() => setShowFinishConfirm(true)}
-          className={`w-full rounded-2xl py-4 font-semibold flex items-center justify-center gap-2 shadow-lg ${
+          className={`w-full rounded-2xl py-4 font-bold text-lg flex items-center justify-center gap-3 shadow-xl ${
             currentStats.completionPercent === 100
-              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white'
-              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
+              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white animate-pulse'
+              : 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
           }`}
         >
-          <Flag className="w-5 h-5" />
-          Завершить тренировку
+          {currentStats.completionPercent === 100 ? (
+            <>
+              <Trophy className="w-6 h-6" />
+              Получить награду!
+            </>
+          ) : (
+            <>
+              <Flag className="w-6 h-6" />
+              Завершить тренировку
+            </>
+          )}
         </motion.button>
       </div>
     </div>
