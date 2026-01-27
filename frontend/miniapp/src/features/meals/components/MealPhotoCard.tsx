@@ -25,6 +25,7 @@ const dishTypeIcons: Record<string, string> = {
 
 export function MealPhotoCard({ meal }: MealPhotoCardProps) {
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isLoaded, setIsLoaded] = useState(false)
 
   const typeLabel = dishTypeLabels[meal.dish_type] || 'Приём пищи'
   const icon = dishTypeIcons[meal.dish_type] || '🍽️'
@@ -105,15 +106,24 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
         className="cursor-pointer"
       >
         {/* Photo thumbnail */}
-        <div className="relative aspect-square rounded-xl overflow-hidden shadow-sm">
+        <div className="relative aspect-square rounded-xl overflow-hidden shadow-sm bg-gray-100 dark:bg-gray-800">
           {meal.image ? (
-            <img
-              src={meal.image}
-              alt={meal.dish_name}
-              className="w-full h-full object-cover"
-            />
+            <>
+              {!isLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-2xl">{icon}</span>
+                </div>
+              )}
+              <img
+                src={meal.image}
+                alt={meal.dish_name}
+                loading="lazy"
+                onLoad={() => setIsLoaded(true)}
+                className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+              />
+            </>
           ) : (
-            <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            <div className="w-full h-full flex items-center justify-center">
               <span className="text-2xl">{icon}</span>
             </div>
           )}
