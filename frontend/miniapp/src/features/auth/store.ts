@@ -20,8 +20,8 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   client: null,
   role: 'client',
-  status: localStorage.getItem('access_token') ? 'authenticated' : 'idle',
-  isAuthenticated: !!localStorage.getItem('access_token'),
+  status: 'idle',
+  isAuthenticated: false,
   isLoading: false,
   error: null,
   needsOnboarding: false,
