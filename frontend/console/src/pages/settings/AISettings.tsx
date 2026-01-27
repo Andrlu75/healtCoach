@@ -69,7 +69,7 @@ function AddProviderModal({
             <select
               value={provider}
               onChange={e => setProvider(e.target.value as ProviderType)}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500"
             >
               {availableProviders.map(p => (
                 <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
@@ -83,7 +83,7 @@ function AddProviderModal({
               value={apiKey}
               onChange={e => setApiKey(e.target.value)}
               placeholder={provider === 'openai' ? 'sk-...' : provider === 'anthropic' ? 'sk-ant-...' : 'API key'}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500"
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -192,7 +192,7 @@ function AddModelsModal({
           <select
             value={provider}
             onChange={e => setProvider(e.target.value as ProviderType)}
-            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500"
           >
             {providers.map(p => (
               <option key={p.provider} value={p.provider}>{PROVIDER_LABELS[p.provider]}</option>
@@ -791,7 +791,7 @@ export default function AISettings() {
                   min={100} max={4000}
                   value={settings.max_tokens}
                   onChange={e => setSettings(s => ({ ...s, max_tokens: parseInt(e.target.value) || 600 }))}
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-card"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-[#141821] text-white placeholder:text-gray-500"
                 />
                 <p className="text-xs text-muted-foreground mt-1.5">Ограничивает длину ответа бота</p>
               </div>
@@ -905,7 +905,7 @@ export default function AISettings() {
                     onChange={e => setChatInput(e.target.value)}
                     placeholder={settings.text_model ? `Сообщение для ${settings.text_model}...` : 'Сначала назначьте текстовую модель'}
                     disabled={!settings.text_model || testing === 'text'}
-                    className="flex-1 px-3.5 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-muted disabled:text-muted-foreground"
+                    className="flex-1 px-3.5 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-muted disabled:text-muted-foreground"
                   />
                   <button
                     type="submit"
@@ -938,7 +938,7 @@ export default function AISettings() {
             <select
               value={usagePeriod}
               onChange={e => setUsagePeriod(e.target.value)}
-              className="px-3 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-card"
+              className="px-3 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white"
             >
               <option value="today">Сегодня</option>
               <option value="week">Неделя</option>
