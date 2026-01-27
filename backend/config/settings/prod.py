@@ -4,6 +4,10 @@ from .base import *  # noqa: F401, F403
 
 DEBUG = False
 
+# Database connection pooling - reuse connections instead of creating new ones
+DATABASES['default']['CONN_MAX_AGE'] = 60  # Keep connections alive for 60 seconds
+DATABASES['default']['CONN_HEALTH_CHECKS'] = True  # Check connection health before reuse
+
 # Logging to stdout for Render
 LOGGING = {
     'version': 1,
