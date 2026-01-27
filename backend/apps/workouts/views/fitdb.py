@@ -362,6 +362,17 @@ class FitDBAssignmentSerializer(serializers.ModelSerializer):
         return {'name': obj.workout.name} if obj.workout else None
 
 
+def get_client_from_token(request):
+    """Extract client from JWT token claims."""
+    client_id = getattr(request.auth, 'payload', {}).get('client_id') if request.auth else None
+    if not client_id:
+        return None
+    try:
+        return Client.objects.get(pk=client_id)
+    except Client.DoesNotExist:
+        return None
+
+
 class FitDBAssignmentViewSet(viewsets.ModelViewSet):
     """FitDB API for workout assignments"""
     permission_classes = [AllowAny]
@@ -372,12 +383,20 @@ class FitDBAssignmentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = FitDBWorkoutAssignment.objects.select_related('workout', 'client')
-        client_id = self.request.query_params.get('client_id')
+
+        # Try to get client from JWT token first (for miniapp)
+        client = get_client_from_token(self.request)
+        if client:
+            queryset = queryset.filter(client=client)
+        else:
+            # Fallback to query param (for console)
+            client_id = self.request.query_params.get('client_id')
+            if client_id:
+                queryset = queryset.filter(client_id=client_id)
+
         workout_id = self.request.query_params.get('workout_id')
         status_filter = self.request.query_params.get('status')
 
-        if client_id:
-            queryset = queryset.filter(client_id=client_id)
         if workout_id:
             queryset = queryset.filter(workout_id=workout_id)
         if status_filter:
