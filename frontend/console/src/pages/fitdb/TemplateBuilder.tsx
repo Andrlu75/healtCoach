@@ -443,8 +443,11 @@ const TemplateBuilder = () => {
                 placeholder="Поиск..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 bg-muted border-border/50"
+                className="pl-9 pr-9 bg-muted border-border/50"
               />
+              {searchLoading && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+              )}
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -461,12 +464,8 @@ const TemplateBuilder = () => {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-2 mt-4">
-            {searchLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : filteredExercises.length > 0 ? (
+          <div className={`flex-1 overflow-y-auto space-y-2 mt-4 transition-opacity ${searchLoading ? 'opacity-50' : ''}`}>
+            {filteredExercises.length > 0 ? (
               filteredExercises.map(exercise => (
                 <button
                   key={exercise.id}
@@ -487,11 +486,11 @@ const TemplateBuilder = () => {
                   <Plus className="w-5 h-5 text-primary" />
                 </button>
               ))
-            ) : (
+            ) : !searchLoading ? (
               <p className="text-center text-muted-foreground py-8">
                 {searchQuery ? 'Упражнения не найдены' : 'Начните вводить название'}
               </p>
-            )}
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
