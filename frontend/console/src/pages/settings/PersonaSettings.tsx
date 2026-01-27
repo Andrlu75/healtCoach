@@ -119,7 +119,7 @@ export default function PersonaSettings() {
               value={data.name || ''}
               onChange={(e) => setData({ ...data, name: e.target.value })}
               placeholder="Фёдор"
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
             />
           </div>
           <div>
@@ -128,7 +128,7 @@ export default function PersonaSettings() {
               type="number"
               value={data.age ?? ''}
               onChange={(e) => setData({ ...data, age: e.target.value ? parseInt(e.target.value) : null })}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
             />
           </div>
           <div>
@@ -138,7 +138,7 @@ export default function PersonaSettings() {
               value={data.city || ''}
               onChange={(e) => setData({ ...data, city: e.target.value })}
               placeholder="Москва"
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
             />
           </div>
         </div>
@@ -150,7 +150,7 @@ export default function PersonaSettings() {
             onChange={(e) => setData({ ...data, style_description: e.target.value })}
             rows={3}
             placeholder="Дружелюбный, с юмором, поддерживающий..."
-            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-[#141821] text-white placeholder:text-gray-500"
+            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
           />
         </div>
 
@@ -161,7 +161,7 @@ export default function PersonaSettings() {
             onChange={(e) => setData({ ...data, system_prompt: e.target.value })}
             rows={6}
             placeholder="Ты — дружелюбный помощник health-коуча..."
-            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none font-mono text-sm bg-[#141821] text-white placeholder:text-gray-500"
+            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none font-mono text-sm bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
           />
           <p className="text-xs text-muted-foreground mt-1">Основная инструкция для AI-модели</p>
         </div>
@@ -173,7 +173,7 @@ export default function PersonaSettings() {
             onChange={(e) => setData({ ...data, food_response_prompt: e.target.value })}
             rows={5}
             placeholder="Ты — нутрициолог. Получив данные анализа еды и дневную сводку, дай развёрнутый ответ..."
-            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none font-mono text-sm bg-[#141821] text-white placeholder:text-gray-500"
+            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none font-mono text-sm bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
           />
           <p className="text-xs text-muted-foreground mt-1">Промпт для генерации ответа по фото еды. Получает JSON с анализом и дневной сводкой. Если пусто — используется шаблонный ответ.</p>
         </div>
@@ -185,7 +185,7 @@ export default function PersonaSettings() {
             onChange={(e) => setData({ ...data, greeting_message: e.target.value })}
             rows={3}
             placeholder="Привет! Я Фёдор, твой помощник по здоровому питанию..."
-            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-[#141821] text-white placeholder:text-gray-500"
+            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
           />
           <p className="text-xs text-muted-foreground mt-1">Отправляется новому клиенту после онбординга</p>
         </div>

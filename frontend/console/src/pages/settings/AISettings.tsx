@@ -69,7 +69,7 @@ function AddProviderModal({
             <select
               value={provider}
               onChange={e => setProvider(e.target.value as ProviderType)}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
             >
               {availableProviders.map(p => (
                 <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
@@ -83,7 +83,7 @@ function AddProviderModal({
               value={apiKey}
               onChange={e => setApiKey(e.target.value)}
               placeholder={provider === 'openai' ? 'sk-...' : provider === 'anthropic' ? 'sk-ant-...' : 'API key'}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -192,7 +192,7 @@ function AddModelsModal({
           <select
             value={provider}
             onChange={e => setProvider(e.target.value as ProviderType)}
-            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500"
+            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
           >
             {providers.map(p => (
               <option key={p.provider} value={p.provider}>{PROVIDER_LABELS[p.provider]}</option>
@@ -791,7 +791,7 @@ export default function AISettings() {
                   min={100} max={4000}
                   value={settings.max_tokens}
                   onChange={e => setSettings(s => ({ ...s, max_tokens: parseInt(e.target.value) || 600 }))}
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-[#141821] text-white placeholder:text-gray-500"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
                 />
                 <p className="text-xs text-muted-foreground mt-1.5">Ограничивает длину ответа бота</p>
               </div>

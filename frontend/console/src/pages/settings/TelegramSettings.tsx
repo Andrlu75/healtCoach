@@ -149,7 +149,7 @@ export default function TelegramSettings() {
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
                 placeholder="Тестовый"
-                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
               />
             </div>
             <div>
@@ -159,7 +159,7 @@ export default function TelegramSettings() {
                 value={newToken}
                 onChange={e => setNewToken(e.target.value)}
                 placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
-                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
               />
               <p className="text-xs text-muted-foreground mt-1">Получите у @BotFather в Telegram</p>
             </div>
@@ -236,7 +236,7 @@ export default function TelegramSettings() {
               value={notificationChatId}
               onChange={e => setNotificationChatId(e.target.value)}
               placeholder="-1001234567890"
-              className="flex-1 px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500"
+              className="flex-1 px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
             />
             <button
               onClick={handleSaveChatId}
