@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Droplets, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -7,15 +7,14 @@ import { getDailySummary, getMeals } from '../../api/endpoints'
 import { useAuthStore } from '../auth'
 import { useHaptic } from '../../shared/hooks'
 import { Card } from '../../shared/components/ui'
-import { NutritionSkeleton, ListSkeleton } from '../../shared/components/feedback'
+import { NutritionSkeleton } from '../../shared/components/feedback'
 import { NutritionProgress } from './components/NutritionProgress'
 import { WaterProgress } from './components/WaterProgress'
-import { MealCard } from '../meals/components/MealCard'
+import { MealPhotoCard } from '../meals/components/MealPhotoCard'
 import type { Meal } from '../../types'
 
 function Dashboard() {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const client = useAuthStore((s) => s.client)
   const { impact } = useHaptic()
 
@@ -39,22 +38,37 @@ function Dashboard() {
     navigate('/diary/add')
   }
 
-  const handleMealDelete = () => {
-    queryClient.invalidateQueries({ queryKey: ['meals'] })
-    queryClient.invalidateQueries({ queryKey: ['dailySummary'] })
-  }
-
   return (
     <div className="p-4 pb-24 space-y-4">
-      <div>
-        <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-          Привет, {client?.first_name || 'друг'}!
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Сегодняшний прогресс
-        </p>
-      </div>
+      {/* Photo gallery - first thing visible */}
+      {mealsLoading ? (
+        <div className="grid grid-cols-2 gap-3">
+          {[1, 2].map((i) => (
+            <div key={i} className="aspect-square rounded-2xl bg-gray-200 dark:bg-gray-800 animate-pulse" />
+          ))}
+        </div>
+      ) : meals.length === 0 ? (
+        <Card variant="elevated" className="p-8 text-center">
+          <div className="text-5xl mb-3">📷</div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+            Сфотографируйте еду
+          </p>
+          <button
+            onClick={handleAddMeal}
+            className="text-sm text-blue-600 dark:text-blue-400 font-medium"
+          >
+            Добавить приём пищи
+          </button>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {meals.map((meal: Meal) => (
+            <MealPhotoCard key={meal.id} meal={meal} />
+          ))}
+        </div>
+      )}
 
+      {/* Nutrition progress */}
       {summaryLoading ? (
         <NutritionSkeleton />
       ) : (
@@ -92,6 +106,7 @@ function Dashboard() {
         </Card>
       )}
 
+      {/* Water progress */}
       {client?.daily_water && (
         <Card variant="elevated" className="p-4">
           <div className="flex items-center gap-2 mb-3">
@@ -106,47 +121,6 @@ function Dashboard() {
           />
         </Card>
       )}
-
-      {/* Today's meals */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            Сегодня съедено
-          </h2>
-          {meals.length > 0 && (
-            <span className="text-xs text-gray-400 dark:text-gray-500">
-              {meals.length} {meals.length === 1 ? 'приём' : meals.length < 5 ? 'приёма' : 'приёмов'}
-            </span>
-          )}
-        </div>
-
-        {mealsLoading ? (
-          <ListSkeleton count={2} />
-        ) : meals.length === 0 ? (
-          <Card variant="elevated" className="p-6 text-center">
-            <p className="text-sm text-gray-400 dark:text-gray-500 mb-3">
-              Пока нет записей
-            </p>
-            <button
-              onClick={handleAddMeal}
-              className="text-sm text-blue-600 dark:text-blue-400 font-medium"
-            >
-              Добавить приём пищи
-            </button>
-          </Card>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {meals.map((meal: Meal) => (
-              <MealCard
-                key={meal.id}
-                meal={meal}
-                onDelete={handleMealDelete}
-                compact
-              />
-            ))}
-          </div>
-        )}
-      </div>
 
       <motion.button
         whileTap={{ scale: 0.95 }}
