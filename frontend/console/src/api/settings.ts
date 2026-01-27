@@ -64,6 +64,20 @@ export const settingsApi = {
     return api.get<AIUsageResponse>(`/persona/ai/usage/${query ? '?' + query : ''}`)
   },
 
+  // OpenAI Usage API (real costs from OpenAI)
+  getOpenAIUsage: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams()
+    if (startDate) params.append('start_date', startDate)
+    if (endDate) params.append('end_date', endDate)
+    const query = params.toString()
+    return api.get<{
+      usage: { data?: Array<{ date: string; input_tokens: number; output_tokens: number }> };
+      costs: { data?: Array<{ date: string; amount_cents: number }> };
+      start_date: string;
+      end_date: string;
+    }>(`/persona/ai/usage/openai/${query ? '?' + query : ''}`)
+  },
+
   // Telegram
   getTelegramSettings: () => api.get<TelegramSettings>('/persona/telegram/'),
   addTelegramBot: (name: string, token: string) =>

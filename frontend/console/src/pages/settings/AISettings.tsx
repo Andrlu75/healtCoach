@@ -286,6 +286,9 @@ export default function AISettings() {
   const [usageStats, setUsageStats] = useState<AIUsageStats[]>([])
   const [totalCost, setTotalCost] = useState(0)
   const [usagePeriod, setUsagePeriod] = useState('month')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [openaiUsage, setOpenaiUsage] = useState<any>(null)
+  const [loadingOpenai, setLoadingOpenai] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -311,6 +314,12 @@ export default function AISettings() {
     loadUsage()
   }, [usagePeriod])
 
+  useEffect(() => {
+    if (activeTab === 'usage' && providers.length > 0) {
+      loadOpenAIUsage()
+    }
+  }, [activeTab, providers])
+
   const loadData = async () => {
     try {
       const [provRes, aiRes, modelsRes] = await Promise.all([
@@ -332,6 +341,30 @@ export default function AISettings() {
       setUsageStats(data.stats)
       setTotalCost(data.total_cost_usd)
     } catch {}
+  }
+
+  const loadOpenAIUsage = async () => {
+    // Check if OpenAI provider is configured
+    const hasOpenAI = providers.some(p => p.provider === 'openai')
+    if (!hasOpenAI) {
+      setOpenaiUsage(null)
+      return
+    }
+
+    setLoadingOpenai(true)
+    try {
+      // Get current month range
+      const now = new Date()
+      const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+      const endDate = now.toISOString().split('T')[0]
+
+      const { data } = await settingsApi.getOpenAIUsage(startDate, endDate)
+      setOpenaiUsage(data)
+    } catch (err) {
+      setOpenaiUsage({ usage: {}, costs: {}, error: 'Не удалось загрузить данные из OpenAI' })
+    } finally {
+      setLoadingOpenai(false)
+    }
   }
 
   const handleProviderAdded = (config: AIProviderConfig, _models: AIModelInfo[]) => {
@@ -947,9 +980,35 @@ export default function AISettings() {
             </select>
           </div>
 
+          {/* OpenAI Real Costs from API */}
+          {providers.some(p => p.provider === 'openai') && (
+            <div className="mb-5 p-4 bg-gradient-to-r from-green-900/20 to-emerald-900/20 rounded-xl border border-green-700/30">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs text-green-400 uppercase tracking-wide font-medium flex items-center gap-2">
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  Реальные затраты OpenAI (текущий месяц)
+                </div>
+                {loadingOpenai && <Loader2 size={14} className="animate-spin text-green-400" />}
+              </div>
+              {openaiUsage?.error ? (
+                <p className="text-sm text-yellow-400">{openaiUsage.error}</p>
+              ) : openaiUsage?.costs?.data ? (
+                <div className="text-2xl font-bold text-green-400">
+                  ${(openaiUsage.costs.data.reduce((sum: number, day: { results?: Array<{ amount?: { value?: number } }> }) => {
+                    const dayAmount = day.results?.reduce((s: number, r: { amount?: { value?: number } }) => s + (r.amount?.value || 0), 0) || 0
+                    return sum + dayAmount
+                  }, 0) / 100).toFixed(2)}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Загрузка...</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">Данные напрямую из OpenAI Usage API</p>
+            </div>
+          )}
+
           {totalCost > 0 && (
-            <div className="mb-5 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
-              <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Общие затраты</div>
+            <div className="mb-5 p-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 rounded-xl border border-blue-700/30">
+              <div className="text-xs text-blue-400 uppercase tracking-wide font-medium">Расчётные затраты (локальный учёт)</div>
               <div className="text-2xl font-bold text-foreground mt-1">${Number(totalCost).toFixed(4)}</div>
             </div>
           )}

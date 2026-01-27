@@ -13,6 +13,7 @@ from .views import (
     TelegramSettingsView,
     TelegramTestView,
     DashboardStatsView,
+    OpenAIUsageView,
 )
 
 urlpatterns = [
@@ -25,6 +26,7 @@ urlpatterns = [
     path('models/', AIModelListView.as_view(), name='ai_models'),
     path('models/<int:pk>/', AIModelDeleteView.as_view(), name='ai_model_delete'),
     path('ai/usage/', AIUsageView.as_view(), name='ai_usage'),
+    path('ai/usage/openai/', OpenAIUsageView.as_view(), name='openai_usage'),
     path('ai/test/', AITestView.as_view(), name='ai_test'),
     path('telegram/', TelegramSettingsView.as_view(), name='telegram_settings'),
     path('telegram/test/', TelegramTestView.as_view(), name='telegram_test'),

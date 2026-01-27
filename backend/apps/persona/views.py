@@ -785,3 +785,103 @@ class DashboardStatsView(APIView):
             'paused_clients': clients.filter(status='paused').count(),
         }
         return Response(stats)
+
+
+class OpenAIUsageView(APIView):
+    """Get usage and costs from OpenAI API directly."""
+
+    def get(self, request):
+        coach = request.user.coach_profile
+
+        # Get OpenAI API key
+        try:
+            config = AIProviderConfig.objects.get(coach=coach, provider='openai')
+            api_key = config.api_key
+        except AIProviderConfig.DoesNotExist:
+            return Response(
+                {'error': 'OpenAI провайдер не настроен'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get date range from query params
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        if not start_date or not end_date:
+            # Default to current month
+            now = timezone.now()
+            start_date = now.replace(day=1).strftime('%Y-%m-%d')
+            end_date = now.strftime('%Y-%m-%d')
+
+        try:
+            # Fetch usage data from OpenAI
+            usage_data = self._fetch_openai_usage(api_key, start_date, end_date)
+            costs_data = self._fetch_openai_costs(api_key, start_date, end_date)
+
+            return Response({
+                'usage': usage_data,
+                'costs': costs_data,
+                'start_date': start_date,
+                'end_date': end_date,
+            })
+        except Exception as e:
+            return Response(
+                {'error': f'Ошибка получения данных: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    def _fetch_openai_usage(self, api_key: str, start_date: str, end_date: str) -> dict:
+        """Fetch usage data from OpenAI Usage API."""
+        # OpenAI Usage API uses Unix timestamps
+        from datetime import datetime
+
+        start_ts = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
+        end_ts = int(datetime.strptime(end_date, '%Y-%m-%d').timestamp()) + 86400  # Include full end day
+
+        resp = httpx.get(
+            'https://api.openai.com/v1/organization/usage/completions',
+            params={
+                'start_time': start_ts,
+                'end_time': end_ts,
+                'bucket_width': '1d',
+            },
+            headers={
+                'Authorization': f'Bearer {api_key}',
+            },
+            timeout=30,
+        )
+
+        if resp.status_code == 200:
+            return resp.json()
+        elif resp.status_code == 403:
+            # Try alternative endpoint for individual accounts
+            return {'error': 'Organization API not available', 'data': []}
+        else:
+            return {'error': f'API error: {resp.status_code}', 'data': []}
+
+    def _fetch_openai_costs(self, api_key: str, start_date: str, end_date: str) -> dict:
+        """Fetch costs data from OpenAI Costs API."""
+        from datetime import datetime
+
+        start_ts = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
+        end_ts = int(datetime.strptime(end_date, '%Y-%m-%d').timestamp()) + 86400
+
+        resp = httpx.get(
+            'https://api.openai.com/v1/organization/costs',
+            params={
+                'start_time': start_ts,
+                'end_time': end_ts,
+                'bucket_width': '1d',
+            },
+            headers={
+                'Authorization': f'Bearer {api_key}',
+            },
+            timeout=30,
+        )
+
+        if resp.status_code == 200:
+            return resp.json()
+        elif resp.status_code == 403:
+            return {'error': 'Organization API not available', 'data': []}
+        else:
+            return {'error': f'API error: {resp.status_code}', 'data': []}
