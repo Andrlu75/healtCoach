@@ -41,14 +41,14 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
           onClick={() => setIsFullscreen(false)}
         >
           {/* Header */}
-          <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-black/60 to-transparent">
+          <div className="flex-shrink-0 p-4 pt-12 bg-gradient-to-b from-black to-transparent">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-white font-semibold">{meal.dish_name}</p>
                 <p className="text-white/70 text-sm">{typeLabel} · {time}</p>
               </div>
               <button
-                onClick={() => setIsFullscreen(false)}
+                onClick={(e) => { e.stopPropagation(); setIsFullscreen(false) }}
                 className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"
               >
                 <X size={20} className="text-white" />
@@ -56,15 +56,15 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
             </div>
           </div>
 
-          {/* Photo */}
-          <div className="flex-1 flex items-center justify-center">
+          {/* Photo - centered with padding for header/footer */}
+          <div className="flex-1 flex items-center justify-center px-4 py-2 min-h-0">
             {meal.image ? (
               <motion.img
                 initial={{ scale: 0.9 }}
                 animate={{ scale: 1 }}
                 src={meal.image}
                 alt={meal.dish_name}
-                className="w-full h-full object-contain"
+                className="max-w-full max-h-full object-contain rounded-lg"
               />
             ) : (
               <span className="text-8xl">{icon}</span>
@@ -72,7 +72,7 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
           </div>
 
           {/* Footer with nutrition */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 bg-gradient-to-t from-black/80 to-transparent">
+          <div className="flex-shrink-0 p-4 pb-10 bg-gradient-to-t from-black to-transparent">
             <div className="grid grid-cols-4 gap-2 text-center">
               <div>
                 <p className="text-white font-bold text-lg">{meal.calories || 0}</p>
