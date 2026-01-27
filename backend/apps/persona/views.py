@@ -834,25 +834,33 @@ class OpenAIUsageView(APIView):
             )
 
         # Get date range from query params
-        start_date = request.query_params.get('start_date')
-        end_date = request.query_params.get('end_date')
+        from datetime import datetime
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
 
-        if not start_date or not end_date:
+        now = timezone.now()
+        if not start_date_str or not end_date_str:
             # Default to current month
-            now = timezone.now()
-            start_date = now.replace(day=1).strftime('%Y-%m-%d')
-            end_date = now.strftime('%Y-%m-%d')
+            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_date = now
+        else:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+
+        # Convert to Unix timestamps
+        start_time = int(start_date.timestamp())
+        end_time = int(end_date.timestamp())
 
         try:
             # Fetch usage data from OpenAI
-            usage_data = self._fetch_openai_usage(api_key, start_date, end_date)
-            costs_data = self._fetch_openai_costs(api_key, start_date, end_date)
+            usage_data = self._fetch_openai_usage(api_key, start_time, end_time)
+            costs_data = self._fetch_openai_costs(api_key, start_time, end_time)
 
             return Response({
                 'usage': usage_data,
                 'costs': costs_data,
-                'start_date': start_date,
-                'end_date': end_date,
+                'start_date': start_date.strftime('%Y-%m-%d'),
+                'end_date': end_date.strftime('%Y-%m-%d'),
             })
         except Exception as e:
             return Response(
@@ -860,16 +868,18 @@ class OpenAIUsageView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    def _fetch_openai_usage(self, api_key: str, start_date: str, end_date: str) -> dict:
+    def _fetch_openai_usage(self, api_key: str, start_time: int, end_time: int) -> dict:
         """Fetch usage data from OpenAI Usage API."""
         resp = httpx.get(
-            'https://api.openai.com/v1/usage',
+            'https://api.openai.com/v1/organization/usage/completions',
             params={
-                'start_date': start_date,
-                'end_date': end_date,
+                'start_time': start_time,
+                'end_time': end_time,
+                'bucket_width': '1d',
             },
             headers={
                 'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json',
             },
             timeout=30,
         )
@@ -885,16 +895,18 @@ class OpenAIUsageView(APIView):
             logger.error(f'OpenAI Usage API error: {resp.status_code} - {resp.text}')
             return {'error': f'API error: {resp.status_code}', 'data': []}
 
-    def _fetch_openai_costs(self, api_key: str, start_date: str, end_date: str) -> dict:
+    def _fetch_openai_costs(self, api_key: str, start_time: int, end_time: int) -> dict:
         """Fetch costs data from OpenAI Costs API."""
         resp = httpx.get(
-            'https://api.openai.com/v1/usage/costs',
+            'https://api.openai.com/v1/organization/costs',
             params={
-                'start_date': start_date,
-                'end_date': end_date,
+                'start_time': start_time,
+                'end_time': end_time,
+                'bucket_width': '1d',
             },
             headers={
                 'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json',
             },
             timeout=30,
         )
