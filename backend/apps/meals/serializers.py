@@ -7,7 +7,7 @@ class MealSerializer(serializers.ModelSerializer):
     class Meta:
         model = Meal
         fields = [
-            'id', 'image', 'image_type', 'dish_name', 'dish_type',
+            'id', 'image', 'thumbnail', 'image_type', 'dish_name', 'dish_type',
             'calories', 'proteins', 'fats', 'carbohydrates',
             'ingredients', 'ai_confidence', 'meal_time', 'created_at',
         ]

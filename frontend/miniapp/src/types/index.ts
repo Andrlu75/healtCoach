@@ -24,6 +24,7 @@ export interface Meal {
   carbohydrates: number | null
   meal_time: string
   image?: string
+  thumbnail?: string
   ingredients?: string[]
 }
 

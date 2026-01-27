@@ -31,6 +31,9 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
   const icon = dishTypeIcons[meal.dish_type] || '🍽️'
   const time = dayjs(meal.meal_time).format('HH:mm')
 
+  // Use thumbnail for preview if available, otherwise full image
+  const thumbnailSrc = meal.thumbnail || meal.image
+
   const fullscreenModal = (
     <AnimatePresence>
       {isFullscreen && (
@@ -107,7 +110,7 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
       >
         {/* Photo thumbnail */}
         <div className="relative aspect-square rounded-xl overflow-hidden shadow-sm bg-gray-100 dark:bg-gray-800">
-          {meal.image ? (
+          {thumbnailSrc ? (
             <>
               {!isLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -115,7 +118,7 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
                 </div>
               )}
               <img
-                src={meal.image}
+                src={thumbnailSrc}
                 alt={meal.dish_name}
                 loading="lazy"
                 onLoad={() => setIsLoaded(true)}
