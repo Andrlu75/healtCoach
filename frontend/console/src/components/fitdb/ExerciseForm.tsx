@@ -32,7 +32,7 @@ export function ExerciseForm({ open, onOpenChange, exercise, onSave }: ExerciseF
   const [form, setForm] = useState({
     name: exercise?.name || '',
     description: exercise?.description || '',
-    muscleGroup: exercise?.muscleGroup || 'chest' as MuscleGroup,
+    muscleGroups: exercise?.muscleGroups || ['chest'] as MuscleGroup[],
     category: exercise?.category || 'strength' as ExerciseCategory,
     difficulty: exercise?.difficulty || 'intermediate' as Difficulty,
     equipment: exercise?.equipment || '',
@@ -45,7 +45,7 @@ export function ExerciseForm({ open, onOpenChange, exercise, onSave }: ExerciseF
       setForm({
         name: exercise?.name || '',
         description: exercise?.description || '',
-        muscleGroup: exercise?.muscleGroup || 'chest',
+        muscleGroups: exercise?.muscleGroups || ['chest'],
         category: exercise?.category || 'strength',
         difficulty: exercise?.difficulty || 'intermediate',
         equipment: exercise?.equipment || '',
@@ -55,6 +55,18 @@ export function ExerciseForm({ open, onOpenChange, exercise, onSave }: ExerciseF
       setImagePreview(exercise?.imageUrl || null);
     }
   });
+
+  const toggleMuscleGroup = (group: MuscleGroup) => {
+    setForm((prev) => {
+      const current = prev.muscleGroups;
+      if (current.includes(group)) {
+        // Don't allow empty selection
+        if (current.length === 1) return prev;
+        return { ...prev, muscleGroups: current.filter((g) => g !== group) };
+      }
+      return { ...prev, muscleGroups: [...current, group] };
+    });
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -166,19 +178,19 @@ export function ExerciseForm({ open, onOpenChange, exercise, onSave }: ExerciseF
             />
           </div>
 
-          {/* Muscle Group */}
+          {/* Muscle Groups (multiple selection) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Группа мышц
+              Группы мышц <span className="text-gray-400 font-normal">(можно выбрать несколько)</span>
             </label>
             <div className="flex flex-wrap gap-2">
               {muscleGroups.map((group) => (
                 <button
                   key={group}
                   type="button"
-                  onClick={() => setForm({ ...form, muscleGroup: group })}
+                  onClick={() => toggleMuscleGroup(group)}
                   className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                    form.muscleGroup === group
+                    form.muscleGroups.includes(group)
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}

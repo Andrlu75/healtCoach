@@ -17,43 +17,55 @@ from .serializers import (
 
 # FitDB serializer - maps Django Exercise to FitDB format
 class FitDBExerciseSerializer(serializers.ModelSerializer):
-    muscleGroup = serializers.SerializerMethodField()
+    muscleGroups = serializers.SerializerMethodField()
     category = serializers.SerializerMethodField()
     imageUrl = serializers.SerializerMethodField()
     equipment = serializers.SerializerMethodField()
 
     class Meta:
         model = Exercise
-        fields = ['id', 'name', 'description', 'muscleGroup', 'category', 'difficulty', 'equipment', 'imageUrl']
+        fields = ['id', 'name', 'description', 'muscleGroups', 'category', 'difficulty', 'equipment', 'imageUrl']
 
-    def get_muscleGroup(self, obj):
-        # Map Django muscle_groups list to single FitDB muscleGroup
-        if obj.muscle_groups:
-            # Map Russian to English (check all muscle groups for best match)
-            mapping = {
-                'грудь': 'chest', 'грудные': 'chest', 'грудные мышцы': 'chest', 'большая грудная': 'chest',
-                'спина': 'back', 'широчайшие': 'back', 'трапеции': 'back', 'ромбовидные': 'back',
-                'плечи': 'shoulders', 'дельты': 'shoulders', 'дельтовидные': 'shoulders', 'ротаторы плеча': 'shoulders',
-                'бицепс': 'biceps', 'бицепсы': 'biceps',
-                'трицепс': 'triceps', 'трицепсы': 'triceps',
-                'ноги': 'legs', 'квадрицепс': 'legs', 'квадрицепсы': 'legs', 'бицепс бедра': 'legs',
-                'икры': 'legs', 'икроножные': 'legs', 'приводящие': 'legs', 'приводящие мышцы': 'legs',
-                'ягодицы': 'glutes', 'ягодичные': 'glutes',
-                'пресс': 'abs', 'кор': 'abs', 'косые': 'abs', 'косые мышцы': 'abs',
-                'кардио': 'cardio', 'сердечно-сосудистая система': 'cardio', 'всё тело': 'cardio',
-            }
+    def get_muscleGroups(self, obj):
+        # Map Django muscle_groups list to FitDB muscleGroups array
+        if not obj.muscle_groups:
+            return ['chest']
 
-            # Try each muscle group in the list
-            for mg in obj.muscle_groups if isinstance(obj.muscle_groups, list) else [obj.muscle_groups]:
-                mg_lower = mg.lower()
-                if mg_lower in mapping:
-                    return mapping[mg_lower]
+        # Map Russian to English
+        mapping = {
+            'грудь': 'chest', 'грудные': 'chest', 'грудные мышцы': 'chest', 'большая грудная': 'chest',
+            'спина': 'back', 'широчайшие': 'back', 'трапеции': 'back', 'ромбовидные': 'back',
+            'плечи': 'shoulders', 'дельты': 'shoulders', 'дельтовидные': 'shoulders', 'ротаторы плеча': 'shoulders',
+            'бицепс': 'biceps', 'бицепсы': 'biceps',
+            'трицепс': 'triceps', 'трицепсы': 'triceps',
+            'ноги': 'legs', 'квадрицепс': 'legs', 'квадрицепсы': 'legs', 'бицепс бедра': 'legs',
+            'икры': 'legs', 'икроножные': 'legs', 'приводящие': 'legs', 'приводящие мышцы': 'legs',
+            'ягодицы': 'glutes', 'ягодичные': 'glutes',
+            'пресс': 'abs', 'кор': 'abs', 'косые': 'abs', 'косые мышцы': 'abs',
+            'кардио': 'cardio', 'сердечно-сосудистая система': 'cardio', 'всё тело': 'cardio',
+            # English passthrough
+            'chest': 'chest', 'back': 'back', 'shoulders': 'shoulders', 'biceps': 'biceps',
+            'triceps': 'triceps', 'legs': 'legs', 'glutes': 'glutes', 'abs': 'abs', 'cardio': 'cardio',
+        }
+
+        result = []
+        muscle_list = obj.muscle_groups if isinstance(obj.muscle_groups, list) else [obj.muscle_groups]
+
+        for mg in muscle_list:
+            mg_lower = mg.lower()
+            if mg_lower in mapping:
+                mapped = mapping[mg_lower]
+                if mapped not in result:
+                    result.append(mapped)
+            else:
                 # Partial match
                 for key, value in mapping.items():
                     if key in mg_lower or mg_lower in key:
-                        return value
+                        if value not in result:
+                            result.append(value)
+                        break
 
-        return 'chest'
+        return result if result else ['chest']
 
     def get_category(self, obj):
         # Return strength for most, cardio for cardio exercises
@@ -90,13 +102,17 @@ class FitDBExerciseViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         # Map FitDB format to Django format
         data = request.data.copy()
-        muscle_group = data.pop('muscleGroup', 'chest')
+        muscle_groups = data.pop('muscleGroups', ['chest'])
         category = data.pop('category', 'strength')
         image_url = data.pop('imageUrl', None)
         equipment = data.pop('equipment', None)
 
+        # Ensure muscle_groups is a list
+        if isinstance(muscle_groups, str):
+            muscle_groups = [muscle_groups]
+
         # Map to Django fields
-        data['muscle_groups'] = [muscle_group]
+        data['muscle_groups'] = muscle_groups
         if equipment:
             data['equipment'] = [equipment] if isinstance(equipment, str) else equipment
 
@@ -121,12 +137,14 @@ class FitDBExerciseViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         data = request.data.copy()
 
-        muscle_group = data.pop('muscleGroup', None)
+        muscle_groups = data.pop('muscleGroups', None)
         category = data.pop('category', None)
         equipment = data.pop('equipment', None)
 
-        if muscle_group:
-            instance.muscle_groups = [muscle_group]
+        if muscle_groups:
+            if isinstance(muscle_groups, str):
+                muscle_groups = [muscle_groups]
+            instance.muscle_groups = muscle_groups
         if equipment:
             instance.equipment = [equipment] if isinstance(equipment, str) else equipment
         if 'name' in data:

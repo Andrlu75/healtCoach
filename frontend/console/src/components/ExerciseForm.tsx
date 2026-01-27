@@ -35,7 +35,7 @@ export const ExerciseForm = ({ open, onOpenChange, exercise, onSave }: ExerciseF
   // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [muscleGroup, setMuscleGroup] = useState<MuscleGroup>('chest');
+  const [muscleGroups, setMuscleGroups] = useState<MuscleGroup[]>(['chest']);
   const [category, setCategory] = useState<ExerciseCategory>('strength');
   const [difficulty, setDifficulty] = useState<Difficulty>('intermediate');
   const [equipment, setEquipment] = useState('');
@@ -45,7 +45,7 @@ export const ExerciseForm = ({ open, onOpenChange, exercise, onSave }: ExerciseF
     if (exercise) {
       setName(exercise.name);
       setDescription(exercise.description);
-      setMuscleGroup(exercise.muscleGroup);
+      setMuscleGroups(exercise.muscleGroups || ['chest']);
       setCategory(exercise.category);
       setDifficulty(exercise.difficulty);
       setEquipment(exercise.equipment || '');
@@ -53,7 +53,7 @@ export const ExerciseForm = ({ open, onOpenChange, exercise, onSave }: ExerciseF
     } else {
       setName('');
       setDescription('');
-      setMuscleGroup('chest');
+      setMuscleGroups(['chest']);
       setCategory('strength');
       setDifficulty('intermediate');
       setEquipment('');
@@ -61,6 +61,16 @@ export const ExerciseForm = ({ open, onOpenChange, exercise, onSave }: ExerciseF
     }
     setImageFile(null);
   }, [exercise, open]);
+
+  const toggleMuscleGroup = (mg: MuscleGroup) => {
+    setMuscleGroups((prev) => {
+      if (prev.includes(mg)) {
+        if (prev.length === 1) return prev; // Keep at least one
+        return prev.filter((g) => g !== mg);
+      }
+      return [...prev, mg];
+    });
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -84,7 +94,7 @@ export const ExerciseForm = ({ open, onOpenChange, exercise, onSave }: ExerciseF
           id: exercise?.id,
           name,
           description,
-          muscleGroup,
+          muscleGroups,
           category,
           difficulty,
           equipment: equipment || undefined,
@@ -98,7 +108,7 @@ export const ExerciseForm = ({ open, onOpenChange, exercise, onSave }: ExerciseF
     }
   };
 
-  const muscleGroups = Object.entries(muscleGroupLabels) as [MuscleGroup, string][];
+  const muscleGroupOptions = Object.entries(muscleGroupLabels) as [MuscleGroup, string][];
   const categories = Object.entries(categoryLabels) as [ExerciseCategory, string][];
   const difficulties = Object.entries(difficultyLabels) as [Difficulty, string][];
 
@@ -174,21 +184,22 @@ export const ExerciseForm = ({ open, onOpenChange, exercise, onSave }: ExerciseF
             />
           </div>
 
-          {/* Muscle Group */}
+          {/* Muscle Groups (multiple selection) */}
           <div>
-            <Label>Группа мышц</Label>
-            <Select value={muscleGroup} onValueChange={(v) => setMuscleGroup(v as MuscleGroup)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {muscleGroups.map(([key, label]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Группы мышц <span className="text-muted-foreground font-normal">(можно выбрать несколько)</span></Label>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {muscleGroupOptions.map(([key, label]) => (
+                <Button
+                  key={key}
+                  type="button"
+                  variant={muscleGroups.includes(key) ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => toggleMuscleGroup(key)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
           </div>
 
           {/* Category */}

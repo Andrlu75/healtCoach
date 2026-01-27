@@ -22,7 +22,7 @@ export interface FitdbExercise {
   id: string;
   name: string;
   description: string;
-  muscleGroup: MuscleGroup;
+  muscleGroups: MuscleGroup[];
   category: ExerciseCategory;
   difficulty: Difficulty;
   equipment?: string;

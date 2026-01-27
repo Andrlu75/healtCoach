@@ -32,7 +32,7 @@ const Index = () => {
         id: String(e.id),
         name: e.name,
         description: e.description || '',
-        muscleGroup: e.muscleGroup as MuscleGroup,
+        muscleGroups: e.muscleGroups || [e.muscleGroup] || ['chest'],
         category: e.category as ExerciseCategory,
         difficulty: e.difficulty,
         equipment: e.equipment || undefined,
@@ -56,7 +56,7 @@ const Index = () => {
       const matchesSearch =
         exercise.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         exercise.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesMuscle = !selectedMuscleGroup || exercise.muscleGroup === selectedMuscleGroup;
+      const matchesMuscle = !selectedMuscleGroup || exercise.muscleGroups.includes(selectedMuscleGroup);
       const matchesCategory = !selectedCategory || exercise.category === selectedCategory;
       return matchesSearch && matchesMuscle && matchesCategory;
     });
@@ -67,7 +67,7 @@ const Index = () => {
       const exerciseData = {
         name: data.name,
         description: data.description,
-        muscleGroup: data.muscleGroup,
+        muscleGroups: data.muscleGroups,
         category: data.category,
         difficulty: data.difficulty,
         equipment: data.equipment || undefined,

@@ -46,9 +46,11 @@ export const ExerciseCard = ({ exercise, onEdit, onDelete }: ExerciseCardProps) 
 
         {/* Tags */}
         <div className="flex flex-wrap gap-1.5 mb-3">
-          <Badge variant="secondary" className="text-xs">
-            {mgLabels[exercise.muscleGroup]}
-          </Badge>
+          {exercise.muscleGroups.map((mg) => (
+            <Badge key={mg} variant="secondary" className="text-xs">
+              {mgLabels[mg]}
+            </Badge>
+          ))}
           <Badge variant="outline" className="text-xs">
             {catLabels[exercise.category]}
           </Badge>

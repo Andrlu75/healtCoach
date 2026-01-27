@@ -29,7 +29,7 @@ export function ExerciseCard({ exercise, onEdit, onDelete }: ExerciseCardProps) 
       ) : (
         <div className="aspect-video bg-gray-50 flex items-center justify-center">
           <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-3xl">
-            {muscleGroupIcons[exercise.muscleGroup]}
+            {muscleGroupIcons[exercise.muscleGroups[0]] || '💪'}
           </div>
         </div>
       )}
@@ -41,7 +41,7 @@ export function ExerciseCard({ exercise, onEdit, onDelete }: ExerciseCardProps) 
               {exercise.name}
             </h3>
             <p className="text-sm text-gray-500">
-              {muscleGroupLabels[exercise.muscleGroup]}
+              {exercise.muscleGroups.map(g => muscleGroupLabels[g]).join(', ')}
             </p>
           </div>
         </div>
