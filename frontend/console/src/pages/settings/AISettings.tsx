@@ -992,13 +992,19 @@ export default function AISettings() {
               </div>
               {openaiUsage?.error ? (
                 <p className="text-sm text-yellow-400">{openaiUsage.error}</p>
-              ) : openaiUsage?.costs?.data ? (
+              ) : openaiUsage?.costs?.error ? (
+                <p className="text-sm text-yellow-400">{openaiUsage.costs.error}</p>
+              ) : openaiUsage?.costs?.data && openaiUsage.costs.data.length > 0 ? (
                 <div className="text-2xl font-bold text-green-400">
-                  ${(openaiUsage.costs.data.reduce((sum: number, day: { results?: Array<{ amount?: { value?: number } }> }) => {
+                  ${openaiUsage.costs.data.reduce((sum: number, day: { results?: Array<{ amount?: { value?: number } }> }) => {
                     const dayAmount = day.results?.reduce((s: number, r: { amount?: { value?: number } }) => s + (r.amount?.value || 0), 0) || 0
                     return sum + dayAmount
-                  }, 0) / 100).toFixed(2)}
+                  }, 0).toFixed(4)}
                 </div>
+              ) : openaiUsage?.costs?.data?.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Нет данных за этот период</p>
+              ) : !loadingOpenai && openaiUsage ? (
+                <p className="text-sm text-yellow-400">API не вернул данные о расходах</p>
               ) : (
                 <p className="text-sm text-muted-foreground">Загрузка...</p>
               )}

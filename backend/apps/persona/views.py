@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import timedelta
 
 import httpx
@@ -9,6 +10,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from .models import BotPersona, AIProviderConfig, AIModelConfig, AIUsageLog, TelegramBot
+
+logger = logging.getLogger(__name__)
 from .serializers import (
     BotPersonaSerializer,
     AIProviderConfigSerializer,
@@ -879,9 +882,14 @@ class OpenAIUsageView(APIView):
             timeout=30,
         )
 
+        logger.info(f'OpenAI Costs API response: status={resp.status_code}')
         if resp.status_code == 200:
-            return resp.json()
+            data = resp.json()
+            logger.info(f'OpenAI Costs data: {data}')
+            return data
         elif resp.status_code == 403:
-            return {'error': 'Organization API not available', 'data': []}
+            logger.warning('OpenAI Organization API not available (403)')
+            return {'error': 'Organization API недоступен. Требуется Admin API key.', 'data': []}
         else:
+            logger.error(f'OpenAI Costs API error: {resp.status_code} - {resp.text}')
             return {'error': f'API error: {resp.status_code}', 'data': []}
