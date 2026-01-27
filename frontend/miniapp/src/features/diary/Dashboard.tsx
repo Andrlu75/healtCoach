@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Droplets, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import dayjs from 'dayjs'
 import { getDailySummary, getMeals } from '../../api/endpoints'
 import { useAuthStore } from '../auth'
 import { useHaptic } from '../../shared/hooks'
@@ -23,9 +24,11 @@ function Dashboard() {
     queryFn: () => getDailySummary().then((r) => r.data),
   })
 
+  const today = dayjs().format('YYYY-MM-DD')
+
   const { data: mealsData, isLoading: mealsLoading } = useQuery({
-    queryKey: ['meals', 'today'],
-    queryFn: () => getMeals().then((r) => r.data),
+    queryKey: ['meals', today],
+    queryFn: () => getMeals({ date: today }).then((r) => r.data),
   })
 
   const totals = summary?.totals || { calories: 0, proteins: 0, fats: 0, carbs: 0 }
