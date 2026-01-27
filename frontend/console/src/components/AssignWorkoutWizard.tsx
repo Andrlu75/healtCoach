@@ -615,7 +615,7 @@ export const AssignWorkoutWizard = ({
                 </div>
 
                 <div className="flex flex-wrap gap-1">
-                  {(['chest', 'back', 'shoulders', 'legs', 'abs'] as MuscleGroup[]).map(
+                  {(['chest', 'back', 'shoulders', 'biceps', 'triceps', 'legs', 'glutes', 'abs', 'cardio'] as MuscleGroup[]).map(
                     (muscle) => (
                       <Badge
                         key={muscle}

@@ -62,7 +62,7 @@ const WorkoutBuilder = () => {
         id: String(e.id),
         name: e.name,
         description: e.description,
-        muscleGroup: (e.muscleGroup || 'chest') as MuscleGroup,
+        muscleGroups: e.muscleGroups || [e.muscleGroup || 'chest'],
         category: (e.category || 'strength') as ExerciseCategory,
         difficulty: (e.difficulty || 'intermediate') as Exercise['difficulty'],
         equipment: e.equipment || undefined,
@@ -451,7 +451,7 @@ const WorkoutBuilder = () => {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {(['chest', 'back', 'shoulders', 'legs', 'abs'] as MuscleGroup[]).map(muscle => (
+              {(['chest', 'back', 'shoulders', 'biceps', 'triceps', 'legs', 'glutes', 'abs', 'cardio'] as MuscleGroup[]).map(muscle => (
                 <Badge
                   key={muscle}
                   variant={selectedMuscle === muscle ? 'default' : 'secondary'}
