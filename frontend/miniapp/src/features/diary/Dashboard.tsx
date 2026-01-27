@@ -40,7 +40,14 @@ function Dashboard() {
 
   return (
     <div className="p-4 pb-24 space-y-4">
-      {/* Nutrition progress - at top */}
+      {/* Greeting */}
+      <div>
+        <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+          Привет, {client?.first_name}!
+        </h1>
+      </div>
+
+      {/* Nutrition progress */}
       {summaryLoading ? (
         <NutritionSkeleton />
       ) : (
