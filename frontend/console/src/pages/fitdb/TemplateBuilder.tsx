@@ -224,7 +224,7 @@ const TemplateBuilder = () => {
 
   const filteredExercises = exercises.filter(e => {
     const matchesSearch = e.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesMuscle = !selectedMuscle || e.muscleGroup === selectedMuscle;
+    const matchesMuscle = !selectedMuscle || e.muscleGroups?.includes(selectedMuscle);
     const notAdded = !workoutItems.some(item => item.exerciseId === e.id);
     return matchesSearch && matchesMuscle && notAdded;
   });
@@ -326,7 +326,7 @@ const TemplateBuilder = () => {
                       {item.exercise.imageUrl ? (
                         <img src={item.exercise.imageUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-2xl">{muscleGroupIcons[item.exercise.muscleGroup] || '💪'}</span>
+                        <span className="text-2xl">{muscleGroupIcons[item.exercise.muscleGroups?.[0]] || '💪'}</span>
                       )}
                     </div>
                   </div>
@@ -335,7 +335,7 @@ const TemplateBuilder = () => {
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div>
                         <h3 className="font-semibold text-foreground">{item.exercise.name}</h3>
-                        <p className="text-sm text-muted-foreground">{muscleGroupLabels[item.exercise.muscleGroup] || item.exercise.muscleGroup}</p>
+                        <p className="text-sm text-muted-foreground">{item.exercise.muscleGroups?.map(mg => muscleGroupLabels[mg]).join(', ') || ''}</p>
                       </div>
                       <Button
                         variant="ghost"
@@ -460,12 +460,12 @@ const TemplateBuilder = () => {
                     {exercise.imageUrl ? (
                       <img src={exercise.imageUrl} alt="" className="w-full h-full object-cover rounded-lg" />
                     ) : (
-                      <span className="text-xl">{muscleGroupIcons[exercise.muscleGroup] || '💪'}</span>
+                      <span className="text-xl">{muscleGroupIcons[exercise.muscleGroups?.[0]] || '💪'}</span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground">{exercise.name}</p>
-                    <p className="text-sm text-muted-foreground">{muscleGroupLabels[exercise.muscleGroup] || exercise.muscleGroup}</p>
+                    <p className="text-sm text-muted-foreground">{exercise.muscleGroups?.map(mg => muscleGroupLabels[mg]).join(', ') || ''}</p>
                   </div>
                   <Plus className="w-5 h-5 text-primary" />
                 </button>

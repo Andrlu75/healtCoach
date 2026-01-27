@@ -457,7 +457,7 @@ const WorkoutRun = () => {
                             className="w-full h-full object-cover rounded-xl"
                           />
                         ) : (
-                          <span className="text-2xl">{muscleGroupIcons[item.exercise.muscleGroup]}</span>
+                          <span className="text-2xl">{muscleGroupIcons[item.exercise.muscleGroups?.[0]] || '💪'}</span>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -467,7 +467,7 @@ const WorkoutRun = () => {
                           {item.exercise.name}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          {item.sets} × {item.reps} • {muscleGroupLabels[item.exercise.muscleGroup]}
+                          {item.sets} × {item.reps} • {item.exercise.muscleGroups?.map(mg => muscleGroupLabels[mg]).join(', ') || ''}
                         </p>
                         {item.weightKg && (
                           <p className="text-xs text-muted-foreground mt-0.5">
@@ -519,7 +519,7 @@ const WorkoutRun = () => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-3xl">{muscleGroupIcons[selectedExercise.exercise.muscleGroup]}</span>
+                        <span className="text-3xl">{muscleGroupIcons[selectedExercise.exercise.muscleGroups?.[0]] || '💪'}</span>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -527,7 +527,7 @@ const WorkoutRun = () => {
                         {selectedExercise.exercise.name}
                       </h2>
                       <p className="text-sm text-muted-foreground">
-                        {muscleGroupLabels[selectedExercise.exercise.muscleGroup]}
+                        {selectedExercise.exercise.muscleGroups?.map(mg => muscleGroupLabels[mg]).join(', ') || ''}
                       </p>
                     </div>
                   </div>

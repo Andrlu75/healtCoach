@@ -241,7 +241,7 @@ const WorkoutBuilder = () => {
 
   const filteredExercises = exercises.filter(e => {
     const matchesSearch = e.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesMuscle = !selectedMuscle || e.muscleGroup === selectedMuscle;
+    const matchesMuscle = !selectedMuscle || e.muscleGroups?.includes(selectedMuscle);
     const notAdded = !workoutItems.some(item => item.exerciseId === e.id);
     return matchesSearch && matchesMuscle && notAdded;
   });
@@ -338,7 +338,7 @@ const WorkoutBuilder = () => {
                       {item.exercise.imageUrl ? (
                         <img src={item.exercise.imageUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-2xl">{muscleGroupIcons[item.exercise.muscleGroup]}</span>
+                        <span className="text-2xl">{muscleGroupIcons[item.exercise.muscleGroups?.[0]] || '💪'}</span>
                       )}
                     </div>
                   </div>
@@ -348,7 +348,7 @@ const WorkoutBuilder = () => {
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div>
                         <h3 className="font-semibold text-foreground">{item.exercise.name}</h3>
-                        <p className="text-sm text-muted-foreground">{muscleGroupLabels[item.exercise.muscleGroup]}</p>
+                        <p className="text-sm text-muted-foreground">{item.exercise.muscleGroups?.map(mg => muscleGroupLabels[mg]).join(', ') || ''}</p>
                       </div>
                       <Button
                         variant="ghost"
@@ -473,11 +473,11 @@ const WorkoutBuilder = () => {
                   className="w-full p-3 rounded-lg bg-muted/50 hover:bg-muted border border-border/50 hover:border-primary/30 transition-all text-left flex items-center gap-3"
                 >
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-lg">
-                    {muscleGroupIcons[exercise.muscleGroup]}
+                    {muscleGroupIcons[exercise.muscleGroups?.[0]] || '💪'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground truncate">{exercise.name}</p>
-                    <p className="text-sm text-muted-foreground">{muscleGroupLabels[exercise.muscleGroup]}</p>
+                    <p className="text-sm text-muted-foreground">{exercise.muscleGroups?.map(mg => muscleGroupLabels[mg]).join(', ') || ''}</p>
                   </div>
                   <Plus className="w-5 h-5 text-primary" />
                 </button>

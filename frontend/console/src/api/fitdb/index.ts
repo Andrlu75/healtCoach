@@ -17,16 +17,28 @@ const api = axios.create({
 });
 
 // Helper to convert snake_case to camelCase for exercises
-const mapExercise = (e: any): FitdbExercise => ({
-  id: String(e.id),
-  name: e.name,
-  description: e.description || e.instructions || '',
-  muscleGroup: (e.muscle_group || e.primary_muscle_group || 'chest') as MuscleGroup,
-  category: (e.category || e.type_name || 'strength') as ExerciseCategory,
-  difficulty: (e.difficulty || 'intermediate') as Difficulty,
-  equipment: e.equipment || undefined,
-  imageUrl: e.image_url || e.image || undefined,
-});
+const mapExercise = (e: any): FitdbExercise => {
+  // Handle muscleGroups - can come as array or single value
+  let muscleGroups: MuscleGroup[] = ['chest'];
+  if (Array.isArray(e.muscle_groups)) {
+    muscleGroups = e.muscle_groups as MuscleGroup[];
+  } else if (e.muscle_group) {
+    muscleGroups = [e.muscle_group as MuscleGroup];
+  } else if (e.primary_muscle_group) {
+    muscleGroups = [e.primary_muscle_group as MuscleGroup];
+  }
+
+  return {
+    id: String(e.id),
+    name: e.name,
+    description: e.description || e.instructions || '',
+    muscleGroups,
+    category: (e.category || e.type_name || 'strength') as ExerciseCategory,
+    difficulty: (e.difficulty || 'intermediate') as Difficulty,
+    equipment: e.equipment || undefined,
+    imageUrl: e.image_url || e.image || undefined,
+  };
+};
 
 // Exercises API
 export const fitdbExercisesApi = {
@@ -45,7 +57,7 @@ export const fitdbExercisesApi = {
     const { data } = await api.post('/exercises/exercises/', {
       name: exercise.name,
       description: exercise.description,
-      muscle_group: exercise.muscleGroup,
+      muscle_groups: exercise.muscleGroups,
       category: exercise.category,
       difficulty: exercise.difficulty,
       equipment: exercise.equipment || null,
@@ -58,7 +70,7 @@ export const fitdbExercisesApi = {
     const { data } = await api.patch(`/exercises/exercises/${id}/`, {
       name: exercise.name,
       description: exercise.description,
-      muscle_group: exercise.muscleGroup,
+      muscle_groups: exercise.muscleGroups,
       category: exercise.category,
       difficulty: exercise.difficulty,
       equipment: exercise.equipment || null,

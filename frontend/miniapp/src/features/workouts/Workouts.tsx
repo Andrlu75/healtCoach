@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Dumbbell, ChevronRight, Clock, CheckCircle2, Loader2 } from 'lucide-react'
+import { Dumbbell, ChevronRight, Clock, CheckCircle2, Loader2, CalendarDays } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { format } from 'date-fns'
+import { format, isToday, isTomorrow, parseISO, compareAsc } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import api from '../../api/client'
 
@@ -124,6 +124,38 @@ export default function Workouts() {
   const pendingWorkouts = assignments.filter(a => a.status === 'pending' || a.status === 'active')
   const completedWorkouts = assignments.filter(a => a.status === 'completed')
 
+  // Group pending workouts by date
+  const groupedByDate = useMemo(() => {
+    const groups: Record<string, WorkoutAssignment[]> = {}
+    const noDate: WorkoutAssignment[] = []
+
+    pendingWorkouts.forEach((workout) => {
+      if (workout.due_date) {
+        const dateKey = workout.due_date
+        if (!groups[dateKey]) {
+          groups[dateKey] = []
+        }
+        groups[dateKey].push(workout)
+      } else {
+        noDate.push(workout)
+      }
+    })
+
+    // Sort dates
+    const sortedDates = Object.keys(groups).sort((a, b) =>
+      compareAsc(parseISO(a), parseISO(b))
+    )
+
+    return { groups, sortedDates, noDate }
+  }, [pendingWorkouts])
+
+  const formatDateHeader = (dateStr: string) => {
+    const date = parseISO(dateStr)
+    if (isToday(date)) return 'Сегодня'
+    if (isTomorrow(date)) return 'Завтра'
+    return format(date, 'd MMMM, EEEE', { locale: ru })
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
@@ -141,51 +173,102 @@ export default function Workouts() {
         <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Назначенные программы</p>
       </div>
 
-      {/* Active Workouts Section */}
+      {/* Active Workouts Section - Grouped by Date */}
       {pendingWorkouts.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 px-1">
-            Активные · {pendingWorkouts.length}
-          </h2>
-          <motion.div
-            className="space-y-3"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            {pendingWorkouts.map((assignment) => (
+          {/* Workouts with dates */}
+          {groupedByDate.sortedDates.map((dateStr) => (
+            <div key={dateStr} className="mb-6">
+              {/* Date Header */}
+              <div className="flex items-center gap-2 mb-3 px-1">
+                <CalendarDays className="w-5 h-5 text-blue-500" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white capitalize">
+                  {formatDateHeader(dateStr)}
+                </h2>
+                <span className="text-sm text-gray-400">
+                  · {groupedByDate.groups[dateStr].length}
+                </span>
+              </div>
+
               <motion.div
-                key={assignment.id}
-                variants={itemVariants}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => navigate(`/workouts/${assignment.workout_id}?assignment=${assignment.id}`)}
-                className="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 cursor-pointer"
+                className="space-y-3"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                      <Dumbbell className="w-6 h-6 text-blue-500" />
+                {groupedByDate.groups[dateStr].map((assignment) => (
+                  <motion.div
+                    key={assignment.id}
+                    variants={itemVariants}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => navigate(`/workouts/${assignment.workout_id}?assignment=${assignment.id}`)}
+                    className="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                          <Dumbbell className="w-6 h-6 text-blue-500" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 dark:text-white">{assignment.workout_name}</h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                            {assignment.exercises_count} упражнений
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        {getStatusBadge(assignment.status)}
+                        <ChevronRight className="w-5 h-5 text-gray-300 dark:text-gray-600" />
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">{assignment.workout_name}</h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                        {assignment.exercises_count} упражнений
-                      </p>
-                      {assignment.due_date && (
-                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                          До {format(new Date(assignment.due_date), 'd MMMM', { locale: ru })}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    {getStatusBadge(assignment.status)}
-                    <ChevronRight className="w-5 h-5 text-gray-300 dark:text-gray-600" />
-                  </div>
-                </div>
+                  </motion.div>
+                ))}
               </motion.div>
-            ))}
-          </motion.div>
+            </div>
+          ))}
+
+          {/* Workouts without dates */}
+          {groupedByDate.noDate.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 px-1">
+                Без даты · {groupedByDate.noDate.length}
+              </h2>
+              <motion.div
+                className="space-y-3"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                {groupedByDate.noDate.map((assignment) => (
+                  <motion.div
+                    key={assignment.id}
+                    variants={itemVariants}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => navigate(`/workouts/${assignment.workout_id}?assignment=${assignment.id}`)}
+                    className="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                          <Dumbbell className="w-6 h-6 text-blue-500" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 dark:text-white">{assignment.workout_name}</h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                            {assignment.exercises_count} упражнений
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        {getStatusBadge(assignment.status)}
+                        <ChevronRight className="w-5 h-5 text-gray-300 dark:text-gray-600" />
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+          )}
         </div>
       )}
 

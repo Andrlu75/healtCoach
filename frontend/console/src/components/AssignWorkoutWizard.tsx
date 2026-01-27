@@ -22,7 +22,10 @@ import {
   Trash2,
   GripVertical,
   Search,
+  AlertCircle,
 } from 'lucide-react';
+import { DatePicker } from '@/components/ui/date-picker';
+import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import {
   workoutsApi,
@@ -79,9 +82,10 @@ export const AssignWorkoutWizard = ({
 
   // Assignment
   const [workoutName, setWorkoutName] = useState('');
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [dateError, setDateError] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -98,11 +102,12 @@ export const AssignWorkoutWizard = ({
     setSelectedWorkout(null);
     setWorkoutItems([]);
     setWorkoutName('');
-    setDueDate('');
+    setDueDate(undefined);
     setNotes('');
     setSelectorOpen(false);
     setSearchQuery('');
     setSelectedMuscle(null);
+    setDateError(false);
   };
 
   const fetchWorkouts = async () => {
@@ -134,7 +139,7 @@ export const AssignWorkoutWizard = ({
           id: String(e.id),
           name: e.name,
           description: e.description || '',
-          muscleGroup: e.muscleGroup as MuscleGroup,
+          muscleGroups: e.muscleGroups || ['chest'],
           category: e.category,
           difficulty: e.difficulty,
           equipment: e.equipment || undefined,
@@ -172,7 +177,7 @@ export const AssignWorkoutWizard = ({
                   id: String(ex.id),
                   name: ex.name,
                   description: ex.description || '',
-                  muscleGroup: ex.muscleGroup as MuscleGroup,
+                  muscleGroups: ex.muscleGroups || ['chest'],
                   category: ex.category,
                   difficulty: ex.difficulty,
                 };
@@ -181,7 +186,7 @@ export const AssignWorkoutWizard = ({
                   id: String(item.exercise_id),
                   name: 'Упражнение',
                   description: '',
-                  muscleGroup: 'chest' as MuscleGroup,
+                  muscleGroups: ['chest'] as MuscleGroup[],
                   category: 'strength',
                   difficulty: 'intermediate',
                 };
@@ -253,6 +258,13 @@ export const AssignWorkoutWizard = ({
   };
 
   const handleAssign = async () => {
+    // Validate required date
+    if (!dueDate) {
+      setDateError(true);
+      return;
+    }
+    setDateError(false);
+
     setSaving(true);
     try {
       let workoutIdToAssign = selectedWorkoutId;
@@ -280,7 +292,7 @@ export const AssignWorkoutWizard = ({
       await assignmentsApi.create({
         workout_id: workoutIdToAssign,
         client_id: clientId,
-        due_date: dueDate || undefined,
+        due_date: format(dueDate, 'yyyy-MM-dd'),
         notes: notes.trim() || undefined,
       });
 
@@ -301,7 +313,7 @@ export const AssignWorkoutWizard = ({
 
   const filteredExercises = exercises.filter((e) => {
     const matchesSearch = e.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesMuscle = !selectedMuscle || e.muscleGroup === selectedMuscle;
+    const matchesMuscle = !selectedMuscle || e.muscleGroups?.includes(selectedMuscle);
     const notAdded = !workoutItems.some((item) => item.exerciseId === e.id);
     return matchesSearch && matchesMuscle && notAdded;
   });
@@ -477,7 +489,7 @@ export const AssignWorkoutWizard = ({
                         <GripVertical className="w-3 h-3 text-muted-foreground" />
                       </Button>
                       <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex items-center justify-center text-lg">
-                        {muscleGroupIcons[item.exercise.muscleGroup] || '💪'}
+                        {muscleGroupIcons[item.exercise.muscleGroups?.[0]] || '💪'}
                       </div>
                     </div>
 
@@ -486,7 +498,7 @@ export const AssignWorkoutWizard = ({
                         <div>
                           <h4 className="font-medium text-sm">{item.exercise.name}</h4>
                           <p className="text-xs text-muted-foreground">
-                            {muscleGroupLabels[item.exercise.muscleGroup]}
+                            {item.exercise.muscleGroups?.map(mg => muscleGroupLabels[mg]).join(', ') || ''}
                           </p>
                         </div>
                         <Button
@@ -629,12 +641,12 @@ export const AssignWorkoutWizard = ({
                       className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors text-left"
                     >
                       <div className="w-8 h-8 rounded bg-muted flex items-center justify-center text-sm">
-                        {muscleGroupIcons[exercise.muscleGroup] || '💪'}
+                        {muscleGroupIcons[exercise.muscleGroups?.[0]] || '💪'}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium">{exercise.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {muscleGroupLabels[exercise.muscleGroup]}
+                          {exercise.muscleGroups?.map(mg => muscleGroupLabels[mg]).join(', ') || ''}
                         </p>
                       </div>
                       <Plus className="w-4 h-4 text-primary" />
@@ -680,13 +692,22 @@ export const AssignWorkoutWizard = ({
           </div>
 
           <div>
-            <Label>Выполнить до</Label>
-            <Input
-              type="date"
+            <Label>Дата тренировки *</Label>
+            <DatePicker
               value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              onChange={(date) => {
+                setDueDate(date);
+                setDateError(false);
+              }}
+              placeholder="Выберите дату"
               className="mt-1"
             />
+            {dateError && (
+              <p className="text-sm text-destructive flex items-center gap-1 mt-1">
+                <AlertCircle className="w-3 h-3" />
+                Выберите дату тренировки
+              </p>
+            )}
           </div>
 
           <div>
