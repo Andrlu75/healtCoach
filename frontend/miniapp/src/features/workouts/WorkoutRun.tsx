@@ -993,30 +993,32 @@ export default function WorkoutRun() {
         </div>
       )}
 
-      {/* Fixed bottom button */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-white dark:from-gray-950 to-transparent pt-8">
-        <motion.button
-          whileTap={{ scale: 0.97 }}
-          onClick={() => setShowFinishConfirm(true)}
-          className={`w-full rounded-2xl py-4 font-bold text-lg flex items-center justify-center gap-3 shadow-xl ${
-            currentStats.completionPercent === 100
-              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white animate-pulse'
-              : 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
-          }`}
-        >
-          {currentStats.completionPercent === 100 ? (
-            <>
-              <Trophy className="w-6 h-6" />
-              Получить награду!
-            </>
-          ) : (
-            <>
-              <Flag className="w-6 h-6" />
-              Завершить тренировку
-            </>
-          )}
-        </motion.button>
-      </div>
+      {/* Fixed bottom button - only show on exercise selection screen */}
+      {!currentExercise && (
+        <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-white dark:from-gray-950 to-transparent pt-8">
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setShowFinishConfirm(true)}
+            className={`w-full rounded-2xl py-4 font-bold text-lg flex items-center justify-center gap-3 shadow-xl ${
+              currentStats.completionPercent === 100
+                ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white animate-pulse'
+                : 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
+            }`}
+          >
+            {currentStats.completionPercent === 100 ? (
+              <>
+                <Trophy className="w-6 h-6" />
+                Получить награду!
+              </>
+            ) : (
+              <>
+                <Flag className="w-6 h-6" />
+                Завершить тренировку
+              </>
+            )}
+          </motion.button>
+        </div>
+      )}
     </div>
   )
 }
