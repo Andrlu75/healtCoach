@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Home, BookOpen, BarChart3, Bell, User } from 'lucide-react'
+import { Home, BookOpen, BarChart3, Dumbbell, User } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '../../shared/lib/cn'
 import { useHaptic } from '../../shared/hooks'
@@ -7,8 +7,8 @@ import { useHaptic } from '../../shared/hooks'
 const navItems = [
   { to: '/', icon: Home, label: 'Главная' },
   { to: '/diary', icon: BookOpen, label: 'Дневник' },
+  { to: '/workouts', icon: Dumbbell, label: 'Тренировки' },
   { to: '/stats', icon: BarChart3, label: 'Статистика' },
-  { to: '/reminders', icon: Bell, label: 'Напоминания' },
   { to: '/profile', icon: User, label: 'Профиль' },
 ]
 
