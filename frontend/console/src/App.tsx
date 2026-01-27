@@ -23,6 +23,8 @@ import FitdbClients from './pages/fitdb/Clients'
 import FitdbClientDetail from './pages/fitdb/ClientDetail'
 import FitdbWorkoutRun from './pages/fitdb/WorkoutRun'
 import FitdbWorkoutHistory from './pages/fitdb/WorkoutHistory'
+// MiniApp demo
+import MiniAppDemo from './pages/miniapp'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -67,6 +69,8 @@ function App() {
           <Route path="fitdb/clients" element={<FitdbClients />} />
           <Route path="fitdb/clients/:id" element={<FitdbClientDetail />} />
           <Route path="fitdb/history" element={<FitdbWorkoutHistory />} />
+          {/* MiniApp demo - для тестирования Telegram Mini App */}
+          <Route path="miniapp" element={<MiniAppDemo />} />
         </Route>
       </Routes>
     </BrowserRouter>
