@@ -86,3 +86,48 @@ class FitDBExerciseLog(models.Model):
 
     def __str__(self):
         return f"{self.exercise.name} - Set {self.set_number}"
+
+
+class FitDBActivityLog(models.Model):
+    """Detailed activity log for coach analysis"""
+    EVENT_TYPES = [
+        ('workout_started', 'Тренировка начата'),
+        ('workout_paused', 'Тренировка приостановлена'),
+        ('workout_resumed', 'Тренировка возобновлена'),
+        ('workout_completed', 'Тренировка завершена'),
+        ('exercise_started', 'Упражнение начато'),
+        ('exercise_completed', 'Упражнение завершено'),
+        ('exercise_skipped', 'Упражнение пропущено'),
+        ('set_completed', 'Подход выполнен'),
+        ('set_skipped', 'Подход пропущен'),
+        ('rest_started', 'Отдых начат'),
+        ('rest_skipped', 'Отдых пропущен'),
+    ]
+
+    session = models.ForeignKey(
+        FitDBWorkoutSession,
+        on_delete=models.CASCADE,
+        related_name='activity_logs'
+    )
+    event_type = models.CharField(max_length=30, choices=EVENT_TYPES)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    # Optional references
+    exercise = models.ForeignKey(
+        'exercises.Exercise',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='activity_logs'
+    )
+    set_number = models.PositiveIntegerField(null=True, blank=True)
+
+    # Event details (reps, weight, duration, etc.)
+    details = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = 'fitdb_activity_logs'
+        ordering = ['session', 'timestamp']
+
+    def __str__(self):
+        return f"{self.get_event_type_display()} - {self.timestamp}"

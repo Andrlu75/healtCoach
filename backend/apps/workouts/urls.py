@@ -12,7 +12,8 @@ from .views import (
 )
 from .views.fitdb import (
     FitDBWorkoutViewSet, FitDBWorkoutExerciseViewSet,
-    FitDBAssignmentViewSet, FitDBSessionViewSet, FitDBExerciseLogViewSet
+    FitDBAssignmentViewSet, FitDBSessionViewSet, FitDBExerciseLogViewSet,
+    FitDBActivityLogViewSet
 )
 
 router = DefaultRouter()
@@ -39,6 +40,7 @@ assignments_router = DefaultRouter()
 assignments_router.register('assignments', FitDBAssignmentViewSet, basename='fitdb-assignment')
 assignments_router.register('sessions', FitDBSessionViewSet, basename='fitdb-session')
 assignments_router.register('exercise-logs', FitDBExerciseLogViewSet, basename='fitdb-exercise-log')
+assignments_router.register('activity-logs', FitDBActivityLogViewSet, basename='fitdb-activity-log')
 
 urlpatterns = [
     path('fitdb/', include(fitdb_router.urls)),

@@ -74,9 +74,33 @@ export default function WorkoutRun() {
   const createSession = async () => {
     try {
       const { data } = await api.post('/workouts/sessions/', { workout_id: workoutId })
-      setSessionId(String(data.id))
+      const newSessionId = String(data.id)
+      setSessionId(newSessionId)
+      // Log workout started
+      logActivity(newSessionId, 'workout_started', null, null, {})
     } catch (error) {
       console.error('Error creating session:', error)
+    }
+  }
+
+  // Log activity for coach analysis
+  const logActivity = async (
+    sid: string,
+    eventType: string,
+    exerciseId: string | null,
+    setNumber: number | null,
+    details: Record<string, any>
+  ) => {
+    try {
+      await api.post('/workouts/activity-logs/', {
+        session_id: sid,
+        event_type: eventType,
+        exercise_id: exerciseId,
+        set_number: setNumber,
+        details,
+      })
+    } catch (error) {
+      console.error('Error logging activity:', error)
     }
   }
 
@@ -194,6 +218,13 @@ export default function WorkoutRun() {
     setRestTime(seconds)
     setIsResting(true)
 
+    // Log rest started (don't await, fire and forget)
+    if (sessionId && currentExercise) {
+      logActivity(sessionId, 'rest_started', currentExercise.exercise.id, null, {
+        rest_seconds: seconds,
+      })
+    }
+
     if (timerRef.current) clearInterval(timerRef.current)
 
     timerRef.current = setInterval(() => {
@@ -206,7 +237,7 @@ export default function WorkoutRun() {
         return prev - 1
       })
     }, 1000)
-  }, [])
+  }, [sessionId, currentExercise])
 
   const completeSet = async (setIndex: number) => {
     if (!currentExercise || !sessionId) return
@@ -222,6 +253,12 @@ export default function WorkoutRun() {
         reps_completed: set.reps,
         weight_kg: set.weight || undefined,
       })
+
+      // Log set completed
+      logActivity(sessionId, 'set_completed', currentExercise.exercise.id, set.set_number, {
+        reps: set.reps,
+        weight_kg: set.weight,
+      })
     } catch (error) {
       console.error('Error logging set:', error)
     }
@@ -232,6 +269,14 @@ export default function WorkoutRun() {
         i === setIndex ? { ...s, completed: true } : s
       ),
     }))
+
+    // Check if exercise completed
+    const updatedSets = currentSets.map((s, i) => i === setIndex ? { ...s, completed: true } : s)
+    if (updatedSets.every(s => s.completed)) {
+      logActivity(sessionId, 'exercise_completed', currentExercise.exercise.id, null, {
+        total_sets: currentSets.length,
+      })
+    }
 
     if (setIndex < currentSets.length - 1) {
       startRest(currentExercise.rest_seconds)
@@ -259,6 +304,16 @@ export default function WorkoutRun() {
     setSelectedExercise(null)
     setIsResting(false)
     if (timerRef.current) clearInterval(timerRef.current)
+
+    // Log exercise started
+    const exercise = exercises[index]
+    if (sessionId && exercise) {
+      logActivity(sessionId, 'exercise_started', exercise.exercise.id, null, {
+        exercise_name: exercise.exercise.name,
+        planned_sets: exercise.sets,
+        planned_reps: exercise.reps,
+      })
+    }
   }
 
   const finishWorkout = async () => {
@@ -267,6 +322,18 @@ export default function WorkoutRun() {
 
     const stats = calculateStats()
     setFinalStats(stats)
+
+    // Log workout completed with full stats
+    logActivity(sessionId, 'workout_completed', null, null, {
+      duration_seconds: stats.duration,
+      completion_percent: stats.completionPercent,
+      total_sets: stats.totalSets,
+      completed_sets: stats.completedSets,
+      skipped_sets: stats.skippedSets,
+      total_exercises: stats.totalExercises,
+      completed_exercises: stats.completedExercises,
+      partial_exercises: stats.partialExercises,
+    })
 
     try {
       await api.patch(`/workouts/sessions/${sessionId}/`, {
@@ -792,6 +859,12 @@ export default function WorkoutRun() {
                     selection()
                     setIsResting(false)
                     if (timerRef.current) clearInterval(timerRef.current)
+                    // Log rest skipped
+                    if (sessionId && currentExercise) {
+                      logActivity(sessionId, 'rest_skipped', currentExercise.exercise.id, null, {
+                        remaining_seconds: restTime,
+                      })
+                    }
                   }}
                   className="mt-3 text-sm underline opacity-80"
                 >

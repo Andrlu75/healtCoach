@@ -10,7 +10,7 @@ from django.db import transaction
 
 from apps.workouts.models import (
     WorkoutTemplate, WorkoutTemplateBlock, WorkoutTemplateExercise,
-    FitDBWorkoutAssignment, FitDBWorkoutSession, FitDBExerciseLog
+    FitDBWorkoutAssignment, FitDBWorkoutSession, FitDBExerciseLog, FitDBActivityLog
 )
 from apps.exercises.models import Exercise
 from apps.accounts.models import Coach, Client
@@ -470,3 +470,61 @@ class FitDBExerciseLogViewSet(viewsets.ModelViewSet):
         if session_id:
             queryset = queryset.filter(session_id=session_id)
         return queryset
+
+
+# ============== FitDB Activity Logs ==============
+
+class FitDBActivityLogSerializer(serializers.ModelSerializer):
+    """Serializer for FitDB activity log (detailed workout events for coach)"""
+    session_id = serializers.PrimaryKeyRelatedField(
+        source='session',
+        queryset=FitDBWorkoutSession.objects.all()
+    )
+    exercise_id = serializers.PrimaryKeyRelatedField(
+        source='exercise',
+        queryset=Exercise.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    event_type_display = serializers.CharField(source='get_event_type_display', read_only=True)
+
+    class Meta:
+        model = FitDBActivityLog
+        fields = [
+            'id', 'session_id', 'event_type', 'event_type_display',
+            'timestamp', 'exercise_id', 'set_number', 'details'
+        ]
+        read_only_fields = ['timestamp', 'event_type_display']
+
+
+class FitDBActivityLogViewSet(viewsets.ModelViewSet):
+    """FitDB API for activity logs - detailed workout events for coach analysis"""
+    permission_classes = [AllowAny]
+    serializer_class = FitDBActivityLogSerializer
+    filter_backends = [OrderingFilter]
+    ordering = ['timestamp']
+
+    def get_queryset(self):
+        queryset = FitDBActivityLog.objects.select_related('session', 'exercise')
+        session_id = self.request.query_params.get('session_id')
+        if session_id:
+            queryset = queryset.filter(session_id=session_id)
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        """Create activity log entry"""
+        data = request.data
+
+        # Support bulk create for multiple events
+        if isinstance(data, list):
+            created = []
+            for item in data:
+                serializer = self.get_serializer(data=item)
+                serializer.is_valid(raise_exception=True)
+                created.append(serializer.save())
+            return Response(
+                self.get_serializer(created, many=True).data,
+                status=status.HTTP_201_CREATED
+            )
+
+        return super().create(request, *args, **kwargs)

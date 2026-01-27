@@ -2,7 +2,7 @@ from .templates import WorkoutTemplate, WorkoutTemplateBlock, WorkoutTemplateExe
 from .workouts import ClientWorkout, WorkoutBlock, WorkoutExercise, WorkoutSuperset
 from .scheduling import TrainingSchedule, TrainingProgram, ProgramWorkout
 from .progress import WorkoutSession, ExerciseLog
-from .fitdb import FitDBWorkoutAssignment, FitDBWorkoutSession, FitDBExerciseLog
+from .fitdb import FitDBWorkoutAssignment, FitDBWorkoutSession, FitDBExerciseLog, FitDBActivityLog
 
 __all__ = [
     # Шаблоны
@@ -25,4 +25,5 @@ __all__ = [
     'FitDBWorkoutAssignment',
     'FitDBWorkoutSession',
     'FitDBExerciseLog',
+    'FitDBActivityLog',
 ]
