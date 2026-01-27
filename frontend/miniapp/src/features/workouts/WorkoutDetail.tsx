@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Clock, Dumbbell, Play, CheckCircle2, Loader2 } from 'lucide-react'
+import { ArrowLeft, Clock, Dumbbell, Play, CheckCircle2, Loader2, Trophy, Weight, BarChart3 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import api from '../../api/client'
 
@@ -42,6 +42,35 @@ interface Exercise {
   }
 }
 
+interface SetLog {
+  set_number: number
+  reps: number
+  weight_kg: number | null
+}
+
+interface ExerciseReport {
+  exercise_id: string
+  exercise_name: string
+  muscle_group: string
+  sets: SetLog[]
+}
+
+interface WorkoutReport {
+  session: {
+    id: number
+    started_at: string
+    completed_at: string
+    duration_seconds: number
+  }
+  exercises: ExerciseReport[]
+  totals: {
+    exercises: number
+    sets: number
+    reps: number
+    volume_kg: number
+  }
+}
+
 export default function WorkoutDetail() {
   const { id: workoutId } = useParams()
   const [searchParams] = useSearchParams()
@@ -52,6 +81,7 @@ export default function WorkoutDetail() {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState<string>('pending')
+  const [report, setReport] = useState<WorkoutReport | null>(null)
 
   useEffect(() => {
     if (workoutId) {
@@ -66,8 +96,23 @@ export default function WorkoutDetail() {
     try {
       const { data } = await api.get(`/workouts/assignments/${assignmentId}/`)
       setStatus(data.status)
+      // If completed, fetch the report
+      if (data.status === 'completed' && workoutId) {
+        fetchReport()
+      }
     } catch (error) {
       console.error('Error fetching assignment status:', error)
+    }
+  }
+
+  const fetchReport = async () => {
+    try {
+      const { data } = await api.get('/workouts/sessions/report/', {
+        params: { workout_id: workoutId }
+      })
+      setReport(data)
+    } catch (error) {
+      console.error('Error fetching report:', error)
     }
   }
 
@@ -145,6 +190,13 @@ export default function WorkoutDetail() {
     return acc + (ex.sets * 45) + (ex.sets * ex.rest_seconds)
   }, 0)
 
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    if (mins === 0) return `${secs} сек`
+    return secs > 0 ? `${mins} мин ${secs} сек` : `${mins} мин`
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
@@ -180,66 +232,165 @@ export default function WorkoutDetail() {
         )}
       </div>
 
-      {/* Stats */}
-      <div className="flex gap-3 mb-6">
-        <div className="flex-1 bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
-          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
-            <Dumbbell className="w-4 h-4" />
-            <span className="text-xs">Упражнений</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{exercises.length}</p>
-        </div>
-        <div className="flex-1 bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
-          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
-            <Clock className="w-4 h-4" />
-            <span className="text-xs">Примерно</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{Math.round(totalTime / 60)} мин</p>
-        </div>
-      </div>
-
-      {/* Exercise List */}
-      <div className="mb-6">
-        <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 px-1">Программа</h2>
-        <motion.div
-          className="space-y-3"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          {exercises.map((ex, index) => (
-            <motion.div
-              key={ex.id}
-              variants={itemVariants}
-              className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 font-semibold text-sm">
-                  {index + 1}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-medium text-gray-900 dark:text-white">{ex.exercise.name}</h3>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    {ex.exercise.muscle_group && (
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${getMuscleGroupColor(ex.exercise.muscle_group)}`}>
-                        {ex.exercise.muscle_group}
-                      </span>
-                    )}
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {ex.sets} × {ex.reps}
-                    </span>
-                    {ex.weight_kg && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        · {ex.weight_kg} кг
-                      </span>
-                    )}
-                  </div>
-                </div>
+      {/* Stats - Different for completed vs pending */}
+      {status === 'completed' && report ? (
+        <>
+          {/* Completed Stats */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
+                <Clock className="w-4 h-4" />
+                <span className="text-xs">Время</span>
               </div>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">
+                {report.session.duration_seconds ? formatDuration(report.session.duration_seconds) : '—'}
+              </p>
+            </div>
+            <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
+                <BarChart3 className="w-4 h-4" />
+                <span className="text-xs">Подходов</span>
+              </div>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{report.totals.sets}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
+                <Dumbbell className="w-4 h-4" />
+                <span className="text-xs">Повторений</span>
+              </div>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{report.totals.reps}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
+                <Weight className="w-4 h-4" />
+                <span className="text-xs">Объём</span>
+              </div>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">
+                {report.totals.volume_kg > 0 ? `${report.totals.volume_kg} кг` : '—'}
+              </p>
+            </div>
+          </div>
+
+          {/* Completed Exercise Report */}
+          <div className="mb-6">
+            <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 px-1">Результаты</h2>
+            <motion.div
+              className="space-y-3"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {report.exercises.map((ex, index) => (
+                <motion.div
+                  key={ex.exercise_id}
+                  variants={itemVariants}
+                  className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 font-semibold text-sm">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900 dark:text-white">{ex.exercise_name}</h3>
+                      {ex.muscle_group && (
+                        <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${getMuscleGroupColor(ex.muscle_group)}`}>
+                          {ex.muscle_group}
+                        </span>
+                      )}
+                      {/* Sets details */}
+                      <div className="mt-3 space-y-2">
+                        {ex.sets.map((set) => (
+                          <div
+                            key={set.set_number}
+                            className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded-xl"
+                          >
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              Подход {set.set_number}
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {set.reps} повт
+                              </span>
+                              {set.weight_kg && (
+                                <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                  {set.weight_kg} кг
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </motion.div>
-          ))}
-        </motion.div>
-      </div>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Pending Stats */}
+          <div className="flex gap-3 mb-6">
+            <div className="flex-1 bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
+                <Dumbbell className="w-4 h-4" />
+                <span className="text-xs">Упражнений</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{exercises.length}</p>
+            </div>
+            <div className="flex-1 bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
+                <Clock className="w-4 h-4" />
+                <span className="text-xs">Примерно</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{Math.round(totalTime / 60)} мин</p>
+            </div>
+          </div>
+
+          {/* Exercise List */}
+          <div className="mb-6">
+            <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 px-1">Программа</h2>
+            <motion.div
+              className="space-y-3"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {exercises.map((ex, index) => (
+                <motion.div
+                  key={ex.id}
+                  variants={itemVariants}
+                  className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 font-semibold text-sm">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900 dark:text-white">{ex.exercise.name}</h3>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {ex.exercise.muscle_group && (
+                          <span className={`px-2 py-0.5 rounded-full text-xs ${getMuscleGroupColor(ex.exercise.muscle_group)}`}>
+                            {ex.exercise.muscle_group}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {ex.sets} × {ex.reps}
+                        </span>
+                        {ex.weight_kg && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            · {ex.weight_kg} кг
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </>
+      )}
 
       {/* Start Button */}
       {status !== 'completed' && assignmentId && (

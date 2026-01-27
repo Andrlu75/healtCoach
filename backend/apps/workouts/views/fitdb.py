@@ -480,6 +480,73 @@ class FitDBSessionViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(workout_id=workout_id)
         return queryset
 
+    @action(detail=False, methods=['get'])
+    def report(self, request):
+        """
+        Get detailed report for a completed workout session.
+        GET /api/workouts/sessions/report/?workout_id=123
+        Returns session info + exercise logs grouped by exercise
+        """
+        workout_id = request.query_params.get('workout_id')
+        if not workout_id:
+            return Response({'error': 'workout_id is required'}, status=400)
+
+        # Get the latest completed session for this workout
+        session = FitDBWorkoutSession.objects.filter(
+            workout_id=workout_id,
+            completed_at__isnull=False
+        ).order_by('-completed_at').first()
+
+        if not session:
+            return Response({'error': 'No completed session found'}, status=404)
+
+        # Get all exercise logs for this session
+        logs = FitDBExerciseLog.objects.filter(
+            session=session
+        ).select_related('exercise').order_by('exercise_id', 'set_number')
+
+        # Group logs by exercise
+        exercises_data = {}
+        for log in logs:
+            ex_id = str(log.exercise_id)
+            if ex_id not in exercises_data:
+                exercises_data[ex_id] = {
+                    'exercise_id': ex_id,
+                    'exercise_name': log.exercise.name if log.exercise else 'Упражнение',
+                    'muscle_group': log.exercise.muscle_groups[0] if log.exercise and log.exercise.muscle_groups else '',
+                    'sets': []
+                }
+            exercises_data[ex_id]['sets'].append({
+                'set_number': log.set_number,
+                'reps': log.reps_completed,
+                'weight_kg': float(log.weight_kg) if log.weight_kg else None,
+            })
+
+        # Calculate totals
+        total_sets = sum(len(ex['sets']) for ex in exercises_data.values())
+        total_reps = sum(s['reps'] for ex in exercises_data.values() for s in ex['sets'])
+        total_weight = sum(
+            (s['weight_kg'] or 0) * s['reps']
+            for ex in exercises_data.values()
+            for s in ex['sets']
+        )
+
+        return Response({
+            'session': {
+                'id': session.id,
+                'started_at': session.started_at,
+                'completed_at': session.completed_at,
+                'duration_seconds': session.duration_seconds,
+            },
+            'exercises': list(exercises_data.values()),
+            'totals': {
+                'exercises': len(exercises_data),
+                'sets': total_sets,
+                'reps': total_reps,
+                'volume_kg': round(total_weight, 1),
+            }
+        })
+
 
 # ============== FitDB Exercise Logs ==============
 
