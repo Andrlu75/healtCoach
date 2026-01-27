@@ -136,11 +136,11 @@ export default function WorkoutRun() {
         } as Exercise
       })
 
-      exercisesWithDetails.sort((a, b) => a.order_index - b.order_index)
+      exercisesWithDetails.sort((a: Exercise, b: Exercise) => a.order_index - b.order_index)
       setExercises(exercisesWithDetails)
 
       const logs: Record<string, SetLog[]> = {}
-      exercisesWithDetails.forEach((ex) => {
+      exercisesWithDetails.forEach((ex: Exercise) => {
         logs[ex.id] = Array.from({ length: ex.sets }, (_, i) => ({
           set_number: i + 1,
           reps: ex.reps,

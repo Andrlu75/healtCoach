@@ -155,7 +155,7 @@ export default function WorkoutDetail() {
       })
 
       // Sort by order_index
-      exercisesWithDetails.sort((a, b) => a.order_index - b.order_index)
+      exercisesWithDetails.sort((a: Exercise, b: Exercise) => a.order_index - b.order_index)
       setExercises(exercisesWithDetails)
     } catch (error) {
       console.error('Error fetching workout details:', error)
