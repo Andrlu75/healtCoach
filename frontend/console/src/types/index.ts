@@ -24,6 +24,8 @@ export interface Client {
   last_name: string
   full_name: string
   gender: 'male' | 'female' | null
+  age: number | null
+  activity_level: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active' | null
   city: string
   timezone: string
   status: 'pending' | 'active' | 'paused' | 'archived'

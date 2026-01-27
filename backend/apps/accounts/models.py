@@ -56,7 +56,20 @@ class Client(models.Model):
     # Физиологические данные
     height = models.IntegerField(null=True, blank=True)  # см
     weight = models.FloatField(null=True, blank=True)  # кг
+    age = models.IntegerField(null=True, blank=True)  # полных лет
     birth_date = models.DateField(null=True, blank=True)
+    activity_level = models.CharField(
+        max_length=20,
+        choices=[
+            ('sedentary', 'Сидячий'),
+            ('light', 'Лёгкая активность'),
+            ('moderate', 'Умеренная активность'),
+            ('active', 'Высокая активность'),
+            ('very_active', 'Очень высокая активность'),
+        ],
+        null=True,
+        blank=True,
+    )
 
     # Персональные нормы КБЖУ
     daily_calories = models.IntegerField(null=True, blank=True)

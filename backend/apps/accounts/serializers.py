@@ -27,7 +27,7 @@ class ClientSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'telegram_user_id', 'telegram_username',
             'first_name', 'last_name', 'full_name',
-            'gender',
+            'gender', 'age', 'activity_level',
             'city', 'timezone', 'status',
             'height', 'weight', 'birth_date',
             'daily_calories', 'daily_proteins', 'daily_fats', 'daily_carbs', 'daily_water',

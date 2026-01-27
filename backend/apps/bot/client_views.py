@@ -447,6 +447,12 @@ class ClientOnboardingSubmitView(APIView):
             client.weight = weight
         if height:
             client.height = int(height)
+        if age:
+            client.age = int(age)
+        if gender:
+            client.gender = gender
+        if activity:
+            client.activity_level = activity
 
         client.onboarding_completed = True
         client.status = 'active'

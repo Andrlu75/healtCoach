@@ -73,9 +73,11 @@ export default function ClientDetail() {
 
   const [physiology, setPhysiology] = useState({
     gender: '' as string,
+    age: '',
     height: '',
     weight: '',
     birth_date: '',
+    activity_level: '' as string,
   })
   const [savingPhysiology, setSavingPhysiology] = useState(false)
   const [physiologyMsg, setPhysiologyMsg] = useState('')
@@ -111,9 +113,11 @@ export default function ClientDetail() {
         })
         setPhysiology({
           gender: data.gender || '',
+          age: data.age?.toString() || '',
           height: data.height?.toString() || '',
           weight: data.weight?.toString() || '',
           birth_date: data.birth_date || '',
+          activity_level: data.activity_level || '',
         })
         setNorms({
           daily_calories: data.daily_calories?.toString() || '',
@@ -170,9 +174,11 @@ export default function ClientDetail() {
     try {
       const { data } = await clientsApi.update(clientId, {
         gender: physiology.gender || null,
+        age: physiology.age ? Number(physiology.age) : null,
         height: physiology.height ? Number(physiology.height) : null,
         weight: physiology.weight ? Number(physiology.weight) : null,
         birth_date: physiology.birth_date || null,
+        activity_level: physiology.activity_level || null,
       } as Partial<Client>)
       setClient(data)
       setPhysiologyMsg('Сохранено')
@@ -931,7 +937,7 @@ function SettingsTab({
   saveProfile: () => Promise<void>
   savingProfile: boolean
   profileMsg: string
-  physiology: { gender: string; height: string; weight: string; birth_date: string }
+  physiology: { gender: string; age: string; height: string; weight: string; birth_date: string; activity_level: string }
   setPhysiology: (p: typeof physiology) => void
   savePhysiology: () => Promise<void>
   savingPhysiology: boolean
@@ -987,7 +993,7 @@ function SettingsTab({
           <SaveButton onClick={savePhysiology} loading={savingPhysiology} message={physiologyMsg} />
         }
       >
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <FormSelect
             label="Пол"
             value={physiology.gender}
@@ -997,6 +1003,14 @@ function SettingsTab({
               { value: 'male', label: 'Мужской' },
               { value: 'female', label: 'Женский' },
             ]}
+          />
+          <FormField
+            label="Возраст"
+            value={physiology.age}
+            onChange={(v) => setPhysiology({ ...physiology, age: v })}
+            type="number"
+            placeholder="30"
+            suffix="лет"
           />
           <FormField
             label="Рост"
@@ -1022,6 +1036,19 @@ function SettingsTab({
             onChange={(v) => setPhysiology({ ...physiology, birth_date: v })}
             type="date"
             icon={Cake}
+          />
+          <FormSelect
+            label="Активность"
+            value={physiology.activity_level}
+            onChange={(v) => setPhysiology({ ...physiology, activity_level: v })}
+            options={[
+              { value: '', label: 'Не указана' },
+              { value: 'sedentary', label: 'Сидячий' },
+              { value: 'light', label: 'Лёгкая' },
+              { value: 'moderate', label: 'Умеренная' },
+              { value: 'active', label: 'Высокая' },
+              { value: 'very_active', label: 'Очень высокая' },
+            ]}
           />
         </div>
       </SettingsSection>
