@@ -19,11 +19,15 @@ class BotPersonaSerializer(serializers.ModelSerializer):
 
 class AIProviderConfigSerializer(serializers.ModelSerializer):
     masked_key = serializers.CharField(read_only=True)
+    has_admin_key = serializers.SerializerMethodField()
 
     class Meta:
         model = AIProviderConfig
-        fields = ['id', 'provider', 'is_active', 'masked_key', 'created_at']
+        fields = ['id', 'provider', 'is_active', 'masked_key', 'has_admin_key', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+    def get_has_admin_key(self, obj):
+        return bool(obj.admin_api_key)
 
 
 class AIProviderCreateSerializer(serializers.Serializer):

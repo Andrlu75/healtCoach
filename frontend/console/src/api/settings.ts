@@ -28,6 +28,8 @@ export const settingsApi = {
   addProvider: (provider: ProviderType, api_key: string) =>
     api.post<{ provider: AIProviderConfig; models: AIModelInfo[] }>('/persona/providers/', { provider, api_key }),
   deleteProvider: (id: number) => api.delete(`/persona/providers/${id}/`),
+  updateProviderAdminKey: (id: number, admin_api_key: string) =>
+    api.put<{ status: string; has_admin_key: boolean }>(`/persona/providers/${id}/admin-key/`, { admin_api_key }),
   fetchModels: (provider: ProviderType, api_key?: string) =>
     api.post<{ models: AIModelInfo[] }>('/persona/providers/models/', { provider, api_key: api_key || '' }),
 

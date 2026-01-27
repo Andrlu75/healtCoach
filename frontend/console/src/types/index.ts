@@ -77,6 +77,7 @@ export interface AIProviderConfig {
   provider: ProviderType
   is_active: boolean
   masked_key: string
+  has_admin_key: boolean
   created_at: string
 }
 

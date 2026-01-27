@@ -790,16 +790,43 @@ class DashboardStatsView(APIView):
         return Response(stats)
 
 
+class AIProviderAdminKeyView(APIView):
+    """Update admin API key for a provider."""
+
+    def put(self, request, pk):
+        coach = request.user.coach_profile
+        try:
+            config = AIProviderConfig.objects.get(pk=pk, coach=coach)
+        except AIProviderConfig.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        admin_api_key = request.data.get('admin_api_key', '')
+        config.admin_api_key = admin_api_key
+        config.save(update_fields=['admin_api_key'])
+
+        return Response({
+            'status': 'updated',
+            'has_admin_key': bool(admin_api_key),
+        })
+
+
 class OpenAIUsageView(APIView):
     """Get usage and costs from OpenAI API directly."""
 
     def get(self, request):
         coach = request.user.coach_profile
 
-        # Get OpenAI API key
+        # Get OpenAI Admin API key
         try:
             config = AIProviderConfig.objects.get(coach=coach, provider='openai')
-            api_key = config.api_key
+            # Use admin_api_key if available, otherwise fall back to api_key
+            api_key = config.admin_api_key or config.api_key
+            if not config.admin_api_key:
+                return Response({
+                    'error': 'Admin API key не настроен. Добавьте его в настройках провайдера OpenAI.',
+                    'usage': {'data': []},
+                    'costs': {'data': []},
+                })
         except AIProviderConfig.DoesNotExist:
             return Response(
                 {'error': 'OpenAI провайдер не настроен'},
@@ -835,18 +862,11 @@ class OpenAIUsageView(APIView):
 
     def _fetch_openai_usage(self, api_key: str, start_date: str, end_date: str) -> dict:
         """Fetch usage data from OpenAI Usage API."""
-        # OpenAI Usage API uses Unix timestamps
-        from datetime import datetime
-
-        start_ts = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
-        end_ts = int(datetime.strptime(end_date, '%Y-%m-%d').timestamp()) + 86400  # Include full end day
-
         resp = httpx.get(
-            'https://api.openai.com/v1/organization/usage/completions',
+            'https://api.openai.com/v1/usage',
             params={
-                'start_time': start_ts,
-                'end_time': end_ts,
-                'bucket_width': '1d',
+                'start_date': start_date,
+                'end_date': end_date,
             },
             headers={
                 'Authorization': f'Bearer {api_key}',
@@ -854,27 +874,24 @@ class OpenAIUsageView(APIView):
             timeout=30,
         )
 
+        logger.info(f'OpenAI Usage API response: status={resp.status_code}')
         if resp.status_code == 200:
-            return resp.json()
+            data = resp.json()
+            logger.info(f'OpenAI Usage data keys: {data.keys() if isinstance(data, dict) else type(data)}')
+            return data
         elif resp.status_code == 403:
-            # Try alternative endpoint for individual accounts
-            return {'error': 'Organization API not available', 'data': []}
+            return {'error': 'Требуется Admin API key для доступа к Usage API', 'data': []}
         else:
+            logger.error(f'OpenAI Usage API error: {resp.status_code} - {resp.text}')
             return {'error': f'API error: {resp.status_code}', 'data': []}
 
     def _fetch_openai_costs(self, api_key: str, start_date: str, end_date: str) -> dict:
         """Fetch costs data from OpenAI Costs API."""
-        from datetime import datetime
-
-        start_ts = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
-        end_ts = int(datetime.strptime(end_date, '%Y-%m-%d').timestamp()) + 86400
-
         resp = httpx.get(
-            'https://api.openai.com/v1/organization/costs',
+            'https://api.openai.com/v1/usage/costs',
             params={
-                'start_time': start_ts,
-                'end_time': end_ts,
-                'bucket_width': '1d',
+                'start_date': start_date,
+                'end_date': end_date,
             },
             headers={
                 'Authorization': f'Bearer {api_key}',
@@ -885,11 +902,11 @@ class OpenAIUsageView(APIView):
         logger.info(f'OpenAI Costs API response: status={resp.status_code}')
         if resp.status_code == 200:
             data = resp.json()
-            logger.info(f'OpenAI Costs data: {data}')
+            logger.info(f'OpenAI Costs data keys: {data.keys() if isinstance(data, dict) else type(data)}')
             return data
         elif resp.status_code == 403:
-            logger.warning('OpenAI Organization API not available (403)')
-            return {'error': 'Organization API недоступен. Требуется Admin API key.', 'data': []}
+            logger.warning('OpenAI Costs API not available (403)')
+            return {'error': 'Требуется Admin API key для доступа к Costs API', 'data': []}
         else:
             logger.error(f'OpenAI Costs API error: {resp.status_code} - {resp.text}')
             return {'error': f'API error: {resp.status_code}', 'data': []}

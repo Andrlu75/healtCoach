@@ -43,7 +43,8 @@ class AIProviderConfig(models.Model):
 
     coach = models.ForeignKey('accounts.Coach', on_delete=models.CASCADE, related_name='ai_providers')
     provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
-    api_key = models.CharField(max_length=300)
+    api_key = models.CharField(max_length=300)  # Project API key for model calls
+    admin_api_key = models.CharField(max_length=300, blank=True, default='')  # Admin API key for usage/billing
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

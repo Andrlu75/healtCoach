@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { Key, Layers, SlidersHorizontal, BarChart3, Plus, Trash2, Check, X, MessageSquare, Image as ImageIcon, Loader2, Send } from 'lucide-react'
+import { Key, Layers, SlidersHorizontal, BarChart3, Plus, Trash2, Check, X, MessageSquare, Image as ImageIcon, Loader2, Send, Settings } from 'lucide-react'
 import { settingsApi } from '../../api/settings'
 import type {
   AIProviderConfig,
@@ -297,6 +297,9 @@ export default function AISettings() {
   const [showAddModelsModal, setShowAddModelsModal] = useState(false)
   const [deleting, setDeleting] = useState<number | null>(null)
   const [deletingModel, setDeletingModel] = useState<number | null>(null)
+  const [editingAdminKey, setEditingAdminKey] = useState<AIProviderConfig | null>(null)
+  const [adminKeyValue, setAdminKeyValue] = useState('')
+  const [savingAdminKey, setSavingAdminKey] = useState(false)
   const [testing, setTesting] = useState<'text' | 'vision' | null>(null)
   const [testError, setTestError] = useState('')
   const [chatMessages, setChatMessages] = useState<{ role: string; content: string; model?: string }[]>([])
@@ -427,6 +430,28 @@ export default function AISettings() {
     }
   }
 
+  const handleSaveAdminKey = async () => {
+    if (!editingAdminKey) return
+    setSavingAdminKey(true)
+    try {
+      const { data } = await settingsApi.updateProviderAdminKey(editingAdminKey.id, adminKeyValue)
+      // Update provider in state
+      setProviders(prev => prev.map(p =>
+        p.id === editingAdminKey.id ? { ...p, has_admin_key: data.has_admin_key } : p
+      ))
+      setEditingAdminKey(null)
+      setAdminKeyValue('')
+      // Reload OpenAI usage data
+      if (editingAdminKey.provider === 'openai') {
+        loadOpenAIUsage()
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Ошибка сохранения ключа')
+    } finally {
+      setSavingAdminKey(false)
+    }
+  }
+
   const handleSaveSettings = async () => {
     setSaving(true)
     setMessage('')
@@ -550,18 +575,39 @@ export default function AISettings() {
                   <div className="flex items-center gap-3">
                     <div className={`w-2.5 h-2.5 rounded-full ${p.is_active ? 'bg-green-500 shadow-sm shadow-green-200' : 'bg-gray-400'}`} />
                     <div>
-                      <span className="font-semibold text-foreground">{PROVIDER_LABELS[p.provider]}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground">{PROVIDER_LABELS[p.provider]}</span>
+                        {p.provider === 'openai' && (
+                          <span className={`text-xs px-1.5 py-0.5 rounded ${p.has_admin_key ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                            {p.has_admin_key ? 'Admin ✓' : 'Нет Admin key'}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground font-mono mt-0.5">{p.masked_key}</div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDeleteProvider(p.id, p.provider)}
-                    disabled={deleting === p.id}
-                    className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    <Trash2 size={14} />
-                    {deleting === p.id ? '...' : 'Удалить'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {p.provider === 'openai' && (
+                      <button
+                        onClick={() => {
+                          setEditingAdminKey(p)
+                          setAdminKeyValue('')
+                        }}
+                        className="flex items-center gap-1.5 text-sm text-blue-500 hover:text-blue-700 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        <Settings size={14} />
+                        Admin key
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDeleteProvider(p.id, p.provider)}
+                      disabled={deleting === p.id}
+                      className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 size={14} />
+                      {deleting === p.id ? '...' : 'Удалить'}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1076,6 +1122,48 @@ export default function AISettings() {
           providers={providers}
           existingModels={addedModels}
         />
+      )}
+      {editingAdminKey && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setEditingAdminKey(null)}>
+          <div className="bg-card rounded-xl p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-2">Admin API Key для OpenAI</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Для получения данных о затратах из OpenAI Usage API требуется Admin API key.
+              Создайте его в <a href="https://platform.openai.com/settings/organization/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">настройках OpenAI</a> с правами на чтение Usage.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-secondary-foreground mb-1">Admin API Key</label>
+                <input
+                  type="password"
+                  value={adminKeyValue}
+                  onChange={e => setAdminKeyValue(e.target.value)}
+                  placeholder="sk-admin-..."
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#141821] text-white placeholder:text-gray-500"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {editingAdminKey.has_admin_key ? 'Ключ уже настроен. Введите новый для замены.' : 'Ключ ещё не настроен.'}
+                </p>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setEditingAdminKey(null)}
+                  className="px-4 py-2 text-secondary-foreground hover:text-foreground"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={handleSaveAdminKey}
+                  disabled={savingAdminKey || !adminKeyValue.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {savingAdminKey ? 'Сохранение...' : 'Сохранить'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
