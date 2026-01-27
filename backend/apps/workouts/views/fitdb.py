@@ -43,6 +43,8 @@ class FitDBWorkoutExerciseSerializer(serializers.Serializer):
     weight_kg = serializers.SerializerMethodField()
     notes = serializers.CharField(allow_blank=True, required=False)
     order_index = serializers.SerializerMethodField()
+    # Include exercise details to avoid N+1 queries
+    exercise = serializers.SerializerMethodField()
 
     def get_workout_id(self, obj):
         return obj.block.template_id
@@ -64,6 +66,18 @@ class FitDBWorkoutExerciseSerializer(serializers.Serializer):
 
     def get_order_index(self, obj):
         return obj.order
+
+    def get_exercise(self, obj):
+        """Return exercise details inline"""
+        ex = obj.exercise
+        if not ex:
+            return None
+        return {
+            'id': ex.id,
+            'name': ex.name,
+            'description': ex.description or '',
+            'muscle_group': ex.muscle_groups[0] if ex.muscle_groups else '',
+        }
 
 
 class FitDBWorkoutViewSet(viewsets.ModelViewSet):
