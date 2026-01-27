@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Clock, Dumbbell, Play, CheckCircle2, Loader2, Trophy, Weight, BarChart3 } from 'lucide-react'
+import { ArrowLeft, Clock, Dumbbell, Play, CheckCircle2, Loader2, Weight, BarChart3 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import api from '../../api/client'
 
