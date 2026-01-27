@@ -40,35 +40,7 @@ function Dashboard() {
 
   return (
     <div className="p-4 pb-24 space-y-4">
-      {/* Photo gallery - first thing visible */}
-      {mealsLoading ? (
-        <div className="grid grid-cols-2 gap-3">
-          {[1, 2].map((i) => (
-            <div key={i} className="aspect-square rounded-2xl bg-gray-200 dark:bg-gray-800 animate-pulse" />
-          ))}
-        </div>
-      ) : meals.length === 0 ? (
-        <Card variant="elevated" className="p-8 text-center">
-          <div className="text-5xl mb-3">📷</div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-            Сфотографируйте еду
-          </p>
-          <button
-            onClick={handleAddMeal}
-            className="text-sm text-blue-600 dark:text-blue-400 font-medium"
-          >
-            Добавить приём пищи
-          </button>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-2 gap-3">
-          {meals.map((meal: Meal) => (
-            <MealPhotoCard key={meal.id} meal={meal} />
-          ))}
-        </div>
-      )}
-
-      {/* Nutrition progress */}
+      {/* Nutrition progress - at top */}
       {summaryLoading ? (
         <NutritionSkeleton />
       ) : (
@@ -121,6 +93,38 @@ function Dashboard() {
           />
         </Card>
       )}
+
+      {/* Meals photo thumbnails */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          Сегодня
+        </h2>
+        {mealsLoading ? (
+          <div className="grid grid-cols-3 gap-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="aspect-square rounded-xl bg-gray-200 dark:bg-gray-800 animate-pulse" />
+            ))}
+          </div>
+        ) : meals.length === 0 ? (
+          <Card variant="elevated" className="p-6 text-center">
+            <p className="text-sm text-gray-400 dark:text-gray-500 mb-2">
+              Пока нет записей
+            </p>
+            <button
+              onClick={handleAddMeal}
+              className="text-sm text-blue-600 dark:text-blue-400 font-medium"
+            >
+              Добавить приём пищи
+            </button>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            {meals.map((meal: Meal) => (
+              <MealPhotoCard key={meal.id} meal={meal} />
+            ))}
+          </div>
+        )}
+      </div>
 
       <motion.button
         whileTap={{ scale: 0.95 }}

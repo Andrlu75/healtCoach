@@ -102,31 +102,30 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
       <motion.div
         whileTap={{ scale: 0.97 }}
         onClick={() => setIsFullscreen(true)}
-        className="relative aspect-[4/5] rounded-2xl overflow-hidden cursor-pointer shadow-md"
+        className="cursor-pointer"
       >
-        {meal.image ? (
-          <img
-            src={meal.image}
-            alt={meal.dish_name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-            <span className="text-5xl">{icon}</span>
-          </div>
-        )}
-
-        {/* Minimal gradient overlay at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
-
-        {/* Compact label */}
-        <div className="absolute bottom-0 left-0 right-0 p-2">
-          <p className="text-white/90 text-[11px] font-medium">{typeLabel}</p>
+        {/* Photo thumbnail */}
+        <div className="relative aspect-square rounded-xl overflow-hidden shadow-sm">
+          {meal.image ? (
+            <img
+              src={meal.image}
+              alt={meal.dish_name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <span className="text-2xl">{icon}</span>
+            </div>
+          )}
         </div>
 
-        {/* Time badge */}
-        <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-black/40 rounded-full">
-          <span className="text-white text-[10px] font-medium">{time}</span>
+        {/* Text below photo */}
+        <div className="mt-1 px-0.5">
+          <p className="text-[10px] text-gray-500 dark:text-gray-400">{typeLabel}</p>
+          <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate leading-tight">
+            {meal.dish_name}
+          </p>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500">{meal.calories || 0} ккал</p>
         </div>
       </motion.div>
 
