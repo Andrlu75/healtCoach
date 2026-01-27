@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import httpx
 from django.db.models import Sum, Count
@@ -834,7 +834,6 @@ class OpenAIUsageView(APIView):
             )
 
         # Get date range from query params
-        from datetime import datetime
         start_date_str = request.query_params.get('start_date')
         end_date_str = request.query_params.get('end_date')
 
