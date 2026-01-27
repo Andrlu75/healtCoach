@@ -15,18 +15,11 @@ from .serializers import (
 )
 
 
-# FitDB serializer - maps Django Exercise to FitDB format
-class FitDBExerciseSerializer(serializers.ModelSerializer):
-    muscleGroups = serializers.SerializerMethodField()
-    category = serializers.SerializerMethodField()
-    imageUrl = serializers.SerializerMethodField()
-    equipment = serializers.SerializerMethodField()
+# FitDB serializer - optimized with single to_representation instead of multiple SerializerMethodField
+class FitDBExerciseSerializer(serializers.Serializer):
+    """Optimized serializer - avoids multiple method calls per object"""
 
-    class Meta:
-        model = Exercise
-        fields = ['id', 'name', 'description', 'muscleGroups', 'category', 'difficulty', 'equipment', 'imageUrl']
-
-    # Static mapping for muscle groups (created once, not per-request)
+    # Static mapping for muscle groups
     MUSCLE_GROUP_MAP = {
         'грудь': 'chest', 'грудные': 'chest', 'грудные мышцы': 'chest', 'большая грудная': 'chest',
         'спина': 'back', 'широчайшие': 'back', 'трапеции': 'back', 'ромбовидные': 'back',
@@ -42,38 +35,47 @@ class FitDBExerciseSerializer(serializers.ModelSerializer):
         'triceps': 'triceps', 'legs': 'legs', 'glutes': 'glutes', 'abs': 'abs', 'cardio': 'cardio',
     }
 
-    def get_muscleGroups(self, obj):
-        if not obj.muscle_groups:
-            return ['chest']
+    def to_representation(self, obj):
+        # Map muscle groups
+        muscle_groups = ['chest']
+        is_cardio = False
+        if obj.muscle_groups:
+            muscle_list = obj.muscle_groups if isinstance(obj.muscle_groups, list) else [obj.muscle_groups]
+            result = []
+            for mg in muscle_list:
+                mg_lower = mg.lower() if isinstance(mg, str) else mg
+                if 'кардио' in str(mg_lower):
+                    is_cardio = True
+                mapped = self.MUSCLE_GROUP_MAP.get(mg_lower)
+                if mapped and mapped not in result:
+                    result.append(mapped)
+            if result:
+                muscle_groups = result
 
-        muscle_list = obj.muscle_groups if isinstance(obj.muscle_groups, list) else [obj.muscle_groups]
-        result = []
-
-        for mg in muscle_list:
-            mapped = self.MUSCLE_GROUP_MAP.get(mg.lower() if isinstance(mg, str) else mg)
-            if mapped and mapped not in result:
-                result.append(mapped)
-
-        return result if result else ['chest']
-
-    def get_category(self, obj):
-        # Return strength for most, cardio for cardio exercises
-        if obj.muscle_groups and any('кардио' in str(mg).lower() for mg in obj.muscle_groups):
-            return 'cardio'
-        return 'strength'
-
-    def get_imageUrl(self, obj):
+        # Build image URL
+        image_url = None
         if obj.image:
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.image.url)
-            return obj.image.url
-        return None
+                image_url = request.build_absolute_uri(obj.image.url)
+            else:
+                image_url = obj.image.url
 
-    def get_equipment(self, obj):
+        # Equipment
+        equipment = None
         if obj.equipment:
-            return ', '.join(obj.equipment) if isinstance(obj.equipment, list) else str(obj.equipment)
-        return None
+            equipment = ', '.join(obj.equipment) if isinstance(obj.equipment, list) else str(obj.equipment)
+
+        return {
+            'id': obj.id,
+            'name': obj.name,
+            'description': obj.description or '',
+            'muscleGroups': muscle_groups,
+            'category': 'cardio' if is_cardio else 'strength',
+            'difficulty': obj.difficulty,
+            'equipment': equipment,
+            'imageUrl': image_url,
+        }
 
 
 class FitDBExercisePagination(pagination.PageNumberPagination):
