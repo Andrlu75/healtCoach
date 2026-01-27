@@ -54,6 +54,12 @@ class WorkoutTemplate(models.Model):
     class Meta:
         db_table = 'workout_templates'
         ordering = ['name']
+        indexes = [
+            models.Index(fields=['is_active']),
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['is_active', '-created_at']),
+            models.Index(fields=['coach', 'is_active']),
+        ]
 
     def __str__(self):
         return self.name

@@ -82,8 +82,8 @@ export interface ExerciseLog {
 
 // Exercises API
 export const exercisesApi = {
-  async list(params?: { ordering?: string; search?: string }) {
-    // Server-side search - returns matching exercises
+  async list(params?: { ordering?: string; search?: string; muscle_group?: string }) {
+    // Server-side search and filtering
     const { data } = await api.get('/exercises/fitdb/exercises/', { params });
     return data.results || data;
   },

@@ -14,20 +14,39 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<MuscleGroup | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
 
+  // Debounce search to avoid too many API calls
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   useEffect(() => {
     fetchExercises();
-  }, []);
+  }, [debouncedSearch, selectedMuscleGroup]);
 
   const fetchExercises = async () => {
     try {
-      const data = await exercisesApi.list({ ordering: '-created_at' });
+      setLoading(true);
+      const params: Record<string, string> = { ordering: '-created_at' };
+      if (debouncedSearch) {
+        params.search = debouncedSearch;
+      }
+      if (selectedMuscleGroup) {
+        params.muscle_group = selectedMuscleGroup;
+      }
+      const data = await exercisesApi.list(params);
       const mappedExercises: Exercise[] = data.map((e: any) => ({
         id: String(e.id),
         name: e.name,
@@ -48,19 +67,16 @@ const Index = () => {
       });
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
+  // Search and muscle group filtering now done on server
+  // Only category filtering remains client-side
   const filteredExercises = useMemo(() => {
-    return exercises.filter((exercise) => {
-      const matchesSearch =
-        exercise.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        exercise.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesMuscle = !selectedMuscleGroup || exercise.muscleGroups.includes(selectedMuscleGroup);
-      const matchesCategory = !selectedCategory || exercise.category === selectedCategory;
-      return matchesSearch && matchesMuscle && matchesCategory;
-    });
-  }, [exercises, searchQuery, selectedMuscleGroup, selectedCategory]);
+    if (!selectedCategory) return exercises;
+    return exercises.filter((exercise) => exercise.category === selectedCategory);
+  }, [exercises, selectedCategory]);
 
   const handleSave = async (data: Omit<Exercise, 'id'> & { id?: string }) => {
     try {
@@ -132,7 +148,7 @@ const Index = () => {
 
   const hasFilters = Boolean(searchQuery || selectedMuscleGroup || selectedCategory);
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -224,7 +240,12 @@ const Index = () => {
           </aside>
 
           {/* Exercise Grid */}
-          <section>
+          <section className="relative">
+            {loading && (
+              <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              </div>
+            )}
             {filteredExercises.length > 0 ? (
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredExercises.map((exercise) => (

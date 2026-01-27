@@ -130,6 +130,13 @@ class Exercise(models.Model):
     class Meta:
         db_table = 'exercises'
         ordering = ['name']
+        indexes = [
+            models.Index(fields=['is_active']),
+            models.Index(fields=['name']),
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['is_active', '-created_at']),  # Common query pattern
+            models.Index(fields=['is_active', 'name']),
+        ]
 
     def __str__(self):
         return self.name

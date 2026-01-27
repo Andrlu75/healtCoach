@@ -34,6 +34,12 @@ class FitDBWorkoutAssignment(models.Model):
     class Meta:
         db_table = 'fitdb_workout_assignments'
         ordering = ['-assigned_at']
+        indexes = [
+            models.Index(fields=['client', '-assigned_at']),
+            models.Index(fields=['client', 'status']),
+            models.Index(fields=['workout']),
+            models.Index(fields=['status']),
+        ]
 
     def __str__(self):
         return f"{self.workout.name} -> {self.client}"

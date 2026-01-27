@@ -86,10 +86,26 @@ class FitDBExerciseViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        # Only fetch fields needed for serialization
-        return Exercise.objects.filter(is_active=True).only(
+        queryset = Exercise.objects.filter(is_active=True).only(
             'id', 'name', 'description', 'muscle_groups', 'difficulty', 'equipment', 'image'
         )
+
+        # Filter by muscle group (supports both English and Russian)
+        muscle_group = self.request.query_params.get('muscle_group')
+        if muscle_group:
+            # Build list of matching Russian muscle groups
+            matching_groups = [
+                ru_name for ru_name, en_name in self.serializer_class.MUSCLE_GROUP_MAP.items()
+                if en_name == muscle_group
+            ]
+            if matching_groups:
+                from django.db.models import Q
+                q = Q()
+                for mg in matching_groups:
+                    q |= Q(muscle_groups__icontains=mg)
+                queryset = queryset.filter(q)
+
+        return queryset
 
     def create(self, request, *args, **kwargs):
         # Map FitDB format to Django format
