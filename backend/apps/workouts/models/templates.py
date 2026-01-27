@@ -25,6 +25,29 @@ class WorkoutTemplate(models.Model):
     )
     tags = models.JSONField(default=list, blank=True)
     is_active = models.BooleanField(default=True)
+
+    # Поля для персонализированных копий
+    source_template = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='derived_workouts',
+        help_text='Шаблон, из которого была создана эта тренировка'
+    )
+    is_personalized = models.BooleanField(
+        default=False,
+        help_text='True если это персонализированная копия для клиента'
+    )
+    created_for_client = models.ForeignKey(
+        'accounts.Client',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='personalized_workouts',
+        help_text='Клиент, для которого создана эта тренировка'
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -25,7 +25,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { clientsApi, assignmentsApi, workoutsApi } from '@/api/fitdb';
-import { AssignWithCustomization } from '@/components/AssignWithCustomization';
+import { AssignWorkoutWizard } from '@/components/AssignWorkoutWizard';
 
 interface Client {
   id: string;
@@ -339,8 +339,8 @@ const ClientDetail = () => {
           </Button>
         </div>
 
-        {/* Assignment Dialog with Customization */}
-        <AssignWithCustomization
+        {/* Assignment Wizard */}
+        <AssignWorkoutWizard
           clientId={id || ''}
           clientName={client.name}
           open={dialogOpen}

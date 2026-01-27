@@ -138,6 +138,22 @@ export const workoutsApi = {
     const exercises = await workoutExercisesApi.list(id);
     return { workout, exercises };
   },
+
+  async clone(id: string, data: {
+    name?: string;
+    client_id: string;
+    exercises: Array<{
+      exercise_id: string;
+      sets: number;
+      reps: number;
+      rest_seconds: number;
+      weight_kg?: number;
+      notes?: string;
+    }>;
+  }) {
+    const { data: result } = await api.post(`/workouts/fitdb/workouts/${id}/clone/`, data);
+    return result;
+  },
 };
 
 // Workout Exercises API

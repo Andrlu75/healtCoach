@@ -114,6 +114,88 @@ class FitDBWorkoutViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'])
+    def clone(self, request, pk=None):
+        """
+        Создает копию шаблона с модифицированными упражнениями.
+        POST /api/workouts/fitdb/workouts/{id}/clone/
+
+        Body: {
+            "name": "Название новой тренировки",
+            "client_id": 123,
+            "exercises": [
+                {
+                    "exercise_id": 5,
+                    "sets": 4,
+                    "reps": 8,
+                    "weight_kg": 60,
+                    "rest_seconds": 90,
+                    "notes": ""
+                },
+                ...
+            ]
+        }
+        """
+        source = self.get_object()
+        data = request.data
+
+        client_id = data.get('client_id')
+        client = None
+        if client_id:
+            try:
+                client = Client.objects.get(pk=client_id)
+            except Client.DoesNotExist:
+                return Response({'error': 'Client not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        exercises_data = data.get('exercises', [])
+        if not exercises_data:
+            return Response({'error': 'exercises list is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            # Создать копию шаблона
+            new_workout = WorkoutTemplate.objects.create(
+                coach=source.coach,
+                name=data.get('name', f"{source.name} (персонализированная)"),
+                description=source.description,
+                estimated_duration=source.estimated_duration,
+                difficulty=source.difficulty,
+                source_template=source,
+                is_personalized=True,
+                created_for_client=client,
+            )
+
+            # Создать блок для упражнений
+            block = WorkoutTemplateBlock.objects.create(
+                template=new_workout,
+                name='Основная часть',
+                block_type='main',
+                order=0,
+            )
+
+            # Создать упражнения из переданного списка
+            for idx, ex in enumerate(exercises_data):
+                exercise_id = ex.get('exercise_id')
+                try:
+                    exercise = Exercise.objects.get(pk=exercise_id)
+                except Exercise.DoesNotExist:
+                    continue
+
+                WorkoutTemplateExercise.objects.create(
+                    block=block,
+                    exercise=exercise,
+                    order=idx,
+                    parameters={
+                        'sets': ex.get('sets', 3),
+                        'reps': ex.get('reps', 10),
+                        'weight_kg': ex.get('weight_kg'),
+                    },
+                    rest_after=ex.get('rest_seconds', 60),
+                    notes=ex.get('notes', ''),
+                )
+
+        serializer = self.get_serializer(new_workout)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 class FitDBWorkoutExerciseViewSet(viewsets.ModelViewSet):
     """Public FitDB API for workout exercises"""
