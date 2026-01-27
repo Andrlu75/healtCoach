@@ -47,7 +47,7 @@ export function NutritionProgress({ label, current, target, unit, color }: Nutri
         {label}
       </span>
       <span className="text-xs text-gray-400 dark:text-gray-500">
-        {current}/{target}
+        {current}/{target} {unit}
       </span>
     </div>
   )
