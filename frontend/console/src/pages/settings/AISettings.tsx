@@ -363,8 +363,9 @@ export default function AISettings() {
 
       const { data } = await settingsApi.getOpenAIUsage(startDate, endDate)
       setOpenaiUsage(data)
-    } catch (err) {
-      setOpenaiUsage({ usage: {}, costs: {}, error: 'Не удалось загрузить данные из OpenAI' })
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || err.message || 'Не удалось загрузить данные из OpenAI'
+      setOpenaiUsage({ usage: {}, costs: {}, error: errorMsg })
     } finally {
       setLoadingOpenai(false)
     }
