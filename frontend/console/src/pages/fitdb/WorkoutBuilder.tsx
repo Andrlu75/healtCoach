@@ -98,22 +98,10 @@ const WorkoutBuilder = () => {
 
       const items = await workoutExercisesApi.list(workoutId);
 
-      // Fetch exercise details for each workout exercise
-      const exerciseIds: string[] = Array.from(new Set((items || []).map((item: any) => String(item.exercise_id || item.exercise))));
-      const exerciseDetails: Record<string, any> = {};
-
-      await Promise.all(exerciseIds.map(async (exerciseId) => {
-        try {
-          const exercise = await exercisesApi.get(exerciseId);
-          exerciseDetails[exerciseId] = exercise;
-        } catch {
-          // Ignore errors
-        }
-      }));
-
+      // Exercise details are now included in the response - no extra API calls needed
       const mappedItems: WorkoutItem[] = (items || []).map((item: any) => {
         const exerciseId = String(item.exercise_id || item.exercise);
-        const exerciseData = exerciseDetails[exerciseId] || {};
+        const exerciseData = item.exercise || {};
         return {
           id: String(item.id),
           exerciseId,
@@ -127,11 +115,11 @@ const WorkoutBuilder = () => {
             id: exerciseId,
             name: exerciseData.name || 'Упражнение',
             description: exerciseData.description || '',
-            muscleGroup: (exerciseData.muscleGroup || 'chest') as MuscleGroup,
-            category: (exerciseData.category || 'strength') as ExerciseCategory,
-            difficulty: (exerciseData.difficulty || 'intermediate') as Exercise['difficulty'],
-            equipment: exerciseData.equipment || undefined,
-            imageUrl: exerciseData.imageUrl || undefined,
+            muscleGroups: exerciseData.muscle_group ? [exerciseData.muscle_group] : ['chest'],
+            category: 'strength' as ExerciseCategory,
+            difficulty: 'intermediate' as Exercise['difficulty'],
+            equipment: undefined,
+            imageUrl: undefined,
           },
         };
       });

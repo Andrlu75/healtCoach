@@ -184,44 +184,29 @@ export const AssignWorkoutWizard = ({
       setLoadingExercises(true);
       try {
         const items = await workoutExercisesApi.list(workoutId);
-        const mappedItems: WorkoutItem[] = await Promise.all(
-          items.map(async (item: any) => {
-            let exercise = exercises.find((e) => e.id === String(item.exercise_id));
-            if (!exercise) {
-              try {
-                const ex = await exercisesApi.get(String(item.exercise_id));
-                exercise = {
-                  id: String(ex.id),
-                  name: ex.name,
-                  description: ex.description || '',
-                  muscleGroups: ex.muscleGroups || ['chest'],
-                  category: ex.category,
-                  difficulty: ex.difficulty,
-                };
-              } catch {
-                exercise = {
-                  id: String(item.exercise_id),
-                  name: 'Упражнение',
-                  description: '',
-                  muscleGroups: ['chest'] as MuscleGroup[],
-                  category: 'strength',
-                  difficulty: 'intermediate',
-                };
-              }
-            }
-            return {
-              id: `temp-${item.id}`,
-              exerciseId: String(item.exercise_id),
-              sets: item.sets,
-              reps: item.reps,
-              restSeconds: item.rest_seconds,
-              weightKg: item.weight_kg || undefined,
-              notes: item.notes || undefined,
-              orderIndex: item.order_index,
-              exercise,
-            };
-          })
-        );
+        // Exercise details are now included in the response - no extra API calls needed
+        const mappedItems: WorkoutItem[] = (items || []).map((item: any) => {
+          const exerciseData = item.exercise || {};
+          const exercise = {
+            id: String(item.exercise_id || exerciseData.id),
+            name: exerciseData.name || 'Упражнение',
+            description: exerciseData.description || '',
+            muscleGroups: exerciseData.muscle_group ? [exerciseData.muscle_group] : ['chest'] as MuscleGroup[],
+            category: 'strength' as const,
+            difficulty: 'intermediate' as const,
+          };
+          return {
+            id: `temp-${item.id}`,
+            exerciseId: String(item.exercise_id || exerciseData.id),
+            sets: item.sets,
+            reps: item.reps,
+            restSeconds: item.rest_seconds,
+            weightKg: item.weight_kg || undefined,
+            notes: item.notes || undefined,
+            orderIndex: item.order_index,
+            exercise,
+          };
+        });
         setWorkoutItems(mappedItems.sort((a, b) => a.orderIndex - b.orderIndex));
         setStep('customize');
       } catch (error) {

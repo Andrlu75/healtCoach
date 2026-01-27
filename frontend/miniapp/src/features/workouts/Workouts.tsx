@@ -53,40 +53,19 @@ export default function Workouts() {
       const { data } = await api.get('/workouts/assignments/')
       const assignmentsList = data.results || data
 
-      // Get workout details for each assignment
-      const assignmentsWithDetails = await Promise.all(
-        assignmentsList.map(async (assignment: any) => {
-          const workoutId = String(assignment.workout_id || assignment.workout)
-          let workoutName = 'Тренировка'
-          let exercisesCount = 0
-
-          try {
-            const { data: workout } = await api.get(`/workouts/fitdb/workouts/${workoutId}/`)
-            workoutName = workout.name
-          } catch {
-            // Use default
-          }
-
-          try {
-            const { data: exercises } = await api.get('/workouts/fitdb/workout-exercises/', {
-              params: { workout_id: workoutId }
-            })
-            exercisesCount = Array.isArray(exercises) ? exercises.length : (exercises.results?.length || 0)
-          } catch {
-            // Use default
-          }
-
-          return {
-            id: String(assignment.id),
-            status: assignment.status,
-            due_date: assignment.due_date,
-            notes: assignment.notes,
-            workout_id: workoutId,
-            workout_name: workoutName,
-            exercises_count: exercisesCount,
-          }
-        })
-      )
+      // Workout details are now included in the response - no extra API calls needed
+      const assignmentsWithDetails = assignmentsList.map((assignment: any) => {
+        const workoutDetail = assignment.workout_detail || {}
+        return {
+          id: String(assignment.id),
+          status: assignment.status,
+          due_date: assignment.due_date,
+          notes: assignment.notes,
+          workout_id: String(assignment.workout_id || assignment.workout),
+          workout_name: workoutDetail.name || 'Тренировка',
+          exercises_count: workoutDetail.exercise_count || 0,
+        }
+      })
 
       setAssignments(assignmentsWithDetails)
     } catch (error) {

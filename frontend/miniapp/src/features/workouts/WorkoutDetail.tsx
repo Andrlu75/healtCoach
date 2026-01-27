@@ -80,43 +80,34 @@ export default function WorkoutDetail() {
         description: workoutData.description,
       })
 
-      // Fetch workout exercises
+      // Fetch workout exercises - details are included in response
       const { data: exercisesData } = await api.get('/workouts/fitdb/workout-exercises/', {
         params: { workout_id: workoutId }
       })
       const exercisesList = Array.isArray(exercisesData) ? exercisesData : (exercisesData.results || [])
 
-      // Fetch exercise details for each workout exercise
-      const exercisesWithDetails = await Promise.all(
-        exercisesList.map(async (we: any) => {
-          let exerciseDetails = {
-            id: String(we.exercise_id),
-            name: 'Упражнение',
-            muscle_group: '',
-          }
+      // Exercise details are now included in the response - no extra API calls needed
+      const exercisesWithDetails = exercisesList.map((we: any) => {
+        const exerciseDetails = we.exercise ? {
+          id: String(we.exercise.id),
+          name: we.exercise.name || 'Упражнение',
+          muscle_group: we.exercise.muscle_group || '',
+        } : {
+          id: String(we.exercise_id),
+          name: 'Упражнение',
+          muscle_group: '',
+        }
 
-          try {
-            const { data: ex } = await api.get(`/exercises/fitdb/exercises/${we.exercise_id}/`)
-            exerciseDetails = {
-              id: String(ex.id),
-              name: ex.name,
-              muscle_group: ex.muscle_group || '',
-            }
-          } catch {
-            // Use defaults
-          }
-
-          return {
-            id: String(we.id),
-            order_index: we.order_index,
-            sets: we.sets,
-            reps: we.reps,
-            rest_seconds: we.rest_seconds,
-            weight_kg: we.weight_kg,
-            exercise: exerciseDetails,
-          } as Exercise
-        })
-      )
+        return {
+          id: String(we.id),
+          order_index: we.order_index,
+          sets: we.sets,
+          reps: we.reps,
+          rest_seconds: we.rest_seconds,
+          weight_kg: we.weight_kg,
+          exercise: exerciseDetails,
+        } as Exercise
+      })
 
       // Sort by order_index
       exercisesWithDetails.sort((a, b) => a.order_index - b.order_index)

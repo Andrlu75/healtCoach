@@ -99,32 +99,28 @@ const TemplateBuilder = () => {
 
       const items = await workoutExercisesApi.list(templateId);
 
-      // Fetch exercise details for each item
-      const mappedItems: WorkoutItem[] = await Promise.all(
-        items.map(async (item: any) => {
-          const exercise = exercises.find(e => e.id === String(item.exercise_id)) ||
-            await exercisesApi.get(String(item.exercise_id)).catch(() => null);
-
-          return {
-            id: String(item.id),
-            exerciseId: String(item.exercise_id),
-            sets: item.sets,
-            reps: item.reps,
-            restSeconds: item.rest_seconds,
-            weightKg: item.weight_kg || undefined,
-            notes: item.notes || undefined,
-            orderIndex: item.order_index,
-            exercise: exercise || {
-              id: String(item.exercise_id),
-              name: 'Упражнение',
-              description: '',
-              muscleGroup: 'chest' as MuscleGroup,
-              category: 'strength' as ExerciseCategory,
-              difficulty: 'intermediate',
-            },
-          };
-        })
-      );
+      // Exercise details are now included in the response - no extra API calls needed
+      const mappedItems: WorkoutItem[] = (items || []).map((item: any) => {
+        const exerciseData = item.exercise || {};
+        return {
+          id: String(item.id),
+          exerciseId: String(item.exercise_id || exerciseData.id),
+          sets: item.sets,
+          reps: item.reps,
+          restSeconds: item.rest_seconds,
+          weightKg: item.weight_kg || undefined,
+          notes: item.notes || undefined,
+          orderIndex: item.order_index,
+          exercise: {
+            id: String(item.exercise_id || exerciseData.id),
+            name: exerciseData.name || 'Упражнение',
+            description: exerciseData.description || '',
+            muscleGroups: exerciseData.muscle_group ? [exerciseData.muscle_group] : ['chest'],
+            category: 'strength' as ExerciseCategory,
+            difficulty: 'intermediate',
+          },
+        };
+      });
 
       setWorkoutItems(mappedItems.sort((a, b) => a.orderIndex - b.orderIndex));
     } catch (error) {

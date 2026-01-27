@@ -137,25 +137,13 @@ const ClientDetail = () => {
     try {
       const data = await assignmentsApi.list({ client_id: clientId });
 
-      // Fetch workout names for assignments
-      const workoutIds: string[] = Array.from(new Set((data || []).map((a: any) => String(a.workout_id || a.workout))));
-      const workoutNames: Record<string, string> = {};
-
-      await Promise.all(workoutIds.map(async (workoutId) => {
-        try {
-          const workout = await workoutsApi.get(workoutId);
-          workoutNames[workoutId] = workout.name;
-        } catch {
-          workoutNames[workoutId] = 'Тренировка';
-        }
-      }));
-
+      // Workout details are now included in the response - no extra API calls needed
       const mapped: Assignment[] = (data || []).map((a: any) => {
-        const workoutId = String(a.workout_id || a.workout);
+        const workoutDetail = a.workout_detail || {};
         return {
           id: String(a.id),
-          workout_id: workoutId,
-          workout_name: workoutNames[workoutId] || 'Тренировка',
+          workout_id: String(a.workout_id || a.workout),
+          workout_name: workoutDetail.name || 'Тренировка',
           assigned_at: a.assigned_at || a.created_at,
           due_date: a.due_date,
           status: a.status,

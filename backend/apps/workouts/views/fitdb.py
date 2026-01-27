@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db import transaction
+from django.db.models import Count, Prefetch
 
 from apps.workouts.models import (
     WorkoutTemplate, WorkoutTemplateBlock, WorkoutTemplateExercise,
@@ -373,7 +374,19 @@ class FitDBAssignmentSerializer(serializers.ModelSerializer):
         read_only_fields = ['assigned_at', 'workout_detail']
 
     def get_workout_detail(self, obj):
-        return {'name': obj.workout.name} if obj.workout else None
+        if not obj.workout:
+            return None
+        # Use annotated count if available (from viewset), otherwise calculate
+        exercise_count = getattr(obj, 'exercise_count', None)
+        if exercise_count is None:
+            exercise_count = WorkoutTemplateExercise.objects.filter(
+                block__template=obj.workout
+            ).count()
+        return {
+            'name': obj.workout.name,
+            'description': obj.workout.description or '',
+            'exercise_count': exercise_count,
+        }
 
 
 def get_client_from_token(request):
@@ -396,7 +409,10 @@ class FitDBAssignmentViewSet(viewsets.ModelViewSet):
     ordering = ['-assigned_at']
 
     def get_queryset(self):
-        queryset = FitDBWorkoutAssignment.objects.select_related('workout', 'client')
+        # Annotate with exercise count to avoid N+1 queries
+        queryset = FitDBWorkoutAssignment.objects.select_related('workout', 'client').annotate(
+            exercise_count=Count('workout__blocks__exercises')
+        )
 
         # Try to get client from JWT token first (for miniapp)
         client = get_client_from_token(self.request)
