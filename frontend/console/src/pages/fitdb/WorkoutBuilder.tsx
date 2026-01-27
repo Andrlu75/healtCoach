@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { Exercise, MuscleGroup, ExerciseCategory } from '@/types/exercise';
 import { muscleGroupLabels, muscleGroupIcons } from '@/types/exercise';
@@ -45,9 +45,9 @@ const WorkoutBuilder = () => {
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   useEffect(() => {
-    fetchExercises();
     if (id) {
       fetchWorkout(id);
     } else {
@@ -55,9 +55,14 @@ const WorkoutBuilder = () => {
     }
   }, [id]);
 
-  const fetchExercises = async () => {
+  // Server-side search for exercises
+  const fetchExercises = useCallback(async (search?: string) => {
     try {
-      const data = await exercisesApi.list({ ordering: 'name' });
+      setSearchLoading(true);
+      const data = await exercisesApi.list({
+        ordering: 'name',
+        search: search || undefined
+      });
       setExercises((data || []).map((e: any) => ({
         id: String(e.id),
         name: e.name,
@@ -70,8 +75,20 @@ const WorkoutBuilder = () => {
       })));
     } catch (error) {
       console.error('Error fetching exercises:', error);
+    } finally {
+      setSearchLoading(false);
     }
-  };
+  }, []);
+
+  // Load exercises when dialog opens or search changes
+  useEffect(() => {
+    if (selectorOpen) {
+      const timer = setTimeout(() => {
+        fetchExercises(searchQuery);
+      }, searchQuery ? 300 : 0); // Debounce only when typing
+      return () => clearTimeout(timer);
+    }
+  }, [selectorOpen, searchQuery, fetchExercises]);
 
   const fetchWorkout = async (workoutId: string) => {
     try {
@@ -239,11 +256,11 @@ const WorkoutBuilder = () => {
     }
   };
 
+  // Server handles search, we only filter by muscle group and already added
   const filteredExercises = exercises.filter(e => {
-    const matchesSearch = e.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesMuscle = !selectedMuscle || e.muscleGroups?.includes(selectedMuscle);
     const notAdded = !workoutItems.some(item => item.exerciseId === e.id);
-    return matchesSearch && matchesMuscle && notAdded;
+    return matchesMuscle && notAdded;
   });
 
   const totalTime = workoutItems.reduce((acc, item) => {
@@ -465,7 +482,11 @@ const WorkoutBuilder = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 mt-4">
-            {filteredExercises.length > 0 ? (
+            {searchLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredExercises.length > 0 ? (
               filteredExercises.map(exercise => (
                 <button
                   key={exercise.id}
@@ -484,7 +505,7 @@ const WorkoutBuilder = () => {
               ))
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                {exercises.length === 0 ? 'База упражнений пуста' : 'Упражнения не найдены'}
+                {searchQuery ? 'Упражнения не найдены' : 'Начните вводить название'}
               </div>
             )}
           </div>

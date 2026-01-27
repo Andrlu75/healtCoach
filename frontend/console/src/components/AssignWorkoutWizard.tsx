@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -79,6 +79,7 @@ export const AssignWorkoutWizard = ({
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // Assignment
   const [workoutName, setWorkoutName] = useState('');
@@ -91,7 +92,6 @@ export const AssignWorkoutWizard = ({
     if (open) {
       resetWizard();
       fetchWorkouts();
-      fetchExercises();
     }
   }, [open]);
 
@@ -131,11 +131,16 @@ export const AssignWorkoutWizard = ({
     }
   };
 
-  const fetchExercises = async () => {
+  // Server-side search for exercises
+  const fetchExercises = useCallback(async (search?: string) => {
     try {
-      const data = await exercisesApi.list({ ordering: 'name' });
+      setSearchLoading(true);
+      const data = await exercisesApi.list({
+        ordering: 'name',
+        search: search || undefined
+      });
       setExercises(
-        data.map((e: any) => ({
+        (data || []).map((e: any) => ({
           id: String(e.id),
           name: e.name,
           description: e.description || '',
@@ -148,8 +153,20 @@ export const AssignWorkoutWizard = ({
       );
     } catch (error) {
       console.error('Error fetching exercises:', error);
+    } finally {
+      setSearchLoading(false);
     }
-  };
+  }, []);
+
+  // Load exercises when selector opens or search changes
+  useEffect(() => {
+    if (selectorOpen) {
+      const timer = setTimeout(() => {
+        fetchExercises(searchQuery);
+      }, searchQuery ? 300 : 0);
+      return () => clearTimeout(timer);
+    }
+  }, [selectorOpen, searchQuery, fetchExercises]);
 
   const handleModeSelect = (selectedMode: AssignMode) => {
     setMode(selectedMode);
@@ -311,11 +328,11 @@ export const AssignWorkoutWizard = ({
     }
   };
 
+  // Server handles search, we only filter by muscle group and already added
   const filteredExercises = exercises.filter((e) => {
-    const matchesSearch = e.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesMuscle = !selectedMuscle || e.muscleGroups?.includes(selectedMuscle);
     const notAdded = !workoutItems.some((item) => item.exerciseId === e.id);
-    return matchesSearch && matchesMuscle && notAdded;
+    return matchesMuscle && notAdded;
   });
 
   const goBack = () => {
@@ -633,7 +650,11 @@ export const AssignWorkoutWizard = ({
               </div>
 
               <div className="flex-1 overflow-y-auto space-y-1 mt-3">
-                {filteredExercises.length > 0 ? (
+                {searchLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : filteredExercises.length > 0 ? (
                   filteredExercises.map((exercise) => (
                     <button
                       key={exercise.id}
@@ -654,7 +675,7 @@ export const AssignWorkoutWizard = ({
                   ))
                 ) : (
                   <p className="text-center text-muted-foreground text-sm py-6">
-                    Нет подходящих упражнений
+                    {searchQuery ? 'Упражнения не найдены' : 'Начните вводить название'}
                   </p>
                 )}
               </div>

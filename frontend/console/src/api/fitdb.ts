@@ -83,10 +83,8 @@ export interface ExerciseLog {
 // Exercises API
 export const exercisesApi = {
   async list(params?: { ordering?: string; search?: string }) {
-    // Request all exercises (page_size=1000 to overcome default pagination of 20)
-    const { data } = await api.get('/exercises/fitdb/exercises/', {
-      params: { ...params, page_size: 1000 }
-    });
+    // Server-side search - returns matching exercises
+    const { data } = await api.get('/exercises/fitdb/exercises/', { params });
     return data.results || data;
   },
 

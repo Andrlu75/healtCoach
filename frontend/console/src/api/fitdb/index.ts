@@ -42,10 +42,10 @@ const mapExercise = (e: any): FitdbExercise => {
 
 // Exercises API
 export const fitdbExercisesApi = {
-  list: async () => {
-    // Request all exercises (page_size=1000 to overcome default pagination of 20)
+  list: async (search?: string) => {
+    // Server-side search - returns matching exercises
     const { data } = await api.get('/exercises/exercises/', {
-      params: { page_size: 1000 }
+      params: search ? { search } : {}
     });
     const exercises = Array.isArray(data) ? data : data.results || [];
     return exercises.map(mapExercise);
