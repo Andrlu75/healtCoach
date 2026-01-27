@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X } from 'lucide-react'
+import { X, Trash2 } from 'lucide-react'
 import { createPortal } from 'react-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
+import { deleteMeal } from '../../../api/endpoints'
 import type { Meal } from '../../../types'
 
 interface MealPhotoCardProps {
@@ -26,6 +28,25 @@ const dishTypeIcons: Record<string, string> = {
 export function MealPhotoCard({ meal }: MealPhotoCardProps) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const queryClient = useQueryClient()
+
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      await deleteMeal(meal.id)
+      setIsFullscreen(false)
+      // Invalidate meals and summary queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['meals'] })
+      queryClient.invalidateQueries({ queryKey: ['dailySummary'] })
+    } catch (error) {
+      console.error('Error deleting meal:', error)
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+    }
+  }
 
   const typeLabel = dishTypeLabels[meal.dish_type] || 'Приём пищи'
   const icon = dishTypeIcons[meal.dish_type] || '🍽️'
@@ -51,14 +72,63 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
                 <p className="text-white font-semibold">{meal.dish_name}</p>
                 <p className="text-white/70 text-sm">{typeLabel} · {time}</p>
               </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); setIsFullscreen(false) }}
-                className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"
-              >
-                <X size={20} className="text-white" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true) }}
+                  className="w-10 h-10 bg-red-500/80 rounded-full flex items-center justify-center"
+                >
+                  <Trash2 size={18} className="text-white" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setIsFullscreen(false) }}
+                  className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"
+                >
+                  <X size={20} className="text-white" />
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* Delete confirmation */}
+          <AnimatePresence>
+            {showDeleteConfirm && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/80 flex items-center justify-center z-10"
+                onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(false) }}
+              >
+                <motion.div
+                  initial={{ scale: 0.9 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0.9 }}
+                  className="bg-gray-900 rounded-2xl p-6 mx-4 max-w-sm"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h3 className="text-white font-semibold text-lg mb-2">Удалить запись?</h3>
+                  <p className="text-gray-400 text-sm mb-4">
+                    Запись "{meal.dish_name}" будет удалена без возможности восстановления.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="flex-1 py-2.5 bg-gray-700 text-white rounded-xl font-medium"
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="flex-1 py-2.5 bg-red-500 text-white rounded-xl font-medium disabled:opacity-50"
+                    >
+                      {isDeleting ? 'Удаление...' : 'Удалить'}
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Photo - centered with padding for header/footer */}
           <div className="flex-1 flex items-center justify-center px-4 py-2 min-h-0">
