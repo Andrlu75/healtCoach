@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Check, Plus, Minus, Info, Play, X, SkipForward, Flag, Trophy } from 'lucide-react'
+import { ArrowLeft, Check, Plus, Minus, Info, Play, X, Flag, Trophy } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import api from '../../api/client'
 import { useHaptic } from '../../shared/hooks'
@@ -49,7 +49,6 @@ export default function WorkoutRun() {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState<number | null>(null)
   const [setLogs, setSetLogs] = useState<Record<string, SetLog[]>>({})
-  const [skippedExercises, setSkippedExercises] = useState<Set<string>>(new Set())
   const [restTime, setRestTime] = useState(0)
   const [isResting, setIsResting] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -163,7 +162,7 @@ export default function WorkoutRun() {
 
       if (completed === sets.length) {
         completedExercises++
-      } else if (completed > 0 || skippedExercises.has(ex.id)) {
+      } else if (completed > 0) {
         partialExercises++
       }
     })
@@ -184,7 +183,6 @@ export default function WorkoutRun() {
   }
 
   const getExerciseStatus = (ex: Exercise) => {
-    if (skippedExercises.has(ex.id)) return 'skipped'
     const sets = setLogs[ex.id] || []
     const completedSets = sets.filter(s => s.completed).length
     if (completedSets === sets.length) return 'completed'
@@ -237,36 +235,6 @@ export default function WorkoutRun() {
 
     if (setIndex < currentSets.length - 1) {
       startRest(currentExercise.rest_seconds)
-    }
-  }
-
-  const skipExercise = () => {
-    if (!currentExercise) return
-    selection()
-
-    // Mark remaining sets as skipped
-    setSetLogs(prev => ({
-      ...prev,
-      [currentExercise.id]: prev[currentExercise.id].map(s =>
-        s.completed ? s : { ...s, skipped: true }
-      ),
-    }))
-
-    setSkippedExercises(prev => new Set(prev).add(currentExercise.id))
-
-    // Stop rest timer
-    setIsResting(false)
-    if (timerRef.current) clearInterval(timerRef.current)
-
-    // Move to next exercise or clear selection
-    const nextIndex = exercises.findIndex((ex, i) =>
-      i > (currentExerciseIndex || 0) && getExerciseStatus(ex) === 'pending'
-    )
-
-    if (nextIndex !== -1) {
-      setCurrentExerciseIndex(nextIndex)
-    } else {
-      setCurrentExerciseIndex(null)
     }
   }
 
@@ -421,8 +389,6 @@ export default function WorkoutRun() {
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                     : status === 'completed'
                     ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-700'
-                    : status === 'skipped'
-                    ? 'border-orange-300 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-700'
                     : status === 'in_progress'
                     ? 'border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-700'
                     : 'border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-700'
@@ -432,8 +398,6 @@ export default function WorkoutRun() {
                   <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
                     status === 'completed'
                       ? 'bg-green-200 text-green-700 dark:bg-green-800 dark:text-green-300'
-                      : status === 'skipped'
-                      ? 'bg-orange-200 text-orange-700 dark:bg-orange-800 dark:text-orange-300'
                       : status === 'in_progress'
                       ? 'bg-yellow-200 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-300'
                       : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
@@ -441,7 +405,6 @@ export default function WorkoutRun() {
                     {index + 1}
                   </span>
                   {status === 'completed' && <Check className="w-4 h-4 text-green-500" />}
-                  {status === 'skipped' && <SkipForward className="w-4 h-4 text-orange-500" />}
                 </div>
                 <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 mb-1">
                   {ex.exercise.name}
@@ -802,21 +765,12 @@ export default function WorkoutRun() {
       {/* Current Exercise Sets */}
       {currentExercise ? (
         <>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{currentExercise.exercise.name}</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {currentExercise.sets} × {currentExercise.reps} повт
-                {currentExercise.weight_kg && ` · ${currentExercise.weight_kg} кг`}
-              </p>
-            </div>
-            <button
-              onClick={skipExercise}
-              className="flex items-center gap-1 px-3 py-2 text-sm text-orange-500 bg-orange-50 dark:bg-orange-900/20 rounded-xl"
-            >
-              <SkipForward className="w-4 h-4" />
-              Пропустить
-            </button>
+          <div className="mb-4">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{currentExercise.exercise.name}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {currentExercise.sets} × {currentExercise.reps} повт
+              {currentExercise.weight_kg && ` · ${currentExercise.weight_kg} кг`}
+            </p>
           </div>
 
           {/* Rest Timer */}
