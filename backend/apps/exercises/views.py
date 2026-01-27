@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status, serializers
+from rest_framework import viewsets, status, serializers, pagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -76,10 +76,17 @@ class FitDBExerciseSerializer(serializers.ModelSerializer):
         return None
 
 
+class FitDBExercisePagination(pagination.PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 200
+
+
 class FitDBExerciseViewSet(viewsets.ModelViewSet):
     """Public FitDB API for exercises"""
     permission_classes = [AllowAny]
     serializer_class = FitDBExerciseSerializer
+    pagination_class = FitDBExercisePagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'created_at', 'difficulty']
