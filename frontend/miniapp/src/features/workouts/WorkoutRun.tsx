@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Check, Plus, Minus, Info, Play, X } from 'lucide-react'
+import { ArrowLeft, Check, Plus, Minus, Info, Play, X, SkipForward, Flag, Trophy } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import api from '../../api/client'
 import { useHaptic } from '../../shared/hooks'
@@ -25,6 +25,18 @@ interface SetLog {
   reps: number
   weight: number | null
   completed: boolean
+  skipped?: boolean
+}
+
+interface WorkoutStats {
+  totalSets: number
+  completedSets: number
+  skippedSets: number
+  totalExercises: number
+  completedExercises: number
+  partialExercises: number
+  completionPercent: number
+  duration: number
 }
 
 export default function WorkoutRun() {
@@ -37,11 +49,15 @@ export default function WorkoutRun() {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState<number | null>(null)
   const [setLogs, setSetLogs] = useState<Record<string, SetLog[]>>({})
+  const [skippedExercises, setSkippedExercises] = useState<Set<string>>(new Set())
   const [restTime, setRestTime] = useState(0)
   const [isResting, setIsResting] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
+  const [showFinishConfirm, setShowFinishConfirm] = useState(false)
+  const [showStats, setShowStats] = useState(false)
+  const [finalStats, setFinalStats] = useState<WorkoutStats | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTimeRef = useRef<Date>(new Date())
   const exerciseListRef = useRef<HTMLDivElement>(null)
@@ -72,7 +88,6 @@ export default function WorkoutRun() {
       })
       const exercisesList = Array.isArray(exercisesData) ? exercisesData : (exercisesData.results || [])
 
-      // Fetch exercise details for each workout exercise
       const exercisesWithDetails = await Promise.all(
         exercisesList.map(async (we: any) => {
           let exerciseDetails = {
@@ -106,11 +121,9 @@ export default function WorkoutRun() {
         })
       )
 
-      // Sort by order_index
       exercisesWithDetails.sort((a, b) => a.order_index - b.order_index)
       setExercises(exercisesWithDetails)
 
-      // Initialize set logs
       const logs: Record<string, SetLog[]> = {}
       exercisesWithDetails.forEach((ex) => {
         logs[ex.id] = Array.from({ length: ex.sets }, (_, i) => ({
@@ -118,6 +131,7 @@ export default function WorkoutRun() {
           reps: ex.reps,
           weight: ex.weight_kg,
           completed: false,
+          skipped: false,
         }))
       })
       setSetLogs(logs)
@@ -130,11 +144,47 @@ export default function WorkoutRun() {
 
   const currentExercise = currentExerciseIndex !== null ? exercises[currentExerciseIndex] : null
   const currentSets = currentExercise ? setLogs[currentExercise.id] || [] : []
-  const totalCompletedExercises = exercises.filter(ex =>
-    (setLogs[ex.id] || []).every(s => s.completed)
-  ).length
+
+  const calculateStats = (): WorkoutStats => {
+    let totalSets = 0
+    let completedSets = 0
+    let skippedSets = 0
+    let completedExercises = 0
+    let partialExercises = 0
+
+    exercises.forEach(ex => {
+      const sets = setLogs[ex.id] || []
+      const completed = sets.filter(s => s.completed).length
+      const skipped = sets.filter(s => s.skipped).length
+
+      totalSets += sets.length
+      completedSets += completed
+      skippedSets += skipped
+
+      if (completed === sets.length) {
+        completedExercises++
+      } else if (completed > 0 || skippedExercises.has(ex.id)) {
+        partialExercises++
+      }
+    })
+
+    const duration = Math.floor((new Date().getTime() - startTimeRef.current.getTime()) / 1000)
+    const completionPercent = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0
+
+    return {
+      totalSets,
+      completedSets,
+      skippedSets,
+      totalExercises: exercises.length,
+      completedExercises,
+      partialExercises,
+      completionPercent,
+      duration,
+    }
+  }
 
   const getExerciseStatus = (ex: Exercise) => {
+    if (skippedExercises.has(ex.id)) return 'skipped'
     const sets = setLogs[ex.id] || []
     const completedSets = sets.filter(s => s.completed).length
     if (completedSets === sets.length) return 'completed'
@@ -166,7 +216,6 @@ export default function WorkoutRun() {
     const set = currentSets[setIndex]
     selection()
 
-    // Log to database
     try {
       await api.post('/workouts/exercise-logs/', {
         session_id: sessionId,
@@ -179,7 +228,6 @@ export default function WorkoutRun() {
       console.error('Error logging set:', error)
     }
 
-    // Update local state
     setSetLogs(prev => ({
       ...prev,
       [currentExercise.id]: prev[currentExercise.id].map((s, i) =>
@@ -187,9 +235,38 @@ export default function WorkoutRun() {
       ),
     }))
 
-    // Start rest timer if not last set
     if (setIndex < currentSets.length - 1) {
       startRest(currentExercise.rest_seconds)
+    }
+  }
+
+  const skipExercise = () => {
+    if (!currentExercise) return
+    selection()
+
+    // Mark remaining sets as skipped
+    setSetLogs(prev => ({
+      ...prev,
+      [currentExercise.id]: prev[currentExercise.id].map(s =>
+        s.completed ? s : { ...s, skipped: true }
+      ),
+    }))
+
+    setSkippedExercises(prev => new Set(prev).add(currentExercise.id))
+
+    // Stop rest timer
+    setIsResting(false)
+    if (timerRef.current) clearInterval(timerRef.current)
+
+    // Move to next exercise or clear selection
+    const nextIndex = exercises.findIndex((ex, i) =>
+      i > (currentExerciseIndex || 0) && getExerciseStatus(ex) === 'pending'
+    )
+
+    if (nextIndex !== -1) {
+      setCurrentExerciseIndex(nextIndex)
+    } else {
+      setCurrentExerciseIndex(null)
     }
   }
 
@@ -220,34 +297,39 @@ export default function WorkoutRun() {
     if (!sessionId) return
     notification('success')
 
-    const duration = Math.floor((new Date().getTime() - startTimeRef.current.getTime()) / 1000)
+    const stats = calculateStats()
+    setFinalStats(stats)
 
     try {
-      // Update session
       await api.patch(`/workouts/sessions/${sessionId}/`, {
         completed_at: new Date().toISOString(),
-        duration_seconds: duration,
+        duration_seconds: stats.duration,
       })
 
-      // Update assignment status
       if (assignmentId) {
-        await api.patch(`/workouts/assignments/${assignmentId}/`, { status: 'completed' })
+        // Mark as completed only if > 50% done, otherwise mark as active
+        const newStatus = stats.completionPercent >= 50 ? 'completed' : 'active'
+        await api.patch(`/workouts/assignments/${assignmentId}/`, { status: newStatus })
       }
     } catch (error) {
       console.error('Error finishing workout:', error)
     }
 
-    navigate('/workouts')
+    setShowFinishConfirm(false)
+    setShowStats(true)
   }
-
-  const allExercisesCompleted = exercises.every(ex =>
-    (setLogs[ex.id] || []).every(s => s.completed)
-  )
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    if (mins === 0) return `${secs} сек`
+    return `${mins} мин ${secs} сек`
   }
 
   const getMuscleGroupColor = (group: string) => {
@@ -272,6 +354,9 @@ export default function WorkoutRun() {
     return colors[group] || 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
   }
 
+  // Calculate current progress for header
+  const currentStats = calculateStats()
+
   if (loading) {
     return <div className="flex items-center justify-center py-16 text-gray-500 dark:text-gray-400">Загрузка...</div>
   }
@@ -287,19 +372,27 @@ export default function WorkoutRun() {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400">Прогресс</p>
-          <p className="font-semibold text-gray-900 dark:text-white">{totalCompletedExercises} / {exercises.length}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Выполнено</p>
+          <p className="font-semibold text-gray-900 dark:text-white">{currentStats.completionPercent}%</p>
         </div>
-        <div className="w-10" />
+        <button
+          onClick={() => setShowFinishConfirm(true)}
+          className="p-2 text-orange-500"
+        >
+          <Flag className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Progress Bar */}
-      <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full mb-6 overflow-hidden">
+      <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full mb-2 overflow-hidden">
         <div
           className="h-full bg-blue-500 transition-all duration-300"
-          style={{ width: `${(totalCompletedExercises / exercises.length) * 100}%` }}
+          style={{ width: `${currentStats.completionPercent}%` }}
         />
       </div>
+      <p className="text-xs text-gray-400 dark:text-gray-500 text-center mb-4">
+        {currentStats.completedSets} из {currentStats.totalSets} подходов
+      </p>
 
       {/* Exercise Cards - Horizontal Scroll */}
       <div className="mb-6">
@@ -328,6 +421,8 @@ export default function WorkoutRun() {
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                     : status === 'completed'
                     ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-700'
+                    : status === 'skipped'
+                    ? 'border-orange-300 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-700'
                     : status === 'in_progress'
                     ? 'border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-700'
                     : 'border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-700'
@@ -337,15 +432,16 @@ export default function WorkoutRun() {
                   <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
                     status === 'completed'
                       ? 'bg-green-200 text-green-700 dark:bg-green-800 dark:text-green-300'
+                      : status === 'skipped'
+                      ? 'bg-orange-200 text-orange-700 dark:bg-orange-800 dark:text-orange-300'
                       : status === 'in_progress'
                       ? 'bg-yellow-200 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-300'
                       : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
                   }`}>
                     {index + 1}
                   </span>
-                  {status === 'completed' && (
-                    <Check className="w-4 h-4 text-green-500" />
-                  )}
+                  {status === 'completed' && <Check className="w-4 h-4 text-green-500" />}
+                  {status === 'skipped' && <SkipForward className="w-4 h-4 text-orange-500" />}
                 </div>
                 <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 mb-1">
                   {ex.exercise.name}
@@ -396,7 +492,6 @@ export default function WorkoutRun() {
                 </button>
               </div>
 
-              {/* Exercise params */}
               <div className="flex gap-4 mb-4">
                 <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-3 text-center">
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedExercise.sets}</p>
@@ -414,7 +509,6 @@ export default function WorkoutRun() {
                 )}
               </div>
 
-              {/* Description */}
               {selectedExercise.exercise.description && (
                 <div className="mb-6">
                   <div className="flex items-center gap-2 mb-2">
@@ -427,7 +521,6 @@ export default function WorkoutRun() {
                 </div>
               )}
 
-              {/* Start button */}
               <button
                 onClick={() => startExercise(exercises.findIndex(e => e.id === selectedExercise.id))}
                 className="w-full bg-blue-500 text-white rounded-2xl py-4 font-semibold flex items-center justify-center gap-2"
@@ -440,15 +533,138 @@ export default function WorkoutRun() {
         )}
       </AnimatePresence>
 
+      {/* Finish Confirmation Modal */}
+      <AnimatePresence>
+        {showFinishConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowFinishConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-sm p-6"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mx-auto mb-4">
+                  <Flag className="w-8 h-8 text-orange-500" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                  Завершить тренировку?
+                </h3>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Выполнено {currentStats.completionPercent}% ({currentStats.completedSets} из {currentStats.totalSets} подходов)
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={finishWorkout}
+                  className="w-full bg-orange-500 text-white rounded-2xl py-4 font-semibold"
+                >
+                  Да, завершить
+                </button>
+                <button
+                  onClick={() => setShowFinishConfirm(false)}
+                  className="w-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-2xl py-4 font-semibold"
+                >
+                  Продолжить тренировку
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Stats Modal */}
+      <AnimatePresence>
+        {showStats && finalStats && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-sm p-6"
+            >
+              <div className="text-center mb-6">
+                <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
+                  <Trophy className="w-10 h-10 text-green-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                  Тренировка завершена!
+                </h3>
+                <p className="text-4xl font-bold text-blue-500 mb-1">
+                  {finalStats.completionPercent}%
+                </p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">выполнено</p>
+              </div>
+
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                  <span className="text-gray-500 dark:text-gray-400">Длительность</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">{formatDuration(finalStats.duration)}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                  <span className="text-gray-500 dark:text-gray-400">Подходов выполнено</span>
+                  <span className="font-semibold text-green-600">{finalStats.completedSets} из {finalStats.totalSets}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                  <span className="text-gray-500 dark:text-gray-400">Упражнений полностью</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">{finalStats.completedExercises}</span>
+                </div>
+                {finalStats.partialExercises > 0 && (
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                    <span className="text-gray-500 dark:text-gray-400">Упражнений частично</span>
+                    <span className="font-semibold text-orange-500">{finalStats.partialExercises}</span>
+                  </div>
+                )}
+                {finalStats.skippedSets > 0 && (
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-gray-500 dark:text-gray-400">Пропущено подходов</span>
+                    <span className="font-semibold text-gray-400">{finalStats.skippedSets}</span>
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => navigate('/workouts')}
+                className="w-full bg-blue-500 text-white rounded-2xl py-4 font-semibold"
+              >
+                Готово
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Current Exercise Sets */}
       {currentExercise ? (
         <>
-          <div className="mb-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{currentExercise.exercise.name}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {currentExercise.sets} × {currentExercise.reps} повт
-              {currentExercise.weight_kg && ` · ${currentExercise.weight_kg} кг`}
-            </p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{currentExercise.exercise.name}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {currentExercise.sets} × {currentExercise.reps} повт
+                {currentExercise.weight_kg && ` · ${currentExercise.weight_kg} кг`}
+              </p>
+            </div>
+            <button
+              onClick={skipExercise}
+              className="flex items-center gap-1 px-3 py-2 text-sm text-orange-500 bg-orange-50 dark:bg-orange-900/20 rounded-xl"
+            >
+              <SkipForward className="w-4 h-4" />
+              Пропустить
+            </button>
           </div>
 
           {/* Rest Timer */}
@@ -491,10 +707,7 @@ export default function WorkoutRun() {
                 key={index}
                 layout
                 initial={{ opacity: 0, y: 20 }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{
                   type: 'spring',
                   stiffness: 300,
@@ -504,6 +717,8 @@ export default function WorkoutRun() {
                 className={`rounded-2xl p-4 border ${
                   set.completed
                     ? 'border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800'
+                    : set.skipped
+                    ? 'border-orange-200 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800'
                     : 'border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900'
                 }`}
               >
@@ -520,18 +735,20 @@ export default function WorkoutRun() {
                         <Check className="w-5 h-5 text-green-500" />
                       </motion.div>
                     )}
+                    {set.skipped && (
+                      <span className="text-xs text-orange-500">Пропущен</span>
+                    )}
                   </AnimatePresence>
                 </div>
 
                 <AnimatePresence mode="wait">
-                  {!set.completed && (
+                  {!set.completed && !set.skipped && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      {/* Reps Control */}
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-sm text-gray-500 dark:text-gray-400">Повторения</span>
                         <div className="flex items-center gap-3">
@@ -560,7 +777,6 @@ export default function WorkoutRun() {
                         </div>
                       </div>
 
-                      {/* Weight Control */}
                       <div className="flex items-center justify-between mb-4">
                         <span className="text-sm text-gray-500 dark:text-gray-400">Вес (кг)</span>
                         <div className="flex items-center gap-3">
@@ -610,26 +826,6 @@ export default function WorkoutRun() {
           <p className="text-sm text-gray-400 dark:text-gray-500">Нажмите на карточку упражнения выше</p>
         </div>
       )}
-
-      {/* Finish Button */}
-      <div className="fixed bottom-20 left-4 right-4 max-w-md mx-auto">
-        <AnimatePresence mode="wait">
-          {allExercisesCompleted && (
-            <motion.button
-              key="finish"
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              whileTap={{ scale: 0.97 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              onClick={finishWorkout}
-              className="w-full bg-green-500 text-white rounded-2xl py-4 font-semibold shadow-lg"
-            >
-              Завершить тренировку
-            </motion.button>
-          )}
-        </AnimatePresence>
-      </div>
     </div>
   )
 }
