@@ -58,44 +58,24 @@ export const MiniAppWorkouts = ({ clientId, onWorkoutClick }: MiniAppWorkoutsPro
     try {
       const data = await assignmentsApi.list({ client_id: clientId });
 
-      // Get workout details and exercise counts for each assignment
-      const assignmentsWithDetails = await Promise.all(
-        (data || []).map(async (assignment: any) => {
-          const workoutId = String(assignment.workout_id || assignment.workout);
+      // Workout details are now included in the response - no extra API calls needed
+      const assignmentsWithDetails = (data || []).map((assignment: any) => {
+        const workoutDetail = assignment.workout_detail || {};
+        const workoutId = String(assignment.workout_id || assignment.workout);
 
-          let workoutName = 'Тренировка';
-          let workoutDescription = null;
-          let exercisesCount = 0;
-
-          try {
-            const workout = await workoutsApi.get(workoutId);
-            workoutName = workout.name;
-            workoutDescription = workout.description;
-          } catch {
-            // Use defaults
-          }
-
-          try {
-            const exercises = await workoutExercisesApi.list(workoutId);
-            exercisesCount = exercises.length;
-          } catch {
-            // Use default 0
-          }
-
-          return {
-            id: String(assignment.id),
-            status: assignment.status,
-            due_date: assignment.due_date,
-            notes: assignment.notes,
-            workout: {
-              id: workoutId,
-              name: workoutName,
-              description: workoutDescription,
-            },
-            exercises_count: exercisesCount,
-          } as WorkoutAssignment;
-        })
-      );
+        return {
+          id: String(assignment.id),
+          status: assignment.status,
+          due_date: assignment.due_date,
+          notes: assignment.notes,
+          workout: {
+            id: workoutId,
+            name: workoutDetail.name || 'Тренировка',
+            description: workoutDetail.description || null,
+          },
+          exercises_count: workoutDetail.exercise_count || 0,
+        } as WorkoutAssignment;
+      });
 
       setAssignments(assignmentsWithDetails);
     } catch (error) {

@@ -69,37 +69,23 @@ export const MiniAppWorkoutRun = ({
     try {
       const exercisesData = await workoutExercisesApi.list(workoutId);
 
-      // Fetch exercise details for each workout exercise
-      const exercisesWithDetails = await Promise.all(
-        exercisesData.map(async (we: any) => {
-          let exerciseDetails = {
-            id: String(we.exercise_id),
-            name: 'Упражнение',
-            muscle_group: '',
-          };
-
-          try {
-            const ex = await exercisesApi.get(String(we.exercise_id));
-            exerciseDetails = {
-              id: String(ex.id),
-              name: ex.name,
-              muscle_group: ex.muscleGroup || ex.muscle_group || '',
-            };
-          } catch {
-            // Use defaults
-          }
-
-          return {
-            id: String(we.id),
-            order_index: we.order_index,
-            sets: we.sets,
-            reps: we.reps,
-            rest_seconds: we.rest_seconds,
-            weight_kg: we.weight_kg,
-            exercise: exerciseDetails,
-          } as Exercise;
-        })
-      );
+      // Exercise details are now included in the response - no extra API calls needed
+      const exercisesWithDetails = (exercisesData || []).map((we: any) => {
+        const exerciseData = we.exercise || {};
+        return {
+          id: String(we.id),
+          order_index: we.order_index,
+          sets: we.sets,
+          reps: we.reps,
+          rest_seconds: we.rest_seconds,
+          weight_kg: we.weight_kg,
+          exercise: {
+            id: String(we.exercise_id || exerciseData.id),
+            name: exerciseData.name || 'Упражнение',
+            muscle_group: exerciseData.muscle_group || '',
+          },
+        } as Exercise;
+      });
 
       // Sort by order_index
       exercisesWithDetails.sort((a, b) => a.order_index - b.order_index);

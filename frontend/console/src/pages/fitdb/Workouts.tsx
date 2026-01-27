@@ -39,25 +39,14 @@ const Workouts = () => {
     try {
       const data = await workoutsApi.list({ ordering: '-created_at' });
 
-      // Fetch exercise counts for each workout
-      const workoutsWithCounts = await Promise.all(
-        (data || []).map(async (w: any) => {
-          let exerciseCount = 0;
-          try {
-            const exercises = await workoutExercisesApi.list(String(w.id));
-            exerciseCount = exercises.length;
-          } catch {
-            // Ignore errors for exercise count
-          }
-          return {
-            id: String(w.id),
-            name: w.name,
-            description: w.description,
-            exerciseCount,
-            createdAt: w.created_at,
-          };
-        })
-      );
+      // Exercise count is now included in the response - no extra API calls needed
+      const workoutsWithCounts = (data || []).map((w: any) => ({
+        id: String(w.id),
+        name: w.name,
+        description: w.description,
+        exerciseCount: w.exercise_count || 0,
+        createdAt: w.created_at,
+      }));
 
       setWorkouts(workoutsWithCounts);
     } catch (error) {

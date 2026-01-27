@@ -38,25 +38,14 @@ const WorkoutTemplates = () => {
     try {
       const data = await workoutsApi.list({ ordering: '-created_at' });
 
-      // Fetch exercise counts for each template
-      const mapped: TemplateListItem[] = await Promise.all(
-        data.map(async (w: any) => {
-          let exerciseCount = 0;
-          try {
-            const exercises = await workoutExercisesApi.list(String(w.id));
-            exerciseCount = exercises.length;
-          } catch {
-            // ignore
-          }
-          return {
-            id: String(w.id),
-            name: w.name,
-            description: w.description,
-            exerciseCount,
-            createdAt: w.created_at,
-          };
-        })
-      );
+      // Exercise count is now included in the response - no extra API calls needed
+      const mapped: TemplateListItem[] = (data || []).map((w: any) => ({
+        id: String(w.id),
+        name: w.name,
+        description: w.description,
+        exerciseCount: w.exercise_count || 0,
+        createdAt: w.created_at,
+      }));
 
       setTemplates(mapped);
     } catch (error) {

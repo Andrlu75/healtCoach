@@ -21,16 +21,24 @@ class FitDBWorkoutSerializer(serializers.ModelSerializer):
     """Serializer for FitDB workout format"""
     is_template = serializers.SerializerMethodField()
     is_favorite = serializers.SerializerMethodField()
+    exercise_count = serializers.SerializerMethodField()
 
     class Meta:
         model = WorkoutTemplate
-        fields = ['id', 'name', 'description', 'is_template', 'is_favorite', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'description', 'is_template', 'is_favorite', 'exercise_count', 'created_at', 'updated_at']
 
     def get_is_template(self, obj):
         return True  # All WorkoutTemplates are templates
 
     def get_is_favorite(self, obj):
         return False  # Not implemented yet
+
+    def get_exercise_count(self, obj):
+        # Use annotated count if available, otherwise calculate
+        count = getattr(obj, 'exercise_count', None)
+        if count is None:
+            count = WorkoutTemplateExercise.objects.filter(block__template=obj).count()
+        return count
 
 
 class FitDBWorkoutExerciseSerializer(serializers.Serializer):
@@ -91,7 +99,10 @@ class FitDBWorkoutViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        return WorkoutTemplate.objects.filter(is_active=True)
+        # Annotate with exercise count to avoid N+1 queries
+        return WorkoutTemplate.objects.filter(is_active=True).annotate(
+            exercise_count=Count('blocks__exercises')
+        )
 
     def create(self, request, *args, **kwargs):
         data = request.data
