@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Dumbbell, ChevronRight, Clock, CheckCircle2, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { assignmentsApi, workoutsApi, workoutExercisesApi } from '@/api/fitdb';
+import { assignmentsApi } from '@/api/fitdb';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 

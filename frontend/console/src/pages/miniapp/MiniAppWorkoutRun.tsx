@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Check, Plus, Minus, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { workoutExercisesApi, sessionsApi, exerciseLogsApi, assignmentsApi, exercisesApi } from '@/api/fitdb';
+import { workoutExercisesApi, sessionsApi, exerciseLogsApi, assignmentsApi } from '@/api/fitdb';
 
 interface Exercise {
   id: string;
@@ -88,12 +88,12 @@ export const MiniAppWorkoutRun = ({
       });
 
       // Sort by order_index
-      exercisesWithDetails.sort((a, b) => a.order_index - b.order_index);
+      exercisesWithDetails.sort((a: Exercise, b: Exercise) => a.order_index - b.order_index);
       setExercises(exercisesWithDetails);
 
       // Initialize set logs
       const logs: Record<string, SetLog[]> = {};
-      exercisesWithDetails.forEach((ex) => {
+      exercisesWithDetails.forEach((ex: Exercise) => {
         logs[ex.id] = Array.from({ length: ex.sets }, (_, i) => ({
           set_number: i + 1,
           reps: ex.reps,

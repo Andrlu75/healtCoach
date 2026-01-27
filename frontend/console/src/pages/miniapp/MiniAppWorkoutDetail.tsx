@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Clock, Dumbbell, Play, CheckCircle2, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { workoutsApi, workoutExercisesApi, assignmentsApi, exercisesApi } from '@/api/fitdb';
+import { workoutsApi, workoutExercisesApi, assignmentsApi } from '@/api/fitdb';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -107,7 +107,7 @@ export const MiniAppWorkoutDetail = ({
       });
 
       // Sort by order_index
-      exercisesWithDetails.sort((a, b) => a.order_index - b.order_index);
+      exercisesWithDetails.sort((a: Exercise, b: Exercise) => a.order_index - b.order_index);
       setExercises(exercisesWithDetails);
     } catch (error) {
       console.error('Error fetching workout details:', error);

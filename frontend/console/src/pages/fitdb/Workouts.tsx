@@ -15,7 +15,7 @@ import {
   Play
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { workoutsApi, workoutExercisesApi } from '@/api/fitdb';
+import { workoutsApi } from '@/api/fitdb';
 
 interface WorkoutListItem {
   id: string;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { Exercise, MuscleGroup, ExerciseCategory } from '@/types/exercise';
+import type { Exercise, ExerciseCategory } from '@/types/exercise';
 import { muscleGroupLabels, muscleGroupIcons } from '@/types/exercise';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,7 +22,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { workoutsApi, workoutExercisesApi, exercisesApi, sessionsApi, exerciseLogsApi } from '@/api/fitdb';
+import { workoutsApi, workoutExercisesApi, sessionsApi, exerciseLogsApi } from '@/api/fitdb';
 
 interface WorkoutExerciseItem {
   id: string;

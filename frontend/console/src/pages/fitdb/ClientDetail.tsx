@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { clientsApi, assignmentsApi, workoutsApi } from '@/api/fitdb';
+import { clientsApi, assignmentsApi } from '@/api/fitdb';
 import { AssignWorkoutWizard } from '@/components/AssignWorkoutWizard';
 
 interface Client {
