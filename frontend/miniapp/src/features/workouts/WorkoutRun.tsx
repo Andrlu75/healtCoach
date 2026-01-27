@@ -581,7 +581,7 @@ export default function WorkoutRun() {
         )}
       </AnimatePresence>
 
-      {/* Stats Modal */}
+      {/* Stats Modal - Different views for complete vs partial */}
       <AnimatePresence>
         {showStats && finalStats && (
           <motion.div
@@ -590,59 +590,211 @@ export default function WorkoutRun() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-sm p-6"
-            >
-              <div className="text-center mb-6">
-                <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
-                  <Trophy className="w-10 h-10 text-green-500" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                  Тренировка завершена!
-                </h3>
-                <p className="text-4xl font-bold text-blue-500 mb-1">
-                  {finalStats.completionPercent}%
-                </p>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">выполнено</p>
-              </div>
-
-              <div className="space-y-3 mb-6">
-                <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                  <span className="text-gray-500 dark:text-gray-400">Длительность</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{formatDuration(finalStats.duration)}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                  <span className="text-gray-500 dark:text-gray-400">Подходов выполнено</span>
-                  <span className="font-semibold text-green-600">{finalStats.completedSets} из {finalStats.totalSets}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                  <span className="text-gray-500 dark:text-gray-400">Упражнений полностью</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{finalStats.completedExercises}</span>
-                </div>
-                {finalStats.partialExercises > 0 && (
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                    <span className="text-gray-500 dark:text-gray-400">Упражнений частично</span>
-                    <span className="font-semibold text-orange-500">{finalStats.partialExercises}</span>
-                  </div>
-                )}
-                {finalStats.skippedSets > 0 && (
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-gray-500 dark:text-gray-400">Пропущено подходов</span>
-                    <span className="font-semibold text-gray-400">{finalStats.skippedSets}</span>
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={() => navigate('/workouts')}
-                className="w-full bg-blue-500 text-white rounded-2xl py-4 font-semibold"
+            {finalStats.completionPercent === 100 ? (
+              /* Full completion celebration */
+              <motion.div
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                className="bg-gradient-to-b from-yellow-400 via-orange-500 to-red-500 rounded-3xl w-full max-w-sm p-1"
               >
-                Готово
-              </button>
-            </motion.div>
+                <div className="bg-white dark:bg-gray-900 rounded-[22px] p-6 relative overflow-hidden">
+                  {/* Confetti animation */}
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    {[...Array(20)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{
+                          y: -20,
+                          x: Math.random() * 300,
+                          rotate: 0,
+                          opacity: 1
+                        }}
+                        animate={{
+                          y: 400,
+                          rotate: Math.random() * 360,
+                          opacity: 0
+                        }}
+                        transition={{
+                          duration: 2 + Math.random() * 2,
+                          delay: Math.random() * 0.5,
+                          repeat: Infinity,
+                          ease: 'linear'
+                        }}
+                        className={`absolute w-3 h-3 rounded-sm ${
+                          ['bg-yellow-400', 'bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-pink-500'][i % 6]
+                        }`}
+                        style={{ left: `${Math.random() * 100}%` }}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="text-center mb-6 relative z-10">
+                    <motion.div
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: 'spring', stiffness: 200, damping: 10, delay: 0.2 }}
+                      className="w-24 h-24 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center mx-auto mb-4 shadow-lg"
+                    >
+                      <Trophy className="w-12 h-12 text-white" />
+                    </motion.div>
+
+                    <motion.h3
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                      className="text-3xl font-bold text-gray-900 dark:text-white mb-2"
+                    >
+                      МОЛОДЕЦ!
+                    </motion.h3>
+
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 300, delay: 0.4 }}
+                    >
+                      <p className="text-6xl mb-2">
+                        <motion.span
+                          animate={{ rotate: [0, -10, 10, -10, 0] }}
+                          transition={{ duration: 0.5, delay: 0.6 }}
+                        >
+                          &#127881;
+                        </motion.span>
+                        &#127942;
+                        <motion.span
+                          animate={{ rotate: [0, 10, -10, 10, 0] }}
+                          transition={{ duration: 0.5, delay: 0.7 }}
+                        >
+                          &#127881;
+                        </motion.span>
+                      </p>
+                    </motion.div>
+
+                    <motion.p
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.5 }}
+                      className="text-lg text-gray-600 dark:text-gray-300"
+                    >
+                      Тренировка выполнена на
+                    </motion.p>
+                    <motion.p
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 200, delay: 0.6 }}
+                      className="text-5xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent"
+                    >
+                      100%
+                    </motion.p>
+                  </div>
+
+                  <motion.div
+                    initial={{ y: 30, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.7 }}
+                    className="space-y-2 mb-6 bg-gray-50 dark:bg-gray-800 rounded-2xl p-4"
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 dark:text-gray-400">Время</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">{formatDuration(finalStats.duration)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 dark:text-gray-400">Подходов</span>
+                      <span className="font-semibold text-green-600">{finalStats.completedSets}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 dark:text-gray-400">Упражнений</span>
+                      <span className="font-semibold text-green-600">{finalStats.completedExercises}</span>
+                    </div>
+                  </motion.div>
+
+                  <motion.button
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.8 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => navigate('/workouts')}
+                    className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-2xl py-4 font-bold text-lg shadow-lg"
+                  >
+                    Отлично!
+                  </motion.button>
+                </div>
+              </motion.div>
+            ) : (
+              /* Partial completion - simple stats */
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-sm p-6"
+              >
+                <div className="text-center mb-6">
+                  <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                    finalStats.completionPercent >= 75
+                      ? 'bg-green-100 dark:bg-green-900/30'
+                      : finalStats.completionPercent >= 50
+                      ? 'bg-yellow-100 dark:bg-yellow-900/30'
+                      : 'bg-orange-100 dark:bg-orange-900/30'
+                  }`}>
+                    <Flag className={`w-10 h-10 ${
+                      finalStats.completionPercent >= 75
+                        ? 'text-green-500'
+                        : finalStats.completionPercent >= 50
+                        ? 'text-yellow-500'
+                        : 'text-orange-500'
+                    }`} />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                    Тренировка завершена
+                  </h3>
+                  <p className={`text-4xl font-bold mb-1 ${
+                    finalStats.completionPercent >= 75
+                      ? 'text-green-500'
+                      : finalStats.completionPercent >= 50
+                      ? 'text-yellow-500'
+                      : 'text-orange-500'
+                  }`}>
+                    {finalStats.completionPercent}%
+                  </p>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">выполнено</p>
+                </div>
+
+                <div className="space-y-3 mb-6">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                    <span className="text-gray-500 dark:text-gray-400">Длительность</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{formatDuration(finalStats.duration)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                    <span className="text-gray-500 dark:text-gray-400">Подходов выполнено</span>
+                    <span className="font-semibold text-green-600">{finalStats.completedSets} из {finalStats.totalSets}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                    <span className="text-gray-500 dark:text-gray-400">Упражнений полностью</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{finalStats.completedExercises} из {finalStats.totalExercises}</span>
+                  </div>
+                  {finalStats.partialExercises > 0 && (
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                      <span className="text-gray-500 dark:text-gray-400">Упражнений частично</span>
+                      <span className="font-semibold text-orange-500">{finalStats.partialExercises}</span>
+                    </div>
+                  )}
+                  {finalStats.skippedSets > 0 && (
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-gray-500 dark:text-gray-400">Пропущено подходов</span>
+                      <span className="font-semibold text-gray-400">{finalStats.skippedSets}</span>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => navigate('/workouts')}
+                  className="w-full bg-blue-500 text-white rounded-2xl py-4 font-semibold"
+                >
+                  Готово
+                </button>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -826,6 +978,22 @@ export default function WorkoutRun() {
           <p className="text-sm text-gray-400 dark:text-gray-500">Нажмите на карточку упражнения выше</p>
         </div>
       )}
+
+      {/* Fixed bottom button */}
+      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-white dark:from-gray-950 to-transparent pt-8">
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => setShowFinishConfirm(true)}
+          className={`w-full rounded-2xl py-4 font-semibold flex items-center justify-center gap-2 shadow-lg ${
+            currentStats.completionPercent === 100
+              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
+          }`}
+        >
+          <Flag className="w-5 h-5" />
+          Завершить тренировку
+        </motion.button>
+      </div>
     </div>
   )
 }
