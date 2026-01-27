@@ -8,29 +8,29 @@ interface NutritionProgressProps {
 
 export function NutritionProgress({ label, current, target, unit, color }: NutritionProgressProps) {
   const percentage = Math.min((current / target) * 100, 100)
-  const circumference = 2 * Math.PI * 20
+  const circumference = 2 * Math.PI * 28
   const strokeDashoffset = circumference - (percentage / 100) * circumference
 
   return (
     <div className="flex flex-col items-center">
-      <div className="relative w-14 h-14">
-        <svg className="w-14 h-14 -rotate-90">
+      <div className="relative w-[72px] h-[72px]">
+        <svg className="w-[72px] h-[72px] -rotate-90">
           <circle
-            cx="28"
-            cy="28"
-            r="20"
+            cx="36"
+            cy="36"
+            r="28"
             fill="none"
             stroke="currentColor"
-            strokeWidth="4"
+            strokeWidth="5"
             className="text-gray-100 dark:text-gray-800"
           />
           <circle
-            cx="28"
-            cy="28"
-            r="20"
+            cx="36"
+            cy="36"
+            r="28"
             fill="none"
             stroke={color}
-            strokeWidth="4"
+            strokeWidth="5"
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
@@ -38,16 +38,16 @@ export function NutritionProgress({ label, current, target, unit, color }: Nutri
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[10px] font-semibold text-gray-700 dark:text-gray-300">
+          <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
             {Math.round(percentage)}%
           </span>
         </div>
       </div>
-      <span className="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1">
+      <span className="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1.5">
         {label}
       </span>
-      <span className="text-[10px] text-gray-400 dark:text-gray-500">
-        {current}/{target} {unit}
+      <span className="text-xs text-gray-400 dark:text-gray-500">
+        {current}/{target}
       </span>
     </div>
   )
