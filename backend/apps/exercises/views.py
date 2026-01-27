@@ -26,44 +26,33 @@ class FitDBExerciseSerializer(serializers.ModelSerializer):
         model = Exercise
         fields = ['id', 'name', 'description', 'muscleGroups', 'category', 'difficulty', 'equipment', 'imageUrl']
 
+    # Static mapping for muscle groups (created once, not per-request)
+    MUSCLE_GROUP_MAP = {
+        'грудь': 'chest', 'грудные': 'chest', 'грудные мышцы': 'chest', 'большая грудная': 'chest',
+        'спина': 'back', 'широчайшие': 'back', 'трапеции': 'back', 'ромбовидные': 'back',
+        'плечи': 'shoulders', 'дельты': 'shoulders', 'дельтовидные': 'shoulders', 'ротаторы плеча': 'shoulders',
+        'бицепс': 'biceps', 'бицепсы': 'biceps',
+        'трицепс': 'triceps', 'трицепсы': 'triceps',
+        'ноги': 'legs', 'квадрицепс': 'legs', 'квадрицепсы': 'legs', 'бицепс бедра': 'legs',
+        'икры': 'legs', 'икроножные': 'legs', 'приводящие': 'legs', 'приводящие мышцы': 'legs',
+        'ягодицы': 'glutes', 'ягодичные': 'glutes',
+        'пресс': 'abs', 'кор': 'abs', 'косые': 'abs', 'косые мышцы': 'abs',
+        'кардио': 'cardio', 'сердечно-сосудистая система': 'cardio', 'всё тело': 'cardio',
+        'chest': 'chest', 'back': 'back', 'shoulders': 'shoulders', 'biceps': 'biceps',
+        'triceps': 'triceps', 'legs': 'legs', 'glutes': 'glutes', 'abs': 'abs', 'cardio': 'cardio',
+    }
+
     def get_muscleGroups(self, obj):
-        # Map Django muscle_groups list to FitDB muscleGroups array
         if not obj.muscle_groups:
             return ['chest']
 
-        # Map Russian to English
-        mapping = {
-            'грудь': 'chest', 'грудные': 'chest', 'грудные мышцы': 'chest', 'большая грудная': 'chest',
-            'спина': 'back', 'широчайшие': 'back', 'трапеции': 'back', 'ромбовидные': 'back',
-            'плечи': 'shoulders', 'дельты': 'shoulders', 'дельтовидные': 'shoulders', 'ротаторы плеча': 'shoulders',
-            'бицепс': 'biceps', 'бицепсы': 'biceps',
-            'трицепс': 'triceps', 'трицепсы': 'triceps',
-            'ноги': 'legs', 'квадрицепс': 'legs', 'квадрицепсы': 'legs', 'бицепс бедра': 'legs',
-            'икры': 'legs', 'икроножные': 'legs', 'приводящие': 'legs', 'приводящие мышцы': 'legs',
-            'ягодицы': 'glutes', 'ягодичные': 'glutes',
-            'пресс': 'abs', 'кор': 'abs', 'косые': 'abs', 'косые мышцы': 'abs',
-            'кардио': 'cardio', 'сердечно-сосудистая система': 'cardio', 'всё тело': 'cardio',
-            # English passthrough
-            'chest': 'chest', 'back': 'back', 'shoulders': 'shoulders', 'biceps': 'biceps',
-            'triceps': 'triceps', 'legs': 'legs', 'glutes': 'glutes', 'abs': 'abs', 'cardio': 'cardio',
-        }
-
-        result = []
         muscle_list = obj.muscle_groups if isinstance(obj.muscle_groups, list) else [obj.muscle_groups]
+        result = []
 
         for mg in muscle_list:
-            mg_lower = mg.lower()
-            if mg_lower in mapping:
-                mapped = mapping[mg_lower]
-                if mapped not in result:
-                    result.append(mapped)
-            else:
-                # Partial match
-                for key, value in mapping.items():
-                    if key in mg_lower or mg_lower in key:
-                        if value not in result:
-                            result.append(value)
-                        break
+            mapped = self.MUSCLE_GROUP_MAP.get(mg.lower() if isinstance(mg, str) else mg)
+            if mapped and mapped not in result:
+                result.append(mapped)
 
         return result if result else ['chest']
 
@@ -97,7 +86,10 @@ class FitDBExerciseViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        return Exercise.objects.filter(is_active=True)
+        # Only fetch fields needed for serialization
+        return Exercise.objects.filter(is_active=True).only(
+            'id', 'name', 'description', 'muscle_groups', 'difficulty', 'equipment', 'image'
+        )
 
     def create(self, request, *args, **kwargs):
         # Map FitDB format to Django format
