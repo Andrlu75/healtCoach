@@ -111,6 +111,51 @@ ANALYZE_FOOD_PROMPT = """Проанализируй фото еды и верн�
 Оценивай порцию по визуальному размеру. Если не уверен — дай приблизительные значения.
 """
 
+# Промпт для умного режима - детализация по ингредиентам
+ANALYZE_FOOD_SMART_PROMPT = """Проанализируй фото еды и верни детальный JSON (без markdown-обёртки, только чистый JSON):
+{
+  "dish_name": "название блюда",
+  "dish_type": "тип (завтрак/обед/ужин/перекус)",
+  "estimated_weight": общий_вес_порции_в_граммах,
+  "ingredients": [
+    {"name": "ингредиент1", "weight": вес_г, "calories": ккал, "proteins": белки_г, "fats": жиры_г, "carbs": углеводы_г},
+    {"name": "ингредиент2", "weight": вес_г, "calories": ккал, "proteins": белки_г, "fats": жиры_г, "carbs": углеводы_г}
+  ],
+  "calories": итого_ккал,
+  "proteins": итого_белки_г,
+  "fats": итого_жиры_г,
+  "carbohydrates": итого_углеводы_г,
+  "confidence": уверенность_от_1_до_100
+}
+
+ВАЖНО:
+- Оценивай порцию по визуальному размеру
+- Для каждого ингредиента укажи вес и КБЖУ отдельно
+- Сумма КБЖУ ингредиентов должна равняться итоговым значениям
+- Если не уверен — дай приблизительные значения
+"""
+
+# Промпт для добавления ингредиента (AI сам прикидывает вес)
+ADD_INGREDIENT_PROMPT = """Пользователь хочет добавить ингредиент к блюду.
+
+Текущее блюдо: {dish_name}
+Общий вес порции: ~{estimated_weight}г
+Текущие ингредиенты: {current_ingredients}
+
+Пользователь добавляет: "{ingredient_name}"
+
+Рассчитай КБЖУ для этого ингредиента, прикинув разумный вес исходя из контекста блюда.
+Верни JSON (без markdown-обёртки):
+{{
+  "name": "название ингредиента",
+  "weight": вес_в_граммах,
+  "calories": ккал,
+  "proteins": белки_г,
+  "fats": жиры_г,
+  "carbs": углеводы_г
+}}
+"""
+
 
 async def _get_vision_provider(bot: TelegramBot, client: Client = None):
     """Get vision AI provider for the bot's coach.
@@ -989,3 +1034,273 @@ async def recalculate_meal(bot: TelegramBot, meal: Meal, user_text: str) -> dict
     await sync_to_async(meal.save)()
 
     return data
+
+
+# ========== УМНЫЙ РЕЖИМ ==========
+
+async def analyze_food_smart(client: Client, image_data: bytes, caption: str = '') -> 'MealDraft':
+    """Анализ фото еды в умном режиме - возвращает черновик с детализацией ингредиентов.
+
+    Создаёт MealDraft со статусом 'pending' для подтверждения пользователем.
+    """
+    from .models import MealDraft
+    from core.ai.model_fetcher import get_cached_pricing
+    from decimal import Decimal
+
+    logger.info('[SMART] Starting analysis for client=%s', client.pk)
+
+    # Get client's bot/coach to access AI provider
+    bot = await sync_to_async(
+        lambda: TelegramBot.objects.filter(coach=client.coach).first()
+    )()
+    if not bot:
+        raise ValueError('No bot configured for client coach')
+
+    provider, provider_name, model, persona = await _get_vision_provider(bot, client)
+
+    prompt = ANALYZE_FOOD_SMART_PROMPT
+    if caption:
+        prompt += f'\n\nУточнение от пользователя: "{caption}"'
+
+    response = await provider.analyze_image(
+        image_data=image_data,
+        prompt=prompt,
+        max_tokens=800,
+        model=model,
+    )
+
+    # Log usage
+    model_used = response.model or model or ''
+    input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
+    output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
+
+    cost_usd = Decimal('0')
+    pricing = get_cached_pricing(provider_name, model_used)
+    if pricing and (input_tokens or output_tokens):
+        price_in, price_out = pricing
+        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
+    await sync_to_async(AIUsageLog.objects.create)(
+        coach=client.coach,
+        provider=provider_name,
+        model=model_used,
+        task_type='vision',
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=cost_usd,
+    )
+
+    # Parse JSON
+    content = response.content.strip()
+    if content.startswith('```'):
+        content = content.split('\n', 1)[1] if '\n' in content else content[3:]
+        if content.endswith('```'):
+            content = content[:-3]
+        content = content.strip()
+
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        logger.error('[SMART] Failed to parse JSON: %s', content)
+        data = {
+            'dish_name': 'Неизвестное блюдо',
+            'dish_type': 'snack',
+            'estimated_weight': 0,
+            'ingredients': [],
+            'calories': 0,
+            'proteins': 0,
+            'fats': 0,
+            'carbohydrates': 0,
+            'confidence': 0,
+        }
+
+    # Нормализуем ингредиенты - добавляем is_ai_detected
+    ingredients = []
+    for ing in data.get('ingredients', []):
+        ingredients.append({
+            'name': ing.get('name', ''),
+            'weight': ing.get('weight', 0),
+            'calories': ing.get('calories', 0),
+            'proteins': ing.get('proteins', 0),
+            'fats': ing.get('fats', 0),
+            'carbs': ing.get('carbs', 0),
+            'is_ai_detected': True,
+        })
+
+    # Создаём черновик
+    draft = await sync_to_async(MealDraft.objects.create)(
+        client=client,
+        dish_name=data.get('dish_name', 'Неизвестное блюдо'),
+        dish_type=data.get('dish_type', ''),
+        estimated_weight=data.get('estimated_weight', 0),
+        ai_confidence=data.get('confidence', 0) / 100.0 if data.get('confidence', 0) > 1 else data.get('confidence', 0),
+        ingredients=ingredients,
+        calories=data.get('calories', 0),
+        proteins=data.get('proteins', 0),
+        fats=data.get('fats', 0),
+        carbohydrates=data.get('carbohydrates', 0),
+        status='pending',
+    )
+
+    # Сохраняем изображение
+    if image_data:
+        filename = f'draft_{draft.pk}_{timezone.now().strftime("%Y%m%d_%H%M%S")}.jpg'
+        await sync_to_async(draft.image.save)(filename, ContentFile(image_data), save=True)
+
+    logger.info('[SMART] Created draft=%s dish=%s ingredients=%d', draft.pk, draft.dish_name, len(ingredients))
+
+    return draft
+
+
+async def add_ingredient_to_draft(draft: 'MealDraft', ingredient_name: str) -> dict:
+    """Добавить ингредиент в черновик. AI сам прикидывает вес и КБЖУ.
+
+    Returns: добавленный ингредиент с КБЖУ
+    """
+    from .models import MealDraft
+    from core.ai.model_fetcher import get_cached_pricing
+    from decimal import Decimal
+
+    client = await sync_to_async(lambda: draft.client)()
+
+    logger.info('[SMART] Adding ingredient "%s" to draft=%s', ingredient_name, draft.pk)
+
+    # Get AI provider
+    bot = await sync_to_async(
+        lambda: TelegramBot.objects.filter(coach=client.coach).first()
+    )()
+    if not bot:
+        raise ValueError('No bot configured for client coach')
+
+    provider, provider_name, model, persona = await _get_vision_provider(bot, client)
+
+    # Формируем текущие ингредиенты для контекста
+    current_ingredients = ', '.join([
+        f"{ing['name']} ({ing['weight']}г)"
+        for ing in draft.ingredients
+    ]) or 'нет'
+
+    prompt = ADD_INGREDIENT_PROMPT.format(
+        dish_name=draft.dish_name,
+        estimated_weight=draft.estimated_weight,
+        current_ingredients=current_ingredients,
+        ingredient_name=ingredient_name,
+    )
+
+    response = await provider.complete(
+        messages=[{'role': 'user', 'content': prompt}],
+        system_prompt='Верни только JSON.',
+        max_tokens=150,
+        temperature=0.2,
+        model=model,
+    )
+
+    # Log usage
+    model_used = response.model or model or ''
+    input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
+    output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
+
+    cost_usd = Decimal('0')
+    pricing = get_cached_pricing(provider_name, model_used)
+    if pricing and (input_tokens or output_tokens):
+        price_in, price_out = pricing
+        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
+    await sync_to_async(AIUsageLog.objects.create)(
+        coach=client.coach,
+        provider=provider_name,
+        model=model_used,
+        task_type='text',
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=cost_usd,
+    )
+
+    # Parse JSON
+    content = response.content.strip()
+    if content.startswith('```'):
+        content = content.split('\n', 1)[1] if '\n' in content else content[3:]
+        if content.endswith('```'):
+            content = content[:-3]
+        content = content.strip()
+
+    try:
+        ing_data = json.loads(content)
+    except json.JSONDecodeError:
+        logger.error('[SMART] Failed to parse ingredient JSON: %s', content)
+        raise ValueError('Не удалось рассчитать КБЖУ для ингредиента')
+
+    # Нормализуем данные
+    new_ingredient = {
+        'name': ing_data.get('name', ingredient_name),
+        'weight': ing_data.get('weight', 0),
+        'calories': ing_data.get('calories', 0),
+        'proteins': ing_data.get('proteins', 0),
+        'fats': ing_data.get('fats', 0),
+        'carbs': ing_data.get('carbs', 0),
+        'is_ai_detected': False,  # Добавлен пользователем
+    }
+
+    # Добавляем в черновик
+    draft.ingredients.append(new_ingredient)
+    draft.recalculate_nutrition()
+    await sync_to_async(draft.save)()
+
+    logger.info('[SMART] Added ingredient: %s', new_ingredient)
+
+    return new_ingredient
+
+
+async def confirm_draft(draft: 'MealDraft') -> Meal:
+    """Подтвердить черновик и создать Meal."""
+    from .models import MealDraft
+
+    if draft.status != 'pending':
+        raise ValueError(f'Draft is not pending: {draft.status}')
+
+    # Преобразуем ингредиенты в простой список для Meal
+    ingredients_list = [ing['name'] for ing in draft.ingredients]
+
+    # Создаём Meal
+    meal = await sync_to_async(Meal.objects.create)(
+        client=draft.client,
+        image_type='food',
+        dish_name=draft.dish_name,
+        dish_type=draft.dish_type,
+        calories=draft.calories,
+        proteins=draft.proteins,
+        fats=draft.fats,
+        carbohydrates=draft.carbohydrates,
+        ingredients=ingredients_list,
+        ai_confidence=int(draft.ai_confidence * 100) if draft.ai_confidence <= 1 else int(draft.ai_confidence),
+        meal_time=timezone.now(),
+        health_analysis={
+            'smart_mode': True,
+            'estimated_weight': draft.estimated_weight,
+            'detailed_ingredients': draft.ingredients,
+        },
+    )
+
+    # Копируем изображение
+    if draft.image:
+        image_data = await sync_to_async(draft.image.read)()
+        if image_data:
+            filename = f'meal_{meal.pk}_{timezone.now().strftime("%Y%m%d_%H%M%S")}.jpg'
+            await sync_to_async(meal.image.save)(filename, ContentFile(image_data), save=True)
+
+    # Обновляем черновик
+    draft.status = 'confirmed'
+    draft.confirmed_at = timezone.now()
+    draft.meal = meal
+    await sync_to_async(draft.save)()
+
+    logger.info('[SMART] Confirmed draft=%s -> meal=%s', draft.pk, meal.pk)
+
+    return meal
+
+
+async def cancel_draft(draft: 'MealDraft') -> None:
+    """Отменить черновик."""
+    draft.status = 'cancelled'
+    await sync_to_async(draft.save)()
+    logger.info('[SMART] Cancelled draft=%s', draft.pk)

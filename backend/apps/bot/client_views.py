@@ -8,8 +8,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import Client
-from apps.meals.models import Meal
-from apps.meals.serializers import MealCreateSerializer, MealSerializer
+from apps.meals.models import Meal, MealDraft
+from apps.meals.serializers import MealCreateSerializer, MealSerializer, MealDraftSerializer
 from apps.meals.services import analyze_food_for_client, get_daily_summary
 from apps.persona.models import TelegramBot
 from apps.reminders.models import Reminder
@@ -270,6 +270,187 @@ class ClientMealRecalculateView(APIView):
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+# ========== УМНЫЙ РЕЖИМ ==========
+
+class ClientMealAnalyzeSmartView(APIView):
+    """Анализ фото еды в умном режиме - возвращает черновик для подтверждения."""
+
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        from asgiref.sync import async_to_sync
+        from apps.meals.services import analyze_food_smart
+
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        logger.info('[SMART ANALYZE] Starting for client=%s', client.pk)
+
+        image = request.FILES.get('image')
+        if not image:
+            return Response(
+                {'error': 'Image is required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        image_data = image.read()
+        caption = request.data.get('caption', '')
+
+        try:
+            draft = async_to_sync(analyze_food_smart)(client, image_data, caption)
+            logger.info('[SMART ANALYZE] Created draft=%s', draft.pk)
+            return Response(MealDraftSerializer(draft).data)
+        except Exception as e:
+            logger.exception('[SMART ANALYZE] Error: %s', e)
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class ClientMealDraftDetailView(APIView):
+    """Получить/обновить/удалить черновик клиента."""
+
+    def get(self, request, draft_id):
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            draft = MealDraft.objects.get(pk=draft_id, client=client)
+        except MealDraft.DoesNotExist:
+            return Response({'error': 'Черновик не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response(MealDraftSerializer(draft).data)
+
+    def patch(self, request, draft_id):
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            draft = MealDraft.objects.get(pk=draft_id, client=client, status='pending')
+        except MealDraft.DoesNotExist:
+            return Response({'error': 'Черновик не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        if 'dish_name' in request.data:
+            draft.dish_name = request.data['dish_name']
+        if 'dish_type' in request.data:
+            draft.dish_type = request.data['dish_type']
+        if 'estimated_weight' in request.data:
+            draft.estimated_weight = request.data['estimated_weight']
+
+        draft.save()
+        return Response(MealDraftSerializer(draft).data)
+
+    def delete(self, request, draft_id):
+        from asgiref.sync import async_to_sync
+        from apps.meals.services import cancel_draft
+
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            draft = MealDraft.objects.get(pk=draft_id, client=client, status='pending')
+        except MealDraft.DoesNotExist:
+            return Response({'error': 'Черновик не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        async_to_sync(cancel_draft)(draft)
+        return Response({'status': 'cancelled'})
+
+
+class ClientMealDraftConfirmView(APIView):
+    """Подтвердить черновик и создать Meal."""
+
+    def post(self, request, draft_id):
+        from asgiref.sync import async_to_sync
+        from apps.meals.services import confirm_draft
+
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            draft = MealDraft.objects.get(pk=draft_id, client=client, status='pending')
+        except MealDraft.DoesNotExist:
+            return Response({'error': 'Черновик не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        meal = async_to_sync(confirm_draft)(draft)
+
+        # Notify coach
+        async_to_sync(_notify_coach_about_meal_miniapp)(client, meal)
+
+        return Response({
+            'status': 'confirmed',
+            'meal_id': meal.id,
+            'meal': MealSerializer(meal).data,
+        })
+
+
+class ClientMealDraftAddIngredientView(APIView):
+    """Добавить ингредиент в черновик (AI прикидывает вес и КБЖУ)."""
+
+    def post(self, request, draft_id):
+        from asgiref.sync import async_to_sync
+        from apps.meals.services import add_ingredient_to_draft
+
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            draft = MealDraft.objects.get(pk=draft_id, client=client, status='pending')
+        except MealDraft.DoesNotExist:
+            return Response({'error': 'Черновик не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        ingredient_name = request.data.get('name')
+        if not ingredient_name:
+            return Response({'error': 'Укажите название ингредиента'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            new_ingredient = async_to_sync(add_ingredient_to_draft)(draft, ingredient_name)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        draft.refresh_from_db()
+        return Response({
+            'ingredient': new_ingredient,
+            'draft': MealDraftSerializer(draft).data,
+        })
+
+
+class ClientMealDraftRemoveIngredientView(APIView):
+    """Удалить ингредиент из черновика."""
+
+    def delete(self, request, draft_id, index):
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            draft = MealDraft.objects.get(pk=draft_id, client=client, status='pending')
+        except MealDraft.DoesNotExist:
+            return Response({'error': 'Черновик не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            index = int(index)
+        except ValueError:
+            return Response({'error': 'Неверный индекс'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if index < 0 or index >= len(draft.ingredients):
+            return Response({'error': 'Индекс вне диапазона'}, status=status.HTTP_400_BAD_REQUEST)
+
+        draft.remove_ingredient(index)
+        draft.save()
+
+        return Response({
+            'status': 'removed',
+            'draft': MealDraftSerializer(draft).data,
+        })
 
 
 class ClientReminderListView(APIView):

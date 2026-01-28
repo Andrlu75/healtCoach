@@ -6,6 +6,7 @@ import { PageSpinner } from '../../shared/components/ui/Spinner'
 const Dashboard = lazy(() => import('../../features/diary/Dashboard'))
 const Diary = lazy(() => import('../../features/diary/Diary'))
 const AddMeal = lazy(() => import('../../features/meals/AddMeal'))
+const AddMealSmart = lazy(() => import('../../features/meals/AddMealSmart'))
 const Stats = lazy(() => import('../../features/stats/Stats'))
 const Reminders = lazy(() => import('../../features/reminders/Reminders'))
 const Profile = lazy(() => import('../../features/profile/Profile'))
@@ -21,6 +22,7 @@ export function ClientRoutes() {
           <Route index element={<Dashboard />} />
           <Route path="/diary" element={<Diary />} />
           <Route path="/diary/add" element={<AddMeal />} />
+          <Route path="/diary/add-smart" element={<AddMealSmart />} />
           <Route path="/stats" element={<Stats />} />
           <Route path="/reminders" element={<Reminders />} />
           <Route path="/profile" element={<Profile />} />

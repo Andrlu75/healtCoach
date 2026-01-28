@@ -1,6 +1,43 @@
 from rest_framework import serializers
 
-from .models import Meal
+from .models import Meal, MealDraft
+
+
+class IngredientSerializer(serializers.Serializer):
+    """Сериализатор для ингредиента в черновике."""
+    name = serializers.CharField()
+    weight = serializers.FloatField()
+    calories = serializers.FloatField()
+    proteins = serializers.FloatField()
+    fats = serializers.FloatField()
+    carbs = serializers.FloatField()
+    is_ai_detected = serializers.BooleanField(default=True)
+
+
+class MealDraftSerializer(serializers.ModelSerializer):
+    """Сериализатор для черновика приёма пищи."""
+    ingredients = IngredientSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = MealDraft
+        fields = [
+            'id', 'dish_name', 'dish_type', 'estimated_weight', 'ai_confidence',
+            'ingredients', 'calories', 'proteins', 'fats', 'carbohydrates',
+            'status', 'created_at', 'confirmed_at', 'image',
+        ]
+        read_only_fields = fields
+
+
+class MealDraftUpdateSerializer(serializers.Serializer):
+    """Сериализатор для обновления черновика."""
+    dish_name = serializers.CharField(required=False)
+    dish_type = serializers.CharField(required=False)
+    estimated_weight = serializers.IntegerField(required=False)
+
+
+class AddIngredientSerializer(serializers.Serializer):
+    """Сериализатор для добавления ингредиента."""
+    name = serializers.CharField()
 
 
 class MealSerializer(serializers.ModelSerializer):

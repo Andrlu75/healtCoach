@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
-import { Droplets, Plus } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Droplets, Plus, Zap, Sparkles, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import { getDailySummary, getMeals } from '../../api/endpoints'
@@ -17,6 +18,7 @@ function Dashboard() {
   const navigate = useNavigate()
   const client = useAuthStore((s) => s.client)
   const { impact } = useHaptic()
+  const [showModeMenu, setShowModeMenu] = useState(false)
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ['dailySummary'],
@@ -35,7 +37,13 @@ function Dashboard() {
 
   const handleAddMeal = () => {
     impact('light')
-    navigate('/diary/add')
+    setShowModeMenu(true)
+  }
+
+  const handleSelectMode = (mode: 'fast' | 'smart') => {
+    impact('light')
+    setShowModeMenu(false)
+    navigate(mode === 'smart' ? '/diary/add-smart' : '/diary/add')
   }
 
   return (
@@ -133,13 +141,95 @@ function Dashboard() {
         )}
       </div>
 
+      {/* FAB */}
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={handleAddMeal}
-        className="fixed bottom-20 right-4 w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center text-white"
+        className="fixed bottom-20 right-4 w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center text-white z-40"
       >
         <Plus size={24} />
       </motion.button>
+
+      {/* Mode selection overlay */}
+      <AnimatePresence>
+        {showModeMenu && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowModeMenu(false)}
+              className="fixed inset-0 bg-black/50 z-50"
+            />
+
+            {/* Menu */}
+            <motion.div
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-3xl p-4 pb-8 z-50"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Добавить приём пищи
+                </h3>
+                <button
+                  onClick={() => setShowModeMenu(false)}
+                  className="p-2 text-gray-400"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {/* Быстрый режим */}
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleSelectMode('fast')}
+                  className="w-full flex items-start gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-left"
+                >
+                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                    <Zap size={24} className="text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900 dark:text-gray-100">
+                      Быстрый режим
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                      Распознавание + сохранение сразу
+                    </div>
+                  </div>
+                </motion.button>
+
+                {/* Умный режим */}
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleSelectMode('smart')}
+                  className="w-full flex items-start gap-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-2xl text-left border-2 border-purple-200 dark:border-purple-800"
+                >
+                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
+                    <Sparkles size={24} className="text-purple-600" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        Умный режим
+                      </span>
+                      <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400 rounded">
+                        NEW
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                      Детальный анализ ингредиентов с возможностью редактирования
+                    </div>
+                  </div>
+                </motion.button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -55,6 +55,69 @@ export const recalculateMeal = (previousAnalysis: MealAnalysisResult, correction
 export const deleteMeal = (id: number) =>
   api.delete(`/miniapp/meals/${id}/`)
 
+// ========== Умный режим ==========
+
+export interface DraftIngredient {
+  name: string
+  weight: number
+  calories: number
+  proteins: number
+  fats: number
+  carbs: number
+  is_ai_detected: boolean
+}
+
+export interface MealDraft {
+  id: string
+  dish_name: string
+  dish_type: string
+  estimated_weight: number
+  ai_confidence: number
+  ingredients: DraftIngredient[]
+  calories: number
+  proteins: number
+  fats: number
+  carbohydrates: number
+  status: 'pending' | 'confirmed' | 'cancelled'
+  created_at: string
+  image?: string
+}
+
+export const analyzeSmartMealPhoto = (formData: FormData) =>
+  api.post<MealDraft>('/miniapp/meals/analyze-smart/', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+
+export const getMealDraft = (draftId: string) =>
+  api.get<MealDraft>(`/miniapp/meals/drafts/${draftId}/`)
+
+export const updateMealDraft = (draftId: string, data: Partial<{
+  dish_name: string
+  dish_type: string
+  estimated_weight: number
+}>) => api.patch<MealDraft>(`/miniapp/meals/drafts/${draftId}/`, data)
+
+export const confirmMealDraft = (draftId: string) =>
+  api.post<{ status: string; meal_id: number; meal: MealAnalysisResult }>(
+    `/miniapp/meals/drafts/${draftId}/confirm/`
+  )
+
+export const cancelMealDraft = (draftId: string) =>
+  api.delete(`/miniapp/meals/drafts/${draftId}/`)
+
+export const addIngredientToDraft = (draftId: string, name: string) =>
+  api.post<{ ingredient: DraftIngredient; draft: MealDraft }>(
+    `/miniapp/meals/drafts/${draftId}/ingredients/`,
+    { name }
+  )
+
+export const removeIngredientFromDraft = (draftId: string, index: number) =>
+  api.delete<{ status: string; draft: MealDraft }>(
+    `/miniapp/meals/drafts/${draftId}/ingredients/${index}/`
+  )
+
 // Metrics
 export const getMetrics = (params?: { metric_type?: string }) =>
   api.get('/miniapp/metrics/', { params })

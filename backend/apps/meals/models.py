@@ -1,8 +1,81 @@
+import uuid
 from io import BytesIO
 
 from django.core.files.base import ContentFile
 from django.db import models
 from PIL import Image
+
+
+class MealDraft(models.Model):
+    """Черновик приёма пищи для умного режима.
+
+    Flow:
+    1. Пользователь загружает фото
+    2. AI анализирует → создаётся MealDraft со статусом 'pending'
+    3. Пользователь видит экран подтверждения с возможностью:
+       - Изменить название блюда
+       - Изменить вес порции
+       - Удалить/добавить ингредиенты (AI рассчитывает КБЖУ)
+    4. При подтверждении → создаётся Meal, статус 'confirmed'
+    """
+
+    STATUS_CHOICES = [
+        ('pending', 'Ожидает подтверждения'),
+        ('confirmed', 'Подтверждён'),
+        ('cancelled', 'Отменён'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    client = models.ForeignKey('accounts.Client', on_delete=models.CASCADE, related_name='meal_drafts')
+
+    # Фото
+    image = models.ImageField(upload_to='meal_drafts/%Y/%m/%d/', blank=True)
+
+    # AI результат
+    dish_name = models.CharField(max_length=200, verbose_name='Название блюда')
+    dish_type = models.CharField(max_length=50, blank=True, verbose_name='Тип приёма пищи')
+    estimated_weight = models.IntegerField(default=0, verbose_name='Оценка веса (г)')
+    ai_confidence = models.FloatField(default=0.0, verbose_name='Уверенность AI (0-1)')
+
+    # Ингредиенты (редактируемые)
+    # Формат: [{"name": "Свёкла", "weight": 80, "calories": 35, "proteins": 1.2, "fats": 0.1, "carbs": 7.6, "is_ai_detected": true}, ...]
+    ingredients = models.JSONField(default=list, verbose_name='Ингредиенты')
+
+    # Итоговое КБЖУ (пересчитывается при изменении ингредиентов)
+    calories = models.FloatField(default=0, verbose_name='Калории')
+    proteins = models.FloatField(default=0, verbose_name='Белки')
+    fats = models.FloatField(default=0, verbose_name='Жиры')
+    carbohydrates = models.FloatField(default=0, verbose_name='Углеводы')
+
+    # Статус
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+
+    # Ссылка на финальный Meal (после подтверждения)
+    meal = models.OneToOneField('Meal', on_delete=models.SET_NULL, null=True, blank=True, related_name='draft')
+
+    class Meta:
+        db_table = 'meal_drafts'
+        ordering = ['-created_at']
+        verbose_name = 'Черновик приёма пищи'
+        verbose_name_plural = 'Черновики приёмов пищи'
+
+    def __str__(self):
+        return f'{self.dish_name} ({self.client}) - {self.status}'
+
+    def recalculate_nutrition(self):
+        """Пересчитать КБЖУ на основе ингредиентов."""
+        self.calories = sum(ing.get('calories', 0) for ing in self.ingredients)
+        self.proteins = sum(ing.get('proteins', 0) for ing in self.ingredients)
+        self.fats = sum(ing.get('fats', 0) for ing in self.ingredients)
+        self.carbohydrates = sum(ing.get('carbohydrates', 0) for ing in self.ingredients)
+
+    def remove_ingredient(self, index: int):
+        """Удалить ингредиент по индексу."""
+        if 0 <= index < len(self.ingredients):
+            self.ingredients.pop(index)
+            self.recalculate_nutrition()
 
 
 class Meal(models.Model):

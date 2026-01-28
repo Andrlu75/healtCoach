@@ -1,12 +1,13 @@
 from datetime import date
 
+from asgiref.sync import async_to_sync
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Meal
-from .serializers import MealSerializer
+from .models import Meal, MealDraft
+from .serializers import MealSerializer, MealDraftSerializer
 from apps.accounts.models import Client
 
 
@@ -170,4 +171,122 @@ class TodayMealsDashboardView(APIView):
         return Response({
             'date': target_date.isoformat(),
             'clients': result,
+        })
+
+
+# ========== УМНЫЙ РЕЖИМ API ==========
+
+class MealDraftDetailView(APIView):
+    """Получить/обновить/удалить черновик."""
+
+    def get(self, request, draft_id):
+        """Получить черновик по ID."""
+        try:
+            draft = MealDraft.objects.get(pk=draft_id)
+        except MealDraft.DoesNotExist:
+            return Response({'error': 'Черновик не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = MealDraftSerializer(draft)
+        return Response(serializer.data)
+
+    def patch(self, request, draft_id):
+        """Обновить черновик (название, тип, вес)."""
+        try:
+            draft = MealDraft.objects.get(pk=draft_id, status='pending')
+        except MealDraft.DoesNotExist:
+            return Response({'error': 'Черновик не найден или уже подтверждён'}, status=status.HTTP_404_NOT_FOUND)
+
+        if 'dish_name' in request.data:
+            draft.dish_name = request.data['dish_name']
+        if 'dish_type' in request.data:
+            draft.dish_type = request.data['dish_type']
+        if 'estimated_weight' in request.data:
+            draft.estimated_weight = request.data['estimated_weight']
+
+        draft.save()
+        serializer = MealDraftSerializer(draft)
+        return Response(serializer.data)
+
+    def delete(self, request, draft_id):
+        """Отменить черновик."""
+        try:
+            draft = MealDraft.objects.get(pk=draft_id, status='pending')
+        except MealDraft.DoesNotExist:
+            return Response({'error': 'Черновик не найден или уже подтверждён'}, status=status.HTTP_404_NOT_FOUND)
+
+        from .services import cancel_draft
+        async_to_sync(cancel_draft)(draft)
+        return Response({'status': 'cancelled'})
+
+
+class MealDraftConfirmView(APIView):
+    """Подтвердить черновик и создать Meal."""
+
+    def post(self, request, draft_id):
+        try:
+            draft = MealDraft.objects.get(pk=draft_id, status='pending')
+        except MealDraft.DoesNotExist:
+            return Response({'error': 'Черновик не найден или уже подтверждён'}, status=status.HTTP_404_NOT_FOUND)
+
+        from .services import confirm_draft
+        meal = async_to_sync(confirm_draft)(draft)
+
+        return Response({
+            'status': 'confirmed',
+            'meal_id': meal.id,
+            'meal': MealSerializer(meal).data,
+        })
+
+
+class MealDraftAddIngredientView(APIView):
+    """Добавить ингредиент в черновик."""
+
+    def post(self, request, draft_id):
+        try:
+            draft = MealDraft.objects.get(pk=draft_id, status='pending')
+        except MealDraft.DoesNotExist:
+            return Response({'error': 'Черновик не найден или уже подтверждён'}, status=status.HTTP_404_NOT_FOUND)
+
+        ingredient_name = request.data.get('name')
+        if not ingredient_name:
+            return Response({'error': 'Укажите название ингредиента'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .services import add_ingredient_to_draft
+        try:
+            new_ingredient = async_to_sync(add_ingredient_to_draft)(draft, ingredient_name)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Обновляем draft из БД
+        draft.refresh_from_db()
+
+        return Response({
+            'ingredient': new_ingredient,
+            'draft': MealDraftSerializer(draft).data,
+        })
+
+
+class MealDraftRemoveIngredientView(APIView):
+    """Удалить ингредиент из черновика."""
+
+    def delete(self, request, draft_id, index):
+        try:
+            draft = MealDraft.objects.get(pk=draft_id, status='pending')
+        except MealDraft.DoesNotExist:
+            return Response({'error': 'Черновик не найден или уже подтверждён'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            index = int(index)
+        except ValueError:
+            return Response({'error': 'Неверный индекс'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if index < 0 or index >= len(draft.ingredients):
+            return Response({'error': 'Индекс вне диапазона'}, status=status.HTTP_400_BAD_REQUEST)
+
+        draft.remove_ingredient(index)
+        draft.save()
+
+        return Response({
+            'status': 'removed',
+            'draft': MealDraftSerializer(draft).data,
         })
