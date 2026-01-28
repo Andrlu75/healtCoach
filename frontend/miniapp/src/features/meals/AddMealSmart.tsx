@@ -48,7 +48,6 @@ function AddMealSmart() {
   const [draft, setDraft] = useState<MealDraft | null>(null)
   const [editingName, setEditingName] = useState(false)
   const [editedName, setEditedName] = useState('')
-  const [editingWeight, setEditingWeight] = useState(false)
   const [editedWeight, setEditedWeight] = useState('')
   const [newIngredient, setNewIngredient] = useState('')
   const [selectedType, setSelectedType] = useState<string>('lunch')
@@ -159,7 +158,9 @@ function AddMealSmart() {
     onSuccess: (data) => {
       setDraft(data)
       setEditingName(false)
-      setEditingWeight(false)
+      // Синхронизируем editedWeight с новым значением после пересчёта
+      setEditedWeight(String(data.estimated_weight))
+      notification('success')
     },
   })
 
@@ -586,42 +587,27 @@ function AddMealSmart() {
             </button>
           </div>
         )}
+      </Card>
 
-        {/* Вес порции */}
-        <div className="flex items-center gap-2 mt-2">
-          <Scale size={16} className="text-gray-400" />
-          {editingWeight ? (
-            <div className="flex gap-2 flex-1 items-center">
-              <Input
-                type="number"
-                value={editedWeight}
-                onChange={(e) => setEditedWeight(e.target.value)}
-                className="w-24"
-                autoFocus
-              />
-              <span className="text-gray-500">г</span>
-              <Button
-                size="sm"
-                onClick={handleSaveWeight}
-                disabled={updateDraftMutation.isPending}
-                className="flex items-center gap-1"
-              >
-                <RefreshCw size={14} className={updateDraftMutation.isPending ? 'animate-spin' : ''} />
-                <span className="text-xs">Пересчитать</span>
-              </Button>
-              <Button size="sm" variant="secondary" onClick={() => setEditingWeight(false)}>
-                <X size={16} />
-              </Button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setEditingWeight(true)}
-              className="flex items-center gap-1 text-gray-600 dark:text-gray-400"
-            >
-              <span>~{draft.estimated_weight}г</span>
-              <Edit3 size={14} />
-            </button>
-          )}
+      {/* Вес порции - АКЦЕНТ */}
+      <Card variant="elevated" className="p-4 mb-4 border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Scale size={20} className="text-blue-600" />
+            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Вес порции</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 mt-2">
+          <Input
+            type="number"
+            value={editedWeight}
+            onChange={(e) => setEditedWeight(e.target.value)}
+            className="text-2xl font-bold text-center w-28"
+          />
+          <span className="text-xl text-gray-500">г</span>
+          <p className="text-xs text-blue-600 dark:text-blue-400 ml-auto">
+            Измените и нажмите "Пересчитать"
+          </p>
         </div>
       </Card>
 
@@ -749,19 +735,32 @@ function AddMealSmart() {
 
       {/* Кнопки */}
       <div className="space-y-2">
+        {/* Одна кнопка: Пересчитать или Сохранить */}
+        {parseInt(editedWeight, 10) !== draft.estimated_weight ? (
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handleSaveWeight}
+            isLoading={updateDraftMutation.isPending}
+          >
+            <RefreshCw size={20} className={updateDraftMutation.isPending ? 'animate-spin mr-2' : 'mr-2'} />
+            Пересчитать
+          </Button>
+        ) : (
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handleConfirm}
+            isLoading={confirmMutation.isPending}
+          >
+            <Check size={20} className="mr-2" />
+            Сохранить
+          </Button>
+        )}
         <Button
           className="w-full"
           size="lg"
-          onClick={handleConfirm}
-          isLoading={confirmMutation.isPending}
-        >
-          <Check size={20} className="mr-2" />
-          Сохранить
-        </Button>
-        <Button
-          className="w-full"
-          size="lg"
-          variant="secondary"
+          variant="ghost"
           onClick={handleCancel}
           disabled={cancelMutation.isPending}
         >
