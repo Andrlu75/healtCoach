@@ -321,7 +321,7 @@ export default function AISettings() {
     if (activeTab === 'usage' && providers.length > 0) {
       loadOpenAIUsage()
     }
-  }, [activeTab, providers])
+  }, [activeTab, providers, usagePeriod])
 
   const loadData = async () => {
     try {
@@ -356,13 +356,26 @@ export default function AISettings() {
 
     setLoadingOpenai(true)
     try {
-      // Get current month range
+      // Calculate date range based on usagePeriod
       const now = new Date()
-      const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+      let startDate: string
       const endDate = now.toISOString().split('T')[0]
 
+      if (usagePeriod === 'today') {
+        startDate = endDate
+      } else if (usagePeriod === 'week') {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        startDate = weekAgo.toISOString().split('T')[0]
+      } else if (usagePeriod === 'month') {
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        startDate = monthAgo.toISOString().split('T')[0]
+      } else {
+        // 'all' - last 90 days (OpenAI API limit)
+        const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+        startDate = threeMonthsAgo.toISOString().split('T')[0]
+      }
+
       const { data } = await settingsApi.getOpenAIUsage(startDate, endDate)
-      console.log('OpenAI Usage data:', JSON.stringify(data, null, 2))
       setOpenaiUsage(data)
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || err.message || 'Не удалось загрузить данные из OpenAI'
@@ -1034,7 +1047,7 @@ export default function AISettings() {
               <div className="flex items-center justify-between mb-2">
                 <div className="text-xs text-green-400 uppercase tracking-wide font-medium flex items-center gap-2">
                   <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  Реальные затраты OpenAI (текущий месяц)
+                  Реальные затраты OpenAI ({usagePeriod === 'today' ? 'сегодня' : usagePeriod === 'week' ? 'неделя' : usagePeriod === 'month' ? 'месяц' : 'всё время'})
                 </div>
                 {loadingOpenai && <Loader2 size={14} className="animate-spin text-green-400" />}
               </div>
