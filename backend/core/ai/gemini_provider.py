@@ -65,6 +65,7 @@ class GeminiProvider(AbstractAIProvider):
         media_type: str = 'image/jpeg',
         max_tokens: int = 500,
         model: Optional[str] = None,
+        temperature: float = 0.7,
     ) -> AIResponse:
         model = model or 'gemini-2.0-flash'
 
@@ -73,6 +74,7 @@ class GeminiProvider(AbstractAIProvider):
 
         config = types.GenerateContentConfig(
             max_output_tokens=max_tokens,
+            temperature=temperature,
         )
 
         response = await self.client.aio.models.generate_content(

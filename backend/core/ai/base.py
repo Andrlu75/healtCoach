@@ -34,6 +34,7 @@ class AbstractAIProvider(ABC):
         media_type: str = 'image/jpeg',
         max_tokens: int = 500,
         model: Optional[str] = None,
+        temperature: float = 0.7,
     ) -> AIResponse:
         pass
 

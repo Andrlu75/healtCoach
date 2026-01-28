@@ -93,6 +93,7 @@ class OpenAIProvider(AbstractAIProvider):
         media_type: str = 'image/jpeg',
         max_tokens: int = 500,
         model: Optional[str] = None,
+        temperature: float = 0.7,
     ) -> AIResponse:
         model = model or 'gpt-4o'
         b64_image = base64.b64encode(image_data).decode('utf-8')
@@ -117,6 +118,7 @@ class OpenAIProvider(AbstractAIProvider):
                 }
             ],
             'max_completion_tokens': max(max_tokens * 4, 4096) if is_gpt5 else max_tokens,
+            'temperature': temperature,
         }
 
         try:

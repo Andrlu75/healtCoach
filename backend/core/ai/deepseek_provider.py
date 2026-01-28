@@ -55,6 +55,7 @@ class DeepSeekProvider(AbstractAIProvider):
         media_type: str = 'image/jpeg',
         max_tokens: int = 500,
         model: Optional[str] = None,
+        temperature: float = 0.7,
     ) -> AIResponse:
         model = model or 'deepseek-chat'
         b64_image = base64.b64encode(image_data).decode('utf-8')
@@ -77,6 +78,7 @@ class DeepSeekProvider(AbstractAIProvider):
                 }
             ],
             max_tokens=max_tokens,
+            temperature=temperature,
         )
 
         content = response.choices[0].message.content or ''

@@ -1096,6 +1096,7 @@ async def analyze_food_smart(client: Client, image_data: bytes, caption: str = '
         prompt=prompt,
         max_tokens=4096,
         model=model,
+        temperature=0.2,  # Низкая температура для стабильных результатов
     )
 
     # Log usage

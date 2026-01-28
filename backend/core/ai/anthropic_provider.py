@@ -53,6 +53,7 @@ class AnthropicProvider(AbstractAIProvider):
         media_type: str = 'image/jpeg',
         max_tokens: int = 500,
         model: Optional[str] = None,
+        temperature: float = 0.7,
     ) -> AIResponse:
         model = model or 'claude-sonnet-4-20250514'
         b64_image = base64.b64encode(image_data).decode('utf-8')
@@ -60,6 +61,7 @@ class AnthropicProvider(AbstractAIProvider):
         response = await self.client.messages.create(
             model=model,
             max_tokens=max_tokens,
+            temperature=temperature,
             messages=[
                 {
                     'role': 'user',
