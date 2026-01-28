@@ -843,8 +843,9 @@ class OpenAIUsageView(APIView):
             start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             end_date = now
         else:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(tzinfo=dt_timezone.utc)
-            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=dt_timezone.utc)
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, tzinfo=dt_timezone.utc)
+            # End date should be start of the NEXT day for OpenAI API
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, tzinfo=dt_timezone.utc) + timedelta(days=1)
 
         # Convert to Unix timestamps
         start_time = int(start_date.timestamp())
