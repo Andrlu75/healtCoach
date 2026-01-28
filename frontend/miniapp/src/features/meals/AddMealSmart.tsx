@@ -103,6 +103,8 @@ function AddMealSmart() {
     },
     onSuccess: (data) => {
       setDraft(data.draft)
+      // Синхронизируем editedWeight с новым значением после добавления
+      setEditedWeight(String(data.draft.estimated_weight))
       setNewIngredient('')
       setStep('confirm')
       notification('success')
@@ -121,6 +123,8 @@ function AddMealSmart() {
     },
     onSuccess: (data) => {
       setDraft(data.draft)
+      // Синхронизируем editedWeight с новым значением после удаления
+      setEditedWeight(String(data.draft.estimated_weight))
       notification('success')
     },
     onError: () => {
@@ -140,6 +144,8 @@ function AddMealSmart() {
     },
     onSuccess: (data) => {
       setDraft(data.draft)
+      // Синхронизируем editedWeight с новым значением после пересчёта
+      setEditedWeight(String(data.draft.estimated_weight))
       setShowIngredientModal(false)
       setEditingIngredientIndex(null)
       setEditedIngredient({})
