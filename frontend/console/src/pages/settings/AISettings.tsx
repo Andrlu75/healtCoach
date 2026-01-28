@@ -1046,11 +1046,14 @@ export default function AISettings() {
                 <div className="text-2xl font-bold text-green-400">
                   ${(() => {
                     try {
-                      const total = openaiUsage.costs.data.reduce((sum: number, day: { results?: Array<{ amount?: { value?: number } }> }) => {
-                        const dayAmount = day.results?.reduce((s: number, r: { amount?: { value?: number } }) => s + (r.amount?.value || 0), 0) || 0
+                      const total = openaiUsage.costs.data.reduce((sum: number, day: { results?: Array<{ amount?: { value?: string | number } }> }) => {
+                        const dayAmount = day.results?.reduce((s: number, r: { amount?: { value?: string | number } }) => {
+                          const val = r.amount?.value
+                          return s + (typeof val === 'string' ? parseFloat(val) : (val || 0))
+                        }, 0) || 0
                         return sum + dayAmount
                       }, 0)
-                      return Number(total).toFixed(4)
+                      return total.toFixed(4)
                     } catch {
                       return '0.0000'
                     }
