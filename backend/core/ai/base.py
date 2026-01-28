@@ -35,6 +35,8 @@ class AbstractAIProvider(ABC):
         max_tokens: int = 500,
         model: Optional[str] = None,
         temperature: float = 0.7,
+        json_mode: bool = False,
+        seed: Optional[int] = None,
     ) -> AIResponse:
         pass
 

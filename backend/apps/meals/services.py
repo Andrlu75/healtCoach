@@ -1097,6 +1097,8 @@ async def analyze_food_smart(client: Client, image_data: bytes, caption: str = '
         max_tokens=4096,
         model=model,
         temperature=0.2,  # Низкая температура для стабильных результатов
+        json_mode=True,   # Гарантированный JSON ответ (OpenAI)
+        detail='high',    # Высокая детализация для лучшего распознавания ингредиентов
     )
 
     # Log usage

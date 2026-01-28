@@ -94,7 +94,22 @@ class OpenAIProvider(AbstractAIProvider):
         max_tokens: int = 500,
         model: Optional[str] = None,
         temperature: float = 0.7,
+        json_mode: bool = False,
+        seed: Optional[int] = None,
     ) -> AIResponse:
+        """Анализ изображения с OpenAI Vision API.
+
+        Args:
+            image_data: Байты изображения
+            prompt: Промпт для анализа
+            detail: Уровень детализации ('low', 'high', 'auto')
+            media_type: MIME-тип изображения
+            max_tokens: Максимальное количество токенов в ответе
+            model: Модель OpenAI (по умолчанию gpt-4o)
+            temperature: Температура (0.0-2.0). Низкие значения = более стабильные ответы
+            json_mode: Включить JSON mode для гарантированного JSON ответа
+            seed: Seed для воспроизводимости результатов
+        """
         model = model or 'gpt-4o'
         b64_image = base64.b64encode(image_data).decode('utf-8')
 
@@ -120,6 +135,14 @@ class OpenAIProvider(AbstractAIProvider):
             'max_completion_tokens': max(max_tokens * 4, 4096) if is_gpt5 else max_tokens,
             'temperature': temperature,
         }
+
+        # JSON mode для гарантированного JSON ответа
+        if json_mode:
+            kwargs['response_format'] = {'type': 'json_object'}
+
+        # Seed для воспроизводимости
+        if seed is not None:
+            kwargs['seed'] = seed
 
         try:
             response = await self.client.chat.completions.create(**kwargs)

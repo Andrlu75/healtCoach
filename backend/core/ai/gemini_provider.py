@@ -66,6 +66,8 @@ class GeminiProvider(AbstractAIProvider):
         max_tokens: int = 500,
         model: Optional[str] = None,
         temperature: float = 0.7,
+        json_mode: bool = False,
+        seed: int = None,
     ) -> AIResponse:
         model = model or 'gemini-2.0-flash'
 
