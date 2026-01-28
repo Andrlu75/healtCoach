@@ -12,7 +12,9 @@ import {
   addIngredientToDraft,
   removeIngredientFromDraft,
   updateMealDraft,
+  updateIngredientInDraft,
   type MealDraft,
+  type DraftIngredient,
 } from '../../api/endpoints'
 import { useTelegram, useHaptic } from '../../shared/hooks'
 import { Button, Input, Card } from '../../shared/components/ui'
@@ -50,6 +52,11 @@ function AddMealSmart() {
   const [editedWeight, setEditedWeight] = useState('')
   const [newIngredient, setNewIngredient] = useState('')
   const [selectedType, setSelectedType] = useState<string>('lunch')
+
+  // Редактирование ингредиента
+  const [editingIngredientIndex, setEditingIngredientIndex] = useState<number | null>(null)
+  const [editedIngredient, setEditedIngredient] = useState<Partial<DraftIngredient>>({})
+  const [showIngredientModal, setShowIngredientModal] = useState(false)
 
   // Анализ фото (умный режим)
   const analyzeMutation = useMutation({
@@ -110,6 +117,28 @@ function AddMealSmart() {
     },
     onSuccess: (data) => {
       setDraft(data.draft)
+      notification('success')
+    },
+    onError: () => {
+      notification('error')
+    },
+  })
+
+  // Редактирование ингредиента
+  const updateIngredientMutation = useMutation({
+    mutationFn: async ({ draftId, index, data }: {
+      draftId: string
+      index: number
+      data: Partial<DraftIngredient>
+    }) => {
+      const response = await updateIngredientInDraft(draftId, index, data)
+      return response.data
+    },
+    onSuccess: (data) => {
+      setDraft(data.draft)
+      setShowIngredientModal(false)
+      setEditingIngredientIndex(null)
+      setEditedIngredient({})
       notification('success')
     },
     onError: () => {
@@ -232,6 +261,38 @@ function AddMealSmart() {
     if (!draft) return
     impact('light')
     removeIngredientMutation.mutate({ draftId: draft.id, index })
+  }
+
+  const handleEditIngredient = (index: number) => {
+    if (!draft) return
+    impact('light')
+    const ing = draft.ingredients[index]
+    setEditingIngredientIndex(index)
+    setEditedIngredient({
+      name: ing.name,
+      weight: ing.weight,
+      calories: ing.calories,
+      proteins: ing.proteins,
+      fats: ing.fats,
+      carbs: ing.carbs,
+    })
+    setShowIngredientModal(true)
+  }
+
+  const handleSaveIngredient = () => {
+    if (!draft || editingIngredientIndex === null) return
+    impact('light')
+    updateIngredientMutation.mutate({
+      draftId: draft.id,
+      index: editingIngredientIndex,
+      data: editedIngredient,
+    })
+  }
+
+  const handleCloseIngredientModal = () => {
+    setShowIngredientModal(false)
+    setEditingIngredientIndex(null)
+    setEditedIngredient({})
   }
 
   const handleConfirm = () => {
@@ -523,6 +584,7 @@ function AddMealSmart() {
       <Card variant="elevated" className="p-4 mb-4">
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
           Ингредиенты
+          <span className="text-xs text-gray-400 ml-2">(нажми для редактирования)</span>
         </h3>
 
         <div className="space-y-2">
@@ -535,7 +597,10 @@ function AddMealSmart() {
                 exit={{ opacity: 0, x: 20 }}
                 className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
               >
-                <div className="flex-1">
+                <button
+                  onClick={() => handleEditIngredient(index)}
+                  className="flex-1 text-left"
+                >
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-900 dark:text-gray-100">
                       {ing.name}
@@ -546,15 +611,16 @@ function AddMealSmart() {
                         добавлено
                       </span>
                     )}
+                    <Edit3 size={14} className="text-gray-400" />
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
                     {Math.round(ing.calories)} ккал • Б:{Math.round(ing.proteins)} Ж:{Math.round(ing.fats)} У:{Math.round(ing.carbs)}
                   </div>
-                </div>
+                </button>
                 <button
                   onClick={() => handleRemoveIngredient(index)}
                   disabled={removeIngredientMutation.isPending}
-                  className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                  className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg ml-2"
                 >
                   <Trash2 size={18} />
                 </button>
@@ -635,6 +701,97 @@ function AddMealSmart() {
           Отмена
         </Button>
       </div>
+
+      {/* Модальное окно редактирования ингредиента */}
+      <AnimatePresence>
+        {showIngredientModal && editingIngredientIndex !== null && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleCloseIngredientModal}
+              className="fixed inset-0 bg-black/50 z-50"
+            />
+
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-3xl p-4 pb-8 z-50 max-h-[80vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Редактировать ингредиент
+                </h3>
+                <button
+                  onClick={handleCloseIngredientModal}
+                  className="p-2 text-gray-400"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <Input
+                  label="Название"
+                  value={editedIngredient.name || ''}
+                  onChange={(e) => setEditedIngredient({ ...editedIngredient, name: e.target.value })}
+                />
+
+                <Input
+                  label="Вес (г)"
+                  type="number"
+                  value={editedIngredient.weight || ''}
+                  onChange={(e) => setEditedIngredient({ ...editedIngredient, weight: parseFloat(e.target.value) || 0 })}
+                />
+
+                <Input
+                  label="Калории (ккал)"
+                  type="number"
+                  value={editedIngredient.calories || ''}
+                  onChange={(e) => setEditedIngredient({ ...editedIngredient, calories: parseFloat(e.target.value) || 0 })}
+                />
+
+                <div className="grid grid-cols-3 gap-3">
+                  <Input
+                    label="Белки (г)"
+                    type="number"
+                    step="0.1"
+                    value={editedIngredient.proteins || ''}
+                    onChange={(e) => setEditedIngredient({ ...editedIngredient, proteins: parseFloat(e.target.value) || 0 })}
+                  />
+                  <Input
+                    label="Жиры (г)"
+                    type="number"
+                    step="0.1"
+                    value={editedIngredient.fats || ''}
+                    onChange={(e) => setEditedIngredient({ ...editedIngredient, fats: parseFloat(e.target.value) || 0 })}
+                  />
+                  <Input
+                    label="Углев. (г)"
+                    type="number"
+                    step="0.1"
+                    value={editedIngredient.carbs || ''}
+                    onChange={(e) => setEditedIngredient({ ...editedIngredient, carbs: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+
+                <Button
+                  className="w-full"
+                  onClick={handleSaveIngredient}
+                  isLoading={updateIngredientMutation.isPending}
+                >
+                  <Check size={18} className="mr-2" />
+                  Сохранить
+                </Button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

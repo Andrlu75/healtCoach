@@ -341,7 +341,10 @@ class ClientMealDraftDetailView(APIView):
         if 'dish_type' in request.data:
             draft.dish_type = request.data['dish_type']
         if 'estimated_weight' in request.data:
-            draft.estimated_weight = request.data['estimated_weight']
+            new_weight = int(request.data['estimated_weight'])
+            # Пропорциональный пересчёт всех ингредиентов
+            draft.scale_by_weight(new_weight)
+            logger.info('[DRAFT UPDATE] Scaled weight: %d -> %d', draft.estimated_weight, new_weight)
 
         draft.save()
         return Response(MealDraftSerializer(draft).data)
@@ -435,7 +438,7 @@ class ClientMealDraftAddIngredientView(APIView):
 
 
 class ClientMealDraftRemoveIngredientView(APIView):
-    """Удалить ингредиент из черновика."""
+    """Удалить или отредактировать ингредиент в черновике."""
 
     def delete(self, request, draft_id, index):
         client = get_client_from_token(request)
@@ -460,6 +463,36 @@ class ClientMealDraftRemoveIngredientView(APIView):
 
         return Response({
             'status': 'removed',
+            'draft': MealDraftSerializer(draft).data,
+        })
+
+    def patch(self, request, draft_id, index):
+        """Обновить данные ингредиента (name, weight, calories, proteins, fats, carbs)."""
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            draft = MealDraft.objects.get(pk=draft_id, client=client, status='pending')
+        except MealDraft.DoesNotExist:
+            return Response({'error': 'Черновик не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            index = int(index)
+        except ValueError:
+            return Response({'error': 'Неверный индекс'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            draft.update_ingredient(index, request.data)
+            draft.save()
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        logger.info('[DRAFT] Updated ingredient %d in draft %s: %s', index, draft_id, request.data)
+
+        return Response({
+            'status': 'updated',
+            'ingredient': draft.ingredients[index],
             'draft': MealDraftSerializer(draft).data,
         })
 

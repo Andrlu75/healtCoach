@@ -71,12 +71,59 @@ class MealDraft(models.Model):
         self.fats = sum(ing.get('fats', 0) for ing in self.ingredients)
         # Ингредиенты хранят углеводы как 'carbs'
         self.carbohydrates = sum(ing.get('carbs', 0) for ing in self.ingredients)
+        # Пересчитываем общий вес
+        self.estimated_weight = sum(ing.get('weight', 0) for ing in self.ingredients)
 
     def remove_ingredient(self, index: int):
         """Удалить ингредиент по индексу."""
         if 0 <= index < len(self.ingredients):
             self.ingredients.pop(index)
             self.recalculate_nutrition()
+
+    def scale_by_weight(self, new_weight: int):
+        """Пропорционально пересчитать все ингредиенты при изменении веса.
+
+        Например: было 300г, стало 450г → коэффициент 1.5 → все значения × 1.5
+        """
+        if self.estimated_weight <= 0 or new_weight <= 0:
+            return
+
+        ratio = new_weight / self.estimated_weight
+
+        for ing in self.ingredients:
+            ing['weight'] = round(ing.get('weight', 0) * ratio, 1)
+            ing['calories'] = round(ing.get('calories', 0) * ratio, 1)
+            ing['proteins'] = round(ing.get('proteins', 0) * ratio, 2)
+            ing['fats'] = round(ing.get('fats', 0) * ratio, 2)
+            ing['carbs'] = round(ing.get('carbs', 0) * ratio, 2)
+
+        self.estimated_weight = new_weight
+        self.recalculate_nutrition()
+
+    def update_ingredient(self, index: int, data: dict):
+        """Обновить данные ингредиента по индексу.
+
+        data может содержать: name, weight, calories, proteins, fats, carbs
+        """
+        if not (0 <= index < len(self.ingredients)):
+            raise ValueError(f'Индекс {index} вне диапазона')
+
+        ing = self.ingredients[index]
+
+        if 'name' in data:
+            ing['name'] = data['name']
+        if 'weight' in data:
+            ing['weight'] = float(data['weight'])
+        if 'calories' in data:
+            ing['calories'] = float(data['calories'])
+        if 'proteins' in data:
+            ing['proteins'] = float(data['proteins'])
+        if 'fats' in data:
+            ing['fats'] = float(data['fats'])
+        if 'carbs' in data:
+            ing['carbs'] = float(data['carbs'])
+
+        self.recalculate_nutrition()
 
 
 class Meal(models.Model):

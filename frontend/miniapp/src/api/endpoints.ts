@@ -118,6 +118,23 @@ export const removeIngredientFromDraft = (draftId: string, index: number) =>
     `/miniapp/meals/drafts/${draftId}/ingredients/${index}/`
   )
 
+export const updateIngredientInDraft = (
+  draftId: string,
+  index: number,
+  data: Partial<{
+    name: string
+    weight: number
+    calories: number
+    proteins: number
+    fats: number
+    carbs: number
+  }>
+) =>
+  api.patch<{ status: string; ingredient: DraftIngredient; draft: MealDraft }>(
+    `/miniapp/meals/drafts/${draftId}/ingredients/${index}/`,
+    data
+  )
+
 // Metrics
 export const getMetrics = (params?: { metric_type?: string }) =>
   api.get('/miniapp/metrics/', { params })
