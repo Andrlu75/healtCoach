@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Users, UserCheck, UserPlus, UserX, DollarSign, User, Utensils } from 'lucide-react'
+import { Users, UserCheck, UserPlus, UserX, DollarSign, User, Utensils, X } from 'lucide-react'
 import { settingsApi } from '../api/settings'
 import { mealsApi, type MealsDashboardResponse } from '../api/data'
 import type { DashboardStats, AIUsageResponse } from '../types'
@@ -28,25 +28,38 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [usage, setUsage] = useState<AIUsageResponse | null>(null)
   const [mealsDashboard, setMealsDashboard] = useState<MealsDashboardResponse | null>(null)
-  const [period, setPeriod] = useState('month')
   const [loading, setLoading] = useState(true)
+  const [showCostsModal, setShowCostsModal] = useState(false)
+  const [modalPeriod, setModalPeriod] = useState('month')
+  const [modalUsage, setModalUsage] = useState<AIUsageResponse | null>(null)
 
   useEffect(() => {
     Promise.all([
       settingsApi.getDashboardStats(),
       mealsApi.dashboard(),
+      settingsApi.getUsageStats('month'),
     ])
-      .then(([statsRes, mealsRes]) => {
+      .then(([statsRes, mealsRes, usageRes]) => {
         setStats(statsRes.data)
         setMealsDashboard(mealsRes.data)
+        setUsage(usageRes.data)
       })
       .finally(() => setLoading(false))
   }, [])
 
+  // Load usage for modal when period changes
   useEffect(() => {
-    settingsApi.getUsageStats(period)
-      .then(({ data }) => setUsage(data))
-  }, [period])
+    if (showCostsModal) {
+      settingsApi.getUsageStats(modalPeriod)
+        .then(({ data }) => setModalUsage(data))
+    }
+  }, [showCostsModal, modalPeriod])
+
+  const openCostsModal = () => {
+    setModalUsage(usage)
+    setModalPeriod('month')
+    setShowCostsModal(true)
+  }
 
   if (loading) {
     return <div className="text-muted-foreground">Загрузка...</div>
@@ -56,8 +69,8 @@ export default function Dashboard() {
     <div>
       <h1 className="text-2xl font-bold text-foreground mb-6">Дашборд</h1>
 
-      {/* Client stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* Client stats + AI costs card */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {statCards.map(({ key, label, icon: Icon, color }) => (
           <div key={key} className="bg-card rounded-xl border border-border p-5">
             <div className="flex items-center gap-3 mb-3">
@@ -71,6 +84,23 @@ export default function Dashboard() {
             </p>
           </div>
         ))}
+
+        {/* AI Costs Card */}
+        <div
+          onClick={openCostsModal}
+          className="bg-card rounded-xl border border-border p-5 cursor-pointer hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400">
+              <DollarSign size={20} />
+            </div>
+            <span className="text-sm text-muted-foreground">Затраты AI</span>
+          </div>
+          <p className="text-3xl font-bold text-foreground">
+            ${usage ? Number(usage.total_cost_usd).toFixed(2) : '—'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">с начала месяца</p>
+        </div>
       </div>
 
       {/* Today's Meals by Client */}
@@ -150,117 +180,130 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* AI Usage */}
-      <div className="bg-card rounded-xl border border-border p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400">
-              <DollarSign size={20} />
+      {/* Costs Modal */}
+      {showCostsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowCostsModal(false)}>
+          <div className="bg-card rounded-xl border border-border w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-border">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400">
+                  <DollarSign size={20} />
+                </div>
+                <h2 className="text-lg font-semibold text-foreground">Затраты AI</h2>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex gap-1">
+                  {Object.entries(periodLabels).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => setModalPeriod(key)}
+                      className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                        modalPeriod === key
+                          ? 'bg-purple-500/20 text-purple-400 font-medium'
+                          : 'text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => setShowCostsModal(false)} className="p-1 hover:bg-muted rounded-lg transition-colors">
+                  <X size={20} className="text-muted-foreground" />
+                </button>
+              </div>
             </div>
-            <h2 className="text-lg font-semibold text-foreground">Затраты AI</h2>
-          </div>
-          <div className="flex gap-1">
-            {Object.entries(periodLabels).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setPeriod(key)}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                  period === key
-                    ? 'bg-purple-500/20 text-purple-400 font-medium'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-5">
+              {/* Total cost */}
+              <div className="mb-5 p-4 bg-muted rounded-lg">
+                <span className="text-sm text-muted-foreground">Общие затраты за период</span>
+                <p className="text-2xl font-bold text-foreground mt-1">
+                  ${modalUsage ? Number(modalUsage.total_cost_usd).toFixed(4) : '—'}
+                </p>
+              </div>
+
+              {/* Breakdown by model table */}
+              <h3 className="text-sm font-medium text-secondary-foreground mb-2">По моделям</h3>
+              {modalUsage && modalUsage.stats.length > 0 ? (
+                <div className="overflow-hidden rounded-lg border border-border mb-6">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-muted border-b border-border">
+                        <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Провайдер</th>
+                        <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Модель</th>
+                        <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Тип</th>
+                        <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Запросы</th>
+                        <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Токены (in/out)</th>
+                        <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Стоимость</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {modalUsage.stats.map((row, idx) => (
+                        <tr key={idx} className="border-b border-border/50 last:border-0">
+                          <td className="px-4 py-2 text-sm text-secondary-foreground">{row.provider}</td>
+                          <td className="px-4 py-2 text-sm text-foreground font-medium">{row.model || '—'}</td>
+                          <td className="px-4 py-2">
+                            <span className="text-xs px-2 py-0.5 bg-secondary rounded text-secondary-foreground">
+                              {row.task_type}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-sm text-right text-secondary-foreground">{row.requests_count}</td>
+                          <td className="px-4 py-2 text-sm text-right text-muted-foreground">
+                            {(row.total_input_tokens || 0).toLocaleString()} / {(row.total_output_tokens || 0).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-right font-medium text-foreground">
+                            ${Number(row.total_cost_usd || 0).toFixed(4)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4 mb-6">Нет данных за выбранный период</p>
+              )}
+
+              {/* Breakdown by client */}
+              <div className="flex items-center gap-2 mb-2">
+                <User size={16} className="text-muted-foreground" />
+                <h3 className="text-sm font-medium text-secondary-foreground">По клиентам</h3>
+              </div>
+              {modalUsage && modalUsage.stats_by_client && modalUsage.stats_by_client.length > 0 ? (
+                <div className="overflow-hidden rounded-lg border border-border">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-muted border-b border-border">
+                        <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Клиент</th>
+                        <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Запросы</th>
+                        <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Токены (in/out)</th>
+                        <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Стоимость</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {modalUsage.stats_by_client.map((row, idx) => (
+                        <tr key={idx} className="border-b border-border/50 last:border-0">
+                          <td className="px-4 py-2 text-sm text-foreground font-medium">{row.client_name}</td>
+                          <td className="px-4 py-2 text-sm text-right text-secondary-foreground">{row.requests_count}</td>
+                          <td className="px-4 py-2 text-sm text-right text-muted-foreground">
+                            {(row.total_input_tokens || 0).toLocaleString()} / {(row.total_output_tokens || 0).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-right font-medium text-foreground">
+                            ${Number(row.total_cost_usd || 0).toFixed(4)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">Нет данных по клиентам</p>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* Total cost */}
-        <div className="mb-4 p-4 bg-muted rounded-lg">
-          <span className="text-sm text-muted-foreground">Общие затраты за период</span>
-          <p className="text-2xl font-bold text-foreground mt-1">
-            ${usage ? Number(usage.total_cost_usd).toFixed(4) : '—'}
-          </p>
-        </div>
-
-        {/* Breakdown by model table */}
-        <h3 className="text-sm font-medium text-secondary-foreground mb-2">По моделям</h3>
-        {usage && usage.stats.length > 0 ? (
-          <div className="overflow-hidden rounded-lg border border-border mb-6">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-muted border-b border-border">
-                  <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Провайдер</th>
-                  <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Модель</th>
-                  <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Тип</th>
-                  <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Запросы</th>
-                  <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Токены (in/out)</th>
-                  <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Стоимость</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usage.stats.map((row, idx) => (
-                  <tr key={idx} className="border-b border-border/50 last:border-0">
-                    <td className="px-4 py-2 text-sm text-secondary-foreground">{row.provider}</td>
-                    <td className="px-4 py-2 text-sm text-foreground font-medium">{row.model || '—'}</td>
-                    <td className="px-4 py-2">
-                      <span className="text-xs px-2 py-0.5 bg-secondary rounded text-secondary-foreground">
-                        {row.task_type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-sm text-right text-secondary-foreground">{row.requests_count}</td>
-                    <td className="px-4 py-2 text-sm text-right text-muted-foreground">
-                      {(row.total_input_tokens || 0).toLocaleString()} / {(row.total_output_tokens || 0).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2 text-sm text-right font-medium text-foreground">
-                      ${Number(row.total_cost_usd || 0).toFixed(4)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground text-center py-4 mb-6">Нет данных за выбранный период</p>
-        )}
-
-        {/* Breakdown by client */}
-        <div className="flex items-center gap-2 mb-2">
-          <User size={16} className="text-muted-foreground" />
-          <h3 className="text-sm font-medium text-secondary-foreground">По клиентам</h3>
-        </div>
-        {usage && usage.stats_by_client && usage.stats_by_client.length > 0 ? (
-          <div className="overflow-hidden rounded-lg border border-border">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-muted border-b border-border">
-                  <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Клиент</th>
-                  <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Запросы</th>
-                  <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Токены (in/out)</th>
-                  <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Стоимость</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usage.stats_by_client.map((row, idx) => (
-                  <tr key={idx} className="border-b border-border/50 last:border-0">
-                    <td className="px-4 py-2 text-sm text-foreground font-medium">{row.client_name}</td>
-                    <td className="px-4 py-2 text-sm text-right text-secondary-foreground">{row.requests_count}</td>
-                    <td className="px-4 py-2 text-sm text-right text-muted-foreground">
-                      {(row.total_input_tokens || 0).toLocaleString()} / {(row.total_output_tokens || 0).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2 text-sm text-right font-medium text-foreground">
-                      ${Number(row.total_cost_usd || 0).toFixed(4)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground text-center py-4">Нет данных по клиентам</p>
-        )}
-      </div>
+      )}
     </div>
   )
 }
