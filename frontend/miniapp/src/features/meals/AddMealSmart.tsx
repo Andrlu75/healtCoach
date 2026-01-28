@@ -62,6 +62,9 @@ function AddMealSmart() {
   const [aiResponse, setAiResponse] = useState<string>('')
   const [savedMeal, setSavedMeal] = useState<{ dish_name: string; calories: number } | null>(null)
 
+  // Флаг: были изменения ингредиентов, требуется пересчёт
+  const [needsRecalculation, setNeedsRecalculation] = useState(false)
+
   // Анализ фото (умный режим)
   const analyzeMutation = useMutation({
     mutationFn: async ({ file, caption }: { file: File; caption: string }) => {
@@ -103,8 +106,8 @@ function AddMealSmart() {
     },
     onSuccess: (data) => {
       setDraft(data.draft)
-      // Синхронизируем editedWeight с новым значением после добавления
-      setEditedWeight(String(data.draft.estimated_weight))
+      // НЕ синхронизируем editedWeight - показываем кнопку "Пересчитать"
+      setNeedsRecalculation(true)
       setNewIngredient('')
       setStep('confirm')
       notification('success')
@@ -123,8 +126,8 @@ function AddMealSmart() {
     },
     onSuccess: (data) => {
       setDraft(data.draft)
-      // Синхронизируем editedWeight с новым значением после удаления
-      setEditedWeight(String(data.draft.estimated_weight))
+      // НЕ синхронизируем editedWeight - показываем кнопку "Пересчитать"
+      setNeedsRecalculation(true)
       notification('success')
     },
     onError: () => {
@@ -144,8 +147,8 @@ function AddMealSmart() {
     },
     onSuccess: (data) => {
       setDraft(data.draft)
-      // Синхронизируем editedWeight с новым значением после пересчёта
-      setEditedWeight(String(data.draft.estimated_weight))
+      // НЕ синхронизируем editedWeight - показываем кнопку "Пересчитать"
+      setNeedsRecalculation(true)
       setShowIngredientModal(false)
       setEditingIngredientIndex(null)
       setEditedIngredient({})
@@ -165,8 +168,9 @@ function AddMealSmart() {
     onSuccess: (data) => {
       setDraft(data)
       setEditingName(false)
-      // Синхронизируем editedWeight с новым значением после пересчёта
+      // Синхронизируем editedWeight и сбрасываем флаг пересчёта
       setEditedWeight(String(data.estimated_weight))
+      setNeedsRecalculation(false)
       notification('success')
     },
   })
@@ -787,7 +791,7 @@ function AddMealSmart() {
       {/* Кнопки */}
       <div className="space-y-2">
         {/* Одна кнопка: Пересчитать или Сохранить */}
-        {parseInt(editedWeight, 10) !== draft.estimated_weight ? (
+        {needsRecalculation || parseInt(editedWeight, 10) !== draft.estimated_weight ? (
           <Button
             className="w-full"
             size="lg"

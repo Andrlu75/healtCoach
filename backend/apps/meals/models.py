@@ -65,14 +65,14 @@ class MealDraft(models.Model):
         return f'{self.dish_name} ({self.client}) - {self.status}'
 
     def recalculate_nutrition(self):
-        """Пересчитать КБЖУ на основе ингредиентов."""
-        self.calories = sum(ing.get('calories', 0) for ing in self.ingredients)
-        self.proteins = sum(ing.get('proteins', 0) for ing in self.ingredients)
-        self.fats = sum(ing.get('fats', 0) for ing in self.ingredients)
+        """Пересчитать КБЖУ на основе ингредиентов (округление до целого)."""
+        self.calories = round(sum(ing.get('calories', 0) for ing in self.ingredients))
+        self.proteins = round(sum(ing.get('proteins', 0) for ing in self.ingredients))
+        self.fats = round(sum(ing.get('fats', 0) for ing in self.ingredients))
         # Ингредиенты хранят углеводы как 'carbs'
-        self.carbohydrates = sum(ing.get('carbs', 0) for ing in self.ingredients)
+        self.carbohydrates = round(sum(ing.get('carbs', 0) for ing in self.ingredients))
         # Пересчитываем общий вес
-        self.estimated_weight = sum(ing.get('weight', 0) for ing in self.ingredients)
+        self.estimated_weight = round(sum(ing.get('weight', 0) for ing in self.ingredients))
 
     def remove_ingredient(self, index: int):
         """Удалить ингредиент по индексу."""
@@ -116,11 +116,11 @@ class MealDraft(models.Model):
                 if ing.get('is_user_edited', False):
                     continue
 
-                ing['weight'] = round(ing.get('weight', 0) * ratio, 1)
-                ing['calories'] = round(ing.get('calories', 0) * ratio, 1)
-                ing['proteins'] = round(ing.get('proteins', 0) * ratio, 2)
-                ing['fats'] = round(ing.get('fats', 0) * ratio, 2)
-                ing['carbs'] = round(ing.get('carbs', 0) * ratio, 2)
+                ing['weight'] = round(ing.get('weight', 0) * ratio)
+                ing['calories'] = round(ing.get('calories', 0) * ratio)
+                ing['proteins'] = round(ing.get('proteins', 0) * ratio)
+                ing['fats'] = round(ing.get('fats', 0) * ratio)
+                ing['carbs'] = round(ing.get('carbs', 0) * ratio)
 
         self.estimated_weight = new_weight
         self.recalculate_nutrition()
@@ -154,30 +154,30 @@ class MealDraft(models.Model):
         if only_weight_changed:
             # Пересчитываем КБЖУ пропорционально новому весу
             old_weight = ing.get('weight', 0)
-            new_weight = float(data['weight'])
+            new_weight = round(float(data['weight']))
 
             if old_weight > 0 and new_weight > 0:
                 ratio = new_weight / old_weight
-                ing['weight'] = round(new_weight, 1)
-                ing['calories'] = round(ing.get('calories', 0) * ratio, 1)
-                ing['proteins'] = round(ing.get('proteins', 0) * ratio, 2)
-                ing['fats'] = round(ing.get('fats', 0) * ratio, 2)
-                ing['carbs'] = round(ing.get('carbs', 0) * ratio, 2)
+                ing['weight'] = new_weight
+                ing['calories'] = round(ing.get('calories', 0) * ratio)
+                ing['proteins'] = round(ing.get('proteins', 0) * ratio)
+                ing['fats'] = round(ing.get('fats', 0) * ratio)
+                ing['carbs'] = round(ing.get('carbs', 0) * ratio)
             else:
                 ing['weight'] = new_weight
             # НЕ ставим is_user_edited - это автоматический пересчёт
         else:
             # Пользователь меняет КБЖУ напрямую - фиксируем
             if 'weight' in data:
-                ing['weight'] = float(data['weight'])
+                ing['weight'] = round(float(data['weight']))
             if 'calories' in data:
-                ing['calories'] = float(data['calories'])
+                ing['calories'] = round(float(data['calories']))
             if 'proteins' in data:
-                ing['proteins'] = float(data['proteins'])
+                ing['proteins'] = round(float(data['proteins']))
             if 'fats' in data:
-                ing['fats'] = float(data['fats'])
+                ing['fats'] = round(float(data['fats']))
             if 'carbs' in data:
-                ing['carbs'] = float(data['carbs'])
+                ing['carbs'] = round(float(data['carbs']))
 
             # Помечаем как отредактированный пользователем - не будет пересчитываться
             ing['is_user_edited'] = True
