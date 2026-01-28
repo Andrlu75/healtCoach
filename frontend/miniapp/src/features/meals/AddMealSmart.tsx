@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Camera, X, Image, Loader2, ChevronLeft, Plus, Trash2, Check, Edit3, Scale
+  Camera, X, Image, Loader2, Plus, Trash2, Check, Edit3, Scale
 } from 'lucide-react'
 import {
   analyzeSmartMealPhoto,
@@ -13,7 +13,6 @@ import {
   removeIngredientFromDraft,
   updateMealDraft,
   type MealDraft,
-  type DraftIngredient,
 } from '../../api/endpoints'
 import { useTelegram, useHaptic } from '../../shared/hooks'
 import { Button, Input, Card } from '../../shared/components/ui'
