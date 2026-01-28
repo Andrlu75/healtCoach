@@ -112,35 +112,30 @@ ANALYZE_FOOD_PROMPT = """Проанализируй фото еды и верн�
 """
 
 # Промпт для умного режима - максимальная детализация ингредиентов
-ANALYZE_FOOD_SMART_PROMPT = """Проанализируй фото еды и верни детальный JSON (без markdown-обёртки, только чистый JSON):
+ANALYZE_FOOD_SMART_PROMPT = """Analyze the food photo and return JSON with detailed ingredient breakdown.
+
+Return ONLY valid JSON (no markdown, no explanation):
 {
-  "dish_name": "название блюда",
-  "dish_type": "тип (завтрак/обед/ужин/перекус)",
-  "estimated_weight": общий_вес_порции_в_граммах,
+  "dish_name": "название блюда на русском",
+  "dish_type": "завтрак/обед/ужин/перекус",
+  "estimated_weight": 350,
   "ingredients": [
-    {"name": "ингредиент1", "weight": вес_г, "calories": ккал, "proteins": белки_г, "fats": жиры_г, "carbs": углеводы_г},
-    {"name": "ингредиент2", "weight": вес_г, "calories": ккал, "proteins": белки_г, "fats": жиры_г, "carbs": углеводы_г}
+    {"name": "картофель", "weight": 150, "calories": 120, "proteins": 3, "fats": 0.1, "carbs": 25},
+    {"name": "масло сливочное", "weight": 10, "calories": 75, "proteins": 0.1, "fats": 8, "carbs": 0}
   ],
-  "calories": итого_ккал,
-  "proteins": итого_белки_г,
-  "fats": итого_жиры_г,
-  "carbohydrates": итого_углеводы_г,
-  "confidence": уверенность_от_1_до_100
+  "calories": 285,
+  "proteins": 12,
+  "fats": 14,
+  "carbohydrates": 28,
+  "confidence": 85
 }
 
-КРИТИЧЕСКИ ВАЖНО - МАКСИМАЛЬНАЯ ДЕТАЛИЗАЦИЯ ИНГРЕДИЕНТОВ:
-- Разбивай каждый ингредиент на отдельные составляющие, НЕ объединяй!
-- Каждый продукт = отдельная запись (масло, соль, сахар, специи, соусы — всё отдельно)
-- Примеры правильной детализации:
-  * Салат: листья салата, помидоры, огурцы, оливковое масло, соль, перец, лимонный сок — каждый ОТДЕЛЬНО
-  * Каша: крупа, молоко, масло сливочное, сахар, соль — каждый ОТДЕЛЬНО
-  * Выпечка: мука, яйца, сахар, масло, дрожжи, соль, кунжут, мак — каждый ОТДЕЛЬНО
-  * Суп: мясо, картофель, морковь, лук, масло, соль, перец, зелень — каждый ОТДЕЛЬНО
-- Указывай ВСЕ видимые и предполагаемые ингредиенты, даже в малых количествах
-- Если видишь посыпку (кунжут, мак, сахарная пудра) — укажи отдельно
-- Соусы, заправки, топпинги — каждый отдельно
-
-Оценивай порцию по визуальному размеру. Сумма КБЖУ ингредиентов = итоговые значения.
+IMPORTANT - List EVERY ingredient separately:
+- Each component = separate entry (oil, salt, sugar, spices, sauces - all separate)
+- Include toppings: sesame, poppy seeds, powdered sugar - each separate
+- Include all visible and assumed ingredients, even small amounts
+- All ingredient names in Russian
+- Numbers must be integers or decimals, not strings
 """
 
 # Промпт для добавления ингредиента (AI сам прикидывает вес)
@@ -1100,16 +1095,31 @@ async def analyze_food_smart(client: Client, image_data: bytes, caption: str = '
 
     # Parse JSON
     content = response.content.strip()
+    logger.info('[SMART] Raw AI response (first 500 chars): %s', content[:500])
+
     if content.startswith('```'):
-        content = content.split('\n', 1)[1] if '\n' in content else content[3:]
-        if content.endswith('```'):
-            content = content[:-3]
-        content = content.strip()
+        # Remove markdown code block
+        lines = content.split('\n')
+        if lines[0].startswith('```'):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == '```':
+            lines = lines[:-1]
+        content = '\n'.join(lines).strip()
+
+    # Also try to extract JSON if there's text before/after
+    if not content.startswith('{'):
+        start = content.find('{')
+        if start != -1:
+            end = content.rfind('}')
+            if end != -1:
+                content = content[start:end+1]
 
     try:
         data = json.loads(content)
-    except json.JSONDecodeError:
-        logger.error('[SMART] Failed to parse JSON: %s', content)
+        logger.info('[SMART] Parsed successfully: dish=%s, ingredients=%d',
+                    data.get('dish_name'), len(data.get('ingredients', [])))
+    except json.JSONDecodeError as e:
+        logger.error('[SMART] Failed to parse JSON: %s. Content: %s', str(e), content[:500])
         data = {
             'dish_name': 'Неизвестное блюдо',
             'dish_type': 'snack',
@@ -1291,6 +1301,8 @@ async def confirm_draft(draft: 'MealDraft') -> Meal:
 
     # Копируем изображение
     if draft.image:
+        # Сбрасываем указатель на начало файла перед чтением
+        await sync_to_async(draft.image.seek)(0)
         image_data = await sync_to_async(draft.image.read)()
         if image_data:
             filename = f'meal_{meal.pk}_{timezone.now().strftime("%Y%m%d_%H%M%S")}.jpg'

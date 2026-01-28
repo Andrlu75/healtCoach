@@ -69,7 +69,8 @@ class MealDraft(models.Model):
         self.calories = sum(ing.get('calories', 0) for ing in self.ingredients)
         self.proteins = sum(ing.get('proteins', 0) for ing in self.ingredients)
         self.fats = sum(ing.get('fats', 0) for ing in self.ingredients)
-        self.carbohydrates = sum(ing.get('carbohydrates', 0) for ing in self.ingredients)
+        # Ингредиенты хранят углеводы как 'carbs'
+        self.carbohydrates = sum(ing.get('carbs', 0) for ing in self.ingredients)
 
     def remove_ingredient(self, index: int):
         """Удалить ингредиент по индексу."""
