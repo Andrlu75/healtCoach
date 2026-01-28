@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 
 from .models import Meal
 from .serializers import MealSerializer
+from apps.accounts.models import Client
 
 
 class MealListView(APIView):
@@ -106,4 +107,67 @@ class DailySummaryView(APIView):
             'consumed': consumed,
             'norms': norms,
             'remaining': remaining,
+        })
+
+
+class TodayMealsDashboardView(APIView):
+    """Get today's meals for all clients - for dashboard display."""
+
+    def get(self, request):
+        coach = request.user.coach_profile
+        target_date = timezone.localdate()
+
+        # Get all active clients
+        clients = Client.objects.filter(coach=coach, status='active').order_by('first_name')
+
+        result = []
+        for client in clients:
+            # Get meals for this client today
+            meals = Meal.objects.filter(
+                client=client,
+                image_type='food',
+                meal_time__date=target_date,
+            ).order_by('meal_time')
+
+            meals_data = []
+            for meal in meals:
+                meals_data.append({
+                    'id': meal.id,
+                    'dish_name': meal.dish_name or 'Без названия',
+                    'dish_type': meal.dish_type or '',
+                    'calories': meal.calories or 0,
+                    'proteins': meal.proteins or 0,
+                    'fats': meal.fats or 0,
+                    'carbs': meal.carbohydrates or 0,
+                    'meal_time': meal.meal_time.strftime('%H:%M') if meal.meal_time else '',
+                    'thumbnail': meal.thumbnail.url if meal.thumbnail else (meal.image.url if meal.image else None),
+                })
+
+            # Calculate totals
+            totals = {
+                'calories': sum(m.calories or 0 for m in meals),
+                'proteins': sum(m.proteins or 0 for m in meals),
+                'fats': sum(m.fats or 0 for m in meals),
+                'carbs': sum(m.carbohydrates or 0 for m in meals),
+            }
+
+            # Get norms
+            norms = {
+                'calories': client.daily_calories or 2000,
+                'proteins': client.daily_proteins or 80,
+                'fats': client.daily_fats or 70,
+                'carbs': client.daily_carbs or 250,
+            }
+
+            result.append({
+                'client_id': client.id,
+                'client_name': f"{client.first_name or ''} {client.last_name or ''}".strip() or f"Клиент #{client.id}",
+                'meals': meals_data,
+                'totals': totals,
+                'norms': norms,
+            })
+
+        return Response({
+            'date': target_date.isoformat(),
+            'clients': result,
         })

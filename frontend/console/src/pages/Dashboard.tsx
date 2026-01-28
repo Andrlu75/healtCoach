@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Users, UserCheck, UserPlus, UserX, DollarSign, User } from 'lucide-react'
+import { Users, UserCheck, UserPlus, UserX, DollarSign, User, Utensils } from 'lucide-react'
 import { settingsApi } from '../api/settings'
+import { mealsApi, type MealsDashboardResponse } from '../api/data'
 import type { DashboardStats, AIUsageResponse } from '../types'
 
 const statCards = [
@@ -26,12 +27,19 @@ const periodLabels: Record<string, string> = {
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [usage, setUsage] = useState<AIUsageResponse | null>(null)
+  const [mealsDashboard, setMealsDashboard] = useState<MealsDashboardResponse | null>(null)
   const [period, setPeriod] = useState('month')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    settingsApi.getDashboardStats()
-      .then(({ data }) => setStats(data))
+    Promise.all([
+      settingsApi.getDashboardStats(),
+      mealsApi.dashboard(),
+    ])
+      .then(([statsRes, mealsRes]) => {
+        setStats(statsRes.data)
+        setMealsDashboard(mealsRes.data)
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -64,6 +72,83 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* Today's Meals by Client */}
+      {mealsDashboard && mealsDashboard.clients.length > 0 && (
+        <div className="bg-card rounded-xl border border-border p-5 mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-orange-500/20 text-orange-400">
+              <Utensils size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Питание за сегодня</h2>
+              <p className="text-xs text-muted-foreground">{mealsDashboard.date}</p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <div className="inline-flex gap-4 min-w-full pb-2">
+              {mealsDashboard.clients.map(client => (
+                <div key={client.client_id} className="w-64 flex-shrink-0 bg-muted rounded-lg p-3">
+                  <div className="font-medium text-foreground mb-2 truncate">{client.client_name}</div>
+
+                  {/* Meals list */}
+                  <div className="space-y-2 mb-3 max-h-48 overflow-y-auto">
+                    {client.meals.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-4">Нет приёмов пищи</p>
+                    ) : (
+                      client.meals.map(meal => (
+                        <div key={meal.id} className="flex items-center gap-2 bg-card rounded-lg p-2">
+                          {meal.thumbnail && (
+                            <img src={meal.thumbnail} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium text-foreground truncate">{meal.dish_name}</div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {meal.meal_time} • {meal.calories} ккал
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Totals */}
+                  <div className="border-t border-border pt-2">
+                    <div className="text-xs text-muted-foreground mb-1">Итого / Норма</div>
+                    <div className="grid grid-cols-2 gap-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Ккал:</span>
+                        <span className={client.totals.calories >= client.norms.calories ? 'text-green-400' : 'text-foreground'}>
+                          {client.totals.calories}/{client.norms.calories}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Б:</span>
+                        <span className={client.totals.proteins >= client.norms.proteins ? 'text-green-400' : 'text-foreground'}>
+                          {client.totals.proteins}/{client.norms.proteins}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Ж:</span>
+                        <span className={client.totals.fats >= client.norms.fats ? 'text-green-400' : 'text-foreground'}>
+                          {client.totals.fats}/{client.norms.fats}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">У:</span>
+                        <span className={client.totals.carbs >= client.norms.carbs ? 'text-green-400' : 'text-foreground'}>
+                          {client.totals.carbs}/{client.norms.carbs}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* AI Usage */}
       <div className="bg-card rounded-xl border border-border p-5">

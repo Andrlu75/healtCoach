@@ -1,9 +1,36 @@
 import api from './client'
 import type { Meal, HealthMetric, ChatMessage, Report, InviteLink, OnboardingQuestion, InteractionLog } from '../types'
 
+export interface MealDashboardItem {
+  id: number
+  dish_name: string
+  dish_type: string
+  calories: number
+  proteins: number
+  fats: number
+  carbs: number
+  meal_time: string
+  thumbnail: string | null
+}
+
+export interface ClientMealsDashboard {
+  client_id: number
+  client_name: string
+  meals: MealDashboardItem[]
+  totals: { calories: number; proteins: number; fats: number; carbs: number }
+  norms: { calories: number; proteins: number; fats: number; carbs: number }
+}
+
+export interface MealsDashboardResponse {
+  date: string
+  clients: ClientMealsDashboard[]
+}
+
 export const mealsApi = {
   list: (params?: { client_id?: number; date?: string }) =>
     api.get<Meal[]>('/meals/', { params }),
+  dashboard: () =>
+    api.get<MealsDashboardResponse>('/meals/dashboard/'),
 }
 
 export const metricsApi = {
