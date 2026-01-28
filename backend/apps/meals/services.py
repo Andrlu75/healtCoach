@@ -1373,3 +1373,113 @@ async def cancel_draft(draft: 'MealDraft') -> None:
     draft.status = 'cancelled'
     await sync_to_async(draft.save)()
     logger.info('[SMART] Cancelled draft=%s', draft.pk)
+
+
+async def generate_meal_comment(client: Client, meal: Meal) -> str:
+    """Генерация AI комментария к приёму пищи (как в обычном режиме).
+
+    Использует persona.food_response_prompt для генерации рекомендаций.
+    """
+    from core.ai.factory import get_ai_provider
+    from core.ai.model_fetcher import get_cached_pricing
+    from decimal import Decimal
+
+    logger.info('[MEAL COMMENT] Generating for client=%s meal=%s', client.pk, meal.pk)
+
+    # Get bot and persona
+    bot = await sync_to_async(
+        lambda: TelegramBot.objects.filter(coach=client.coach).first()
+    )()
+    if not bot:
+        logger.warning('[MEAL COMMENT] No bot for coach=%s', client.coach_id)
+        return ''
+
+    persona = await sync_to_async(lambda: client.persona)()
+    if not persona:
+        persona = await sync_to_async(
+            lambda: BotPersona.objects.filter(coach=bot.coach).first()
+        )()
+    if not persona or not persona.food_response_prompt:
+        logger.warning('[MEAL COMMENT] No persona or food_response_prompt')
+        return ''
+
+    # Get text provider
+    text_provider_name = persona.text_provider or 'openai'
+    text_model = persona.text_model or None
+
+    config = await sync_to_async(
+        lambda: AIProviderConfig.objects.filter(
+            coach=bot.coach, provider=text_provider_name, is_active=True
+        ).first()
+    )()
+    if not config:
+        logger.warning('[MEAL COMMENT] No API config for provider %s', text_provider_name)
+        return ''
+
+    text_provider = get_ai_provider(text_provider_name, config.api_key)
+
+    # Get daily summary
+    summary = await get_daily_summary(client)
+
+    # Build meal data
+    meal_data = {
+        'dish_name': meal.dish_name,
+        'dish_type': meal.dish_type,
+        'calories': meal.calories,
+        'proteins': meal.proteins,
+        'fats': meal.fats,
+        'carbohydrates': meal.carbohydrates,
+        'ingredients': meal.ingredients,
+    }
+
+    user_message = (
+        f'Данные анализа еды:\n'
+        f'{json.dumps(meal_data, ensure_ascii=False)}\n\n'
+        f'Дневная сводка:\n'
+        f'{json.dumps(summary, ensure_ascii=False)}'
+    )
+
+    # Build system prompt with client context
+    food_system_prompt = persona.food_response_prompt
+    client_context = _build_client_context(client)
+    if client_context:
+        food_system_prompt = food_system_prompt + client_context
+        if client.gender:
+            food_system_prompt += '\n\nВАЖНО: При рекомендациях учитывай пол клиента.'
+
+    try:
+        text_response = await text_provider.complete(
+            messages=[{'role': 'user', 'content': user_message}],
+            system_prompt=food_system_prompt,
+            max_tokens=persona.max_tokens,
+            temperature=persona.temperature,
+            model=text_model,
+        )
+
+        # Log usage
+        text_model_used = text_response.model or text_model or ''
+        text_input = text_response.usage.get('input_tokens', 0) or text_response.usage.get('prompt_tokens', 0)
+        text_output = text_response.usage.get('output_tokens', 0) or text_response.usage.get('completion_tokens', 0)
+
+        text_cost = Decimal('0')
+        text_pricing = get_cached_pricing(text_provider_name, text_model_used)
+        if text_pricing and (text_input or text_output):
+            price_in, price_out = text_pricing
+            text_cost = Decimal(str((text_input * price_in + text_output * price_out) / 1_000_000))
+
+        await sync_to_async(AIUsageLog.objects.create)(
+            coach=client.coach,
+            provider=text_provider_name,
+            model=text_model_used,
+            task_type='text',
+            input_tokens=text_input,
+            output_tokens=text_output,
+            cost_usd=text_cost,
+        )
+
+        logger.info('[MEAL COMMENT] Generated %d chars', len(text_response.content))
+        return text_response.content
+
+    except Exception as e:
+        logger.exception('[MEAL COMMENT] Error generating comment: %s', e)
+        return ''

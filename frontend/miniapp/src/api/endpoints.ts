@@ -100,7 +100,7 @@ export const updateMealDraft = (draftId: string, data: Partial<{
 }>) => api.patch<MealDraft>(`/miniapp/meals/drafts/${draftId}/`, data)
 
 export const confirmMealDraft = (draftId: string) =>
-  api.post<{ status: string; meal_id: number; meal: MealAnalysisResult }>(
+  api.post<{ status: string; meal_id: number; meal: MealAnalysisResult; ai_response?: string }>(
     `/miniapp/meals/drafts/${draftId}/confirm/`
   )
 

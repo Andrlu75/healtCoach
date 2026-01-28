@@ -392,6 +392,15 @@ class ClientMealDraftConfirmView(APIView):
             logger.exception('[DRAFT CONFIRM VIEW] Error confirming draft: %s', e)
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        # Generate AI comment (like in regular mode)
+        ai_response = ''
+        try:
+            from apps.meals.services import generate_meal_comment
+            ai_response = async_to_sync(generate_meal_comment)(client, meal)
+            logger.info('[DRAFT CONFIRM VIEW] AI comment generated: %d chars', len(ai_response))
+        except Exception as comment_err:
+            logger.warning('[DRAFT CONFIRM VIEW] Failed to generate AI comment: %s', comment_err)
+
         # Notify coach
         try:
             async_to_sync(_notify_coach_about_meal_miniapp)(client, meal)
@@ -402,6 +411,7 @@ class ClientMealDraftConfirmView(APIView):
             'status': 'confirmed',
             'meal_id': meal.id,
             'meal': MealSerializer(meal).data,
+            'ai_response': ai_response,
         })
 
 

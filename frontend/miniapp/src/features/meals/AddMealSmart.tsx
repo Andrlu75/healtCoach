@@ -28,7 +28,7 @@ const dishTypes = [
   { value: 'snack', label: 'Перекус', icon: '🍎' },
 ] as const
 
-type Step = 'photo' | 'analyzing' | 'confirm' | 'adding-ingredient' | 'saving'
+type Step = 'photo' | 'analyzing' | 'confirm' | 'adding-ingredient' | 'saving' | 'result'
 
 function AddMealSmart() {
   const navigate = useNavigate()
@@ -57,6 +57,10 @@ function AddMealSmart() {
   const [editingIngredientIndex, setEditingIngredientIndex] = useState<number | null>(null)
   const [editedIngredient, setEditedIngredient] = useState<Partial<DraftIngredient>>({})
   const [showIngredientModal, setShowIngredientModal] = useState(false)
+
+  // AI комментарий после сохранения
+  const [aiResponse, setAiResponse] = useState<string>('')
+  const [savedMeal, setSavedMeal] = useState<{ dish_name: string; calories: number } | null>(null)
 
   // Анализ фото (умный режим)
   const analyzeMutation = useMutation({
@@ -165,11 +169,21 @@ function AddMealSmart() {
       const response = await confirmMealDraft(draftId)
       return response.data
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       notification('success')
       queryClient.invalidateQueries({ queryKey: ['meals'] })
       queryClient.invalidateQueries({ queryKey: ['dailySummary'] })
-      navigate(-1)
+      // Показываем экран с AI комментарием
+      if (data.ai_response) {
+        setAiResponse(data.ai_response)
+        setSavedMeal({
+          dish_name: data.meal.dish_name,
+          calories: data.meal.calories,
+        })
+        setStep('result')
+      } else {
+        navigate(-1)
+      }
     },
     onError: () => {
       notification('error')
@@ -471,6 +485,53 @@ function AddMealSmart() {
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Сохраняем...
         </h2>
+      </div>
+    )
+  }
+
+  // Шаг 4: Результат с AI комментарием
+  if (step === 'result') {
+    return (
+      <div className="p-4 pb-8">
+        {/* Успех */}
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Check size={32} className="text-green-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+            Сохранено!
+          </h2>
+          {savedMeal && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {savedMeal.dish_name} • {Math.round(savedMeal.calories)} ккал
+            </p>
+          )}
+        </div>
+
+        {/* AI комментарий */}
+        {aiResponse && (
+          <Card variant="elevated" className="p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-lg">🤖</span>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                  {aiResponse}
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Кнопка закрытия */}
+        <Button
+          className="w-full"
+          size="lg"
+          onClick={() => navigate(-1)}
+        >
+          Готово
+        </Button>
       </div>
     )
   }
