@@ -1046,15 +1046,22 @@ export default function AISettings() {
                 <div className="text-2xl font-bold text-green-400">
                   ${(() => {
                     try {
-                      const total = openaiUsage.costs.data.reduce((sum: number, day: { results?: Array<{ amount?: { value?: string | number } }> }) => {
-                        const dayAmount = day.results?.reduce((s: number, r: { amount?: { value?: string | number } }) => {
-                          const val = r.amount?.value
-                          return s + (typeof val === 'string' ? parseFloat(val) : (val || 0))
-                        }, 0) || 0
-                        return sum + dayAmount
-                      }, 0)
+                      let total = 0
+                      for (const bucket of openaiUsage.costs.data) {
+                        if (bucket.results && Array.isArray(bucket.results)) {
+                          for (const result of bucket.results) {
+                            if (result.amount && result.amount.value) {
+                              const val = parseFloat(String(result.amount.value))
+                              if (!isNaN(val)) {
+                                total += val
+                              }
+                            }
+                          }
+                        }
+                      }
                       return total.toFixed(4)
-                    } catch {
+                    } catch (e) {
+                      console.error('Error calculating costs:', e)
                       return '0.0000'
                     }
                   })()}
