@@ -895,29 +895,46 @@ class OpenAIUsageView(APIView):
             return {'error': f'API error: {resp.status_code}', 'data': []}
 
     def _fetch_openai_costs(self, api_key: str, start_time: int, end_time: int) -> dict:
-        """Fetch costs data from OpenAI Costs API."""
-        resp = httpx.get(
-            'https://api.openai.com/v1/organization/costs',
-            params={
+        """Fetch costs data from OpenAI Costs API with pagination."""
+        all_data = []
+        page_token = None
+
+        while True:
+            params = {
                 'start_time': start_time,
                 'end_time': end_time,
                 'bucket_width': '1d',
-            },
-            headers={
-                'Authorization': f'Bearer {api_key}',
-                'Content-Type': 'application/json',
-            },
-            timeout=30,
-        )
+                'limit': 30,
+            }
+            if page_token:
+                params['page'] = page_token
 
-        logger.info(f'OpenAI Costs API response: status={resp.status_code}')
-        if resp.status_code == 200:
-            data = resp.json()
-            logger.info(f'OpenAI Costs data keys: {data.keys() if isinstance(data, dict) else type(data)}')
-            return data
-        elif resp.status_code == 403:
-            logger.warning('OpenAI Costs API not available (403)')
-            return {'error': 'Требуется Admin API key для доступа к Costs API', 'data': []}
-        else:
-            logger.error(f'OpenAI Costs API error: {resp.status_code} - {resp.text}')
-            return {'error': f'API error: {resp.status_code}', 'data': []}
+            resp = httpx.get(
+                'https://api.openai.com/v1/organization/costs',
+                params=params,
+                headers={
+                    'Authorization': f'Bearer {api_key}',
+                    'Content-Type': 'application/json',
+                },
+                timeout=30,
+            )
+
+            logger.info(f'OpenAI Costs API response: status={resp.status_code}')
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get('data'):
+                    all_data.extend(data['data'])
+
+                # Check for more pages
+                if data.get('has_more') and data.get('next_page'):
+                    page_token = data['next_page']
+                else:
+                    break
+            elif resp.status_code == 403:
+                logger.warning('OpenAI Costs API not available (403)')
+                return {'error': 'Требуется Admin API key для доступа к Costs API', 'data': []}
+            else:
+                logger.error(f'OpenAI Costs API error: {resp.status_code} - {resp.text}')
+                return {'error': f'API error: {resp.status_code}', 'data': []}
+
+        return {'object': 'page', 'data': all_data, 'has_more': False}
