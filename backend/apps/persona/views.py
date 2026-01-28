@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 
 import httpx
 from django.db.models import Sum, Count
@@ -843,8 +843,8 @@ class OpenAIUsageView(APIView):
             start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             end_date = now
         else:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(tzinfo=timezone.utc)
-            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(tzinfo=dt_timezone.utc)
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=dt_timezone.utc)
 
         # Convert to Unix timestamps
         start_time = int(start_date.timestamp())
