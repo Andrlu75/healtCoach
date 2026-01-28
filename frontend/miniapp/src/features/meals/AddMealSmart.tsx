@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Camera, X, Image, Loader2, Plus, Trash2, Check, Edit3, Scale
+  Camera, X, Image, Loader2, Plus, Trash2, Check, Edit3, Scale, RefreshCw
 } from 'lucide-react'
 import {
   analyzeSmartMealPhoto,
@@ -530,7 +530,7 @@ function AddMealSmart() {
         <div className="flex items-center gap-2 mt-2">
           <Scale size={16} className="text-gray-400" />
           {editingWeight ? (
-            <div className="flex gap-2 flex-1">
+            <div className="flex gap-2 flex-1 items-center">
               <Input
                 type="number"
                 value={editedWeight}
@@ -538,9 +538,15 @@ function AddMealSmart() {
                 className="w-24"
                 autoFocus
               />
-              <span className="text-gray-500 self-center">г</span>
-              <Button size="sm" onClick={handleSaveWeight} disabled={updateDraftMutation.isPending}>
-                <Check size={16} />
+              <span className="text-gray-500">г</span>
+              <Button
+                size="sm"
+                onClick={handleSaveWeight}
+                disabled={updateDraftMutation.isPending}
+                className="flex items-center gap-1"
+              >
+                <RefreshCw size={14} className={updateDraftMutation.isPending ? 'animate-spin' : ''} />
+                <span className="text-xs">Пересчитать</span>
               </Button>
               <Button size="sm" variant="secondary" onClick={() => setEditingWeight(false)}>
                 <X size={16} />
