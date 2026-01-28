@@ -88,14 +88,44 @@ export default function Dashboard() {
 
           <div className="overflow-x-auto">
             <div className="inline-flex gap-4 min-w-full pb-2">
-              {mealsDashboard.clients.map(client => (
+              {mealsDashboard.clients.map(client => {
+                const caloriesPercent = Math.round((client.totals.calories / client.norms.calories) * 100)
+                return (
                 <div key={client.client_id} className="w-64 flex-shrink-0 bg-muted rounded-lg p-3">
-                  <div className="font-medium text-foreground mb-2 truncate">{client.client_name}</div>
+                  {/* Header with name and KBJU summary */}
+                  <div className="mb-3">
+                    <div className="font-medium text-foreground truncate">{client.client_name}</div>
+
+                    {/* KBJU Summary - Main Accent */}
+                    <div className="mt-2 p-2 bg-card rounded-lg border border-border">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-lg font-bold text-foreground">{client.totals.calories}</span>
+                        <span className="text-sm text-muted-foreground">/ {client.norms.calories} ккал</span>
+                      </div>
+                      <div className="w-full h-2 bg-secondary rounded-full overflow-hidden mb-2">
+                        <div
+                          className={`h-full transition-all ${caloriesPercent >= 100 ? 'bg-green-500' : caloriesPercent >= 70 ? 'bg-yellow-500' : 'bg-orange-500'}`}
+                          style={{ width: `${Math.min(caloriesPercent, 100)}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className={client.totals.proteins >= client.norms.proteins ? 'text-green-400 font-medium' : 'text-muted-foreground'}>
+                          Б: {client.totals.proteins}/{client.norms.proteins}
+                        </span>
+                        <span className={client.totals.fats >= client.norms.fats ? 'text-green-400 font-medium' : 'text-muted-foreground'}>
+                          Ж: {client.totals.fats}/{client.norms.fats}
+                        </span>
+                        <span className={client.totals.carbs >= client.norms.carbs ? 'text-green-400 font-medium' : 'text-muted-foreground'}>
+                          У: {client.totals.carbs}/{client.norms.carbs}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Meals list */}
-                  <div className="space-y-2 mb-3 max-h-48 overflow-y-auto">
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
                     {client.meals.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-4">Нет приёмов пищи</p>
+                      <p className="text-xs text-muted-foreground text-center py-3">Нет приёмов пищи</p>
                     ) : (
                       client.meals.map(meal => (
                         <div key={meal.id} className="flex items-center gap-2 bg-card rounded-lg p-2">
@@ -112,39 +142,9 @@ export default function Dashboard() {
                       ))
                     )}
                   </div>
-
-                  {/* Totals */}
-                  <div className="border-t border-border pt-2">
-                    <div className="text-xs text-muted-foreground mb-1">Итого / Норма</div>
-                    <div className="grid grid-cols-2 gap-1 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Ккал:</span>
-                        <span className={client.totals.calories >= client.norms.calories ? 'text-green-400' : 'text-foreground'}>
-                          {client.totals.calories}/{client.norms.calories}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Б:</span>
-                        <span className={client.totals.proteins >= client.norms.proteins ? 'text-green-400' : 'text-foreground'}>
-                          {client.totals.proteins}/{client.norms.proteins}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Ж:</span>
-                        <span className={client.totals.fats >= client.norms.fats ? 'text-green-400' : 'text-foreground'}>
-                          {client.totals.fats}/{client.norms.fats}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">У:</span>
-                        <span className={client.totals.carbs >= client.norms.carbs ? 'text-green-400' : 'text-foreground'}>
-                          {client.totals.carbs}/{client.norms.carbs}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>
