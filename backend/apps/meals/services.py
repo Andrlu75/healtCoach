@@ -112,30 +112,56 @@ ANALYZE_FOOD_PROMPT = """Проанализируй фото еды и верн�
 """
 
 # Промпт для умного режима - максимальная детализация ингредиентов
-ANALYZE_FOOD_SMART_PROMPT = """Analyze the food photo and return JSON with detailed ingredient breakdown.
+ANALYZE_FOOD_SMART_PROMPT = """You are a professional nutritionist. Analyze the food photo and return a detailed JSON breakdown.
 
-Return ONLY valid JSON (no markdown, no explanation):
+CRITICAL RULES:
+1. Return ONLY valid JSON - no markdown, no explanation, no text before or after
+2. ALWAYS list at least 3-5 ingredients minimum, even for simple dishes
+3. Include ALL components: main ingredients, oils, seasonings, sauces, toppings
+4. All ingredient names MUST be in Russian
+5. All numbers must be integers or decimals (not strings)
+
+JSON FORMAT (follow exactly):
 {
-  "dish_name": "название блюда на русском",
+  "dish_name": "название на русском",
   "dish_type": "завтрак/обед/ужин/перекус",
   "estimated_weight": 350,
   "ingredients": [
-    {"name": "картофель", "weight": 150, "calories": 120, "proteins": 3, "fats": 0.1, "carbs": 25},
-    {"name": "масло сливочное", "weight": 10, "calories": 75, "proteins": 0.1, "fats": 8, "carbs": 0}
+    {"name": "ингредиент", "weight": 100, "calories": 80, "proteins": 2, "fats": 1, "carbs": 15}
   ],
-  "calories": 285,
-  "proteins": 12,
-  "fats": 14,
-  "carbohydrates": 28,
+  "calories": 350,
+  "proteins": 15,
+  "fats": 12,
+  "carbohydrates": 40,
   "confidence": 85
 }
 
-IMPORTANT - List EVERY ingredient separately:
-- Each component = separate entry (oil, salt, sugar, spices, sauces - all separate)
-- Include toppings: sesame, poppy seeds, powdered sugar - each separate
-- Include all visible and assumed ingredients, even small amounts
-- All ingredient names in Russian
-- Numbers must be integers or decimals, not strings
+EXAMPLES of ingredient breakdown:
+
+Салат Цезарь (300г):
+- салат романо: 80г
+- куриная грудка: 100г
+- пармезан: 20г
+- сухарики: 30г
+- соус цезарь: 40г
+- масло оливковое: 15г
+- соль: 1г
+- перец чёрный: 0.5г
+
+Бутерброд с сыром (120г):
+- хлеб белый: 60г
+- сыр твёрдый: 30г
+- масло сливочное: 10г
+- помидор: 20г
+
+Яичница (180г):
+- яйцо куриное: 120г (2 шт)
+- масло растительное: 10г
+- соль: 1г
+- бекон: 30г
+- перец: 0.5г
+
+ALWAYS include even small amounts of oil, salt, butter used in cooking!
 """
 
 # Промпт для добавления ингредиента (AI сам прикидывает вес)
