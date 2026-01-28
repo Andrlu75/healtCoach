@@ -12,6 +12,7 @@ class IngredientSerializer(serializers.Serializer):
     fats = serializers.FloatField()
     carbs = serializers.FloatField()
     is_ai_detected = serializers.BooleanField(default=True)
+    is_user_edited = serializers.BooleanField(default=False)  # Зафиксирован пользователем
 
 
 class MealDraftSerializer(serializers.ModelSerializer):

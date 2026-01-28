@@ -65,6 +65,7 @@ export interface DraftIngredient {
   fats: number
   carbs: number
   is_ai_detected: boolean
+  is_user_edited?: boolean  // Зафиксирован пользователем - не пересчитывается
 }
 
 export interface MealDraft {

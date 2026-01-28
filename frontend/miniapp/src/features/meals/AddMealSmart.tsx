@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Camera, X, Image, Loader2, Plus, Trash2, Check, Edit3, Scale, RefreshCw
+  Camera, X, Image, Loader2, Plus, Trash2, Check, Edit3, Scale, RefreshCw, Lock
 } from 'lucide-react'
 import {
   analyzeSmartMealPhoto,
@@ -648,18 +648,29 @@ function AddMealSmart() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                className={cn(
+                  "flex items-center justify-between p-3 rounded-lg",
+                  ing.is_user_edited
+                    ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+                    : "bg-gray-50 dark:bg-gray-800"
+                )}
               >
                 <button
                   onClick={() => handleEditIngredient(index)}
                   className="flex-1 text-left"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-gray-900 dark:text-gray-100">
                       {ing.name}
                     </span>
                     <span className="text-sm text-gray-500">{ing.weight}г</span>
-                    {!ing.is_ai_detected && (
+                    {ing.is_user_edited && (
+                      <span className="text-xs px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 rounded flex items-center gap-1">
+                        <Lock size={10} />
+                        зафиксировано
+                      </span>
+                    )}
+                    {!ing.is_ai_detected && !ing.is_user_edited && (
                       <span className="text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 rounded">
                         добавлено
                       </span>

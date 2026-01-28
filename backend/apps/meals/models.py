@@ -81,21 +81,46 @@ class MealDraft(models.Model):
             self.recalculate_nutrition()
 
     def scale_by_weight(self, new_weight: int):
-        """Пропорционально пересчитать все ингредиенты при изменении веса.
+        """Пропорционально пересчитать ингредиенты при изменении веса.
 
-        Например: было 300г, стало 450г → коэффициент 1.5 → все значения × 1.5
+        ВАЖНО: Ингредиенты с is_user_edited=True НЕ пересчитываются!
+        Пользователь явно указал значения - они фиксированы.
+
+        Например: было 300г, стало 450г → коэффициент 1.5
+        → ингредиенты без is_user_edited × 1.5
+        → ингредиенты с is_user_edited остаются как есть
         """
         if self.estimated_weight <= 0 or new_weight <= 0:
             return
 
-        ratio = new_weight / self.estimated_weight
+        # Считаем вес только НЕ отредактированных ингредиентов
+        editable_weight = sum(
+            ing.get('weight', 0)
+            for ing in self.ingredients
+            if not ing.get('is_user_edited', False)
+        )
+        fixed_weight = sum(
+            ing.get('weight', 0)
+            for ing in self.ingredients
+            if ing.get('is_user_edited', False)
+        )
 
-        for ing in self.ingredients:
-            ing['weight'] = round(ing.get('weight', 0) * ratio, 1)
-            ing['calories'] = round(ing.get('calories', 0) * ratio, 1)
-            ing['proteins'] = round(ing.get('proteins', 0) * ratio, 2)
-            ing['fats'] = round(ing.get('fats', 0) * ratio, 2)
-            ing['carbs'] = round(ing.get('carbs', 0) * ratio, 2)
+        # Целевой вес для редактируемых = новый общий вес - зафиксированный
+        target_editable_weight = new_weight - fixed_weight
+
+        if editable_weight > 0 and target_editable_weight > 0:
+            ratio = target_editable_weight / editable_weight
+
+            for ing in self.ingredients:
+                # Пропускаем зафиксированные пользователем ингредиенты
+                if ing.get('is_user_edited', False):
+                    continue
+
+                ing['weight'] = round(ing.get('weight', 0) * ratio, 1)
+                ing['calories'] = round(ing.get('calories', 0) * ratio, 1)
+                ing['proteins'] = round(ing.get('proteins', 0) * ratio, 2)
+                ing['fats'] = round(ing.get('fats', 0) * ratio, 2)
+                ing['carbs'] = round(ing.get('carbs', 0) * ratio, 2)
 
         self.estimated_weight = new_weight
         self.recalculate_nutrition()
@@ -104,6 +129,8 @@ class MealDraft(models.Model):
         """Обновить данные ингредиента по индексу.
 
         data может содержать: name, weight, calories, proteins, fats, carbs
+        После редактирования ингредиент помечается как is_user_edited=True
+        и не будет пересчитываться при изменении общего веса.
         """
         if not (0 <= index < len(self.ingredients)):
             raise ValueError(f'Индекс {index} вне диапазона')
@@ -122,6 +149,9 @@ class MealDraft(models.Model):
             ing['fats'] = float(data['fats'])
         if 'carbs' in data:
             ing['carbs'] = float(data['carbs'])
+
+        # Помечаем как отредактированный пользователем - не будет пересчитываться
+        ing['is_user_edited'] = True
 
         self.recalculate_nutrition()
 
