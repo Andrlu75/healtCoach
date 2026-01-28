@@ -1,6 +1,8 @@
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
@@ -8,6 +10,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from apps.workouts.models import (
     ClientWorkout, WorkoutBlock, WorkoutExercise, WorkoutSuperset,
     WorkoutTemplate, WorkoutTemplateBlock, WorkoutTemplateExercise,
+    WorkoutSession,
 )
 from apps.workouts.serializers import (
     ClientWorkoutListSerializer,
@@ -17,6 +20,7 @@ from apps.workouts.serializers import (
     WorkoutExerciseSerializer,
     WorkoutSupersetSerializer,
 )
+from apps.accounts.models import Client
 
 
 class ClientWorkoutViewSet(viewsets.ModelViewSet):
@@ -286,3 +290,68 @@ class WorkoutExerciseViewSet(viewsets.ModelViewSet):
         return WorkoutExercise.objects.filter(
             block__workout__client__coach=self.request.user.coach_profile
         )
+
+
+class TodayWorkoutsDashboardView(APIView):
+    """Get today's workouts for all clients - for dashboard display."""
+
+    def get(self, request):
+        coach = request.user.coach_profile
+        today = timezone.localdate()
+
+        # Get all active clients
+        clients = Client.objects.filter(coach=coach, status='active').order_by('first_name')
+
+        result = []
+        for client in clients:
+            # Get workouts scheduled for today
+            workouts = ClientWorkout.objects.filter(
+                client=client,
+                scheduled_date=today,
+            ).select_related('template').prefetch_related('sessions')
+
+            workouts_data = []
+            for workout in workouts:
+                # Get latest session for this workout
+                latest_session = workout.sessions.order_by('-started_at').first()
+
+                workouts_data.append({
+                    'id': workout.id,
+                    'name': workout.name,
+                    'scheduled_time': workout.scheduled_time.strftime('%H:%M') if workout.scheduled_time else None,
+                    'status': workout.status,
+                    'difficulty': workout.difficulty,
+                    'estimated_duration': workout.estimated_duration,
+                    'exercises_count': sum(block.exercises.count() for block in workout.blocks.all()),
+                    'session': {
+                        'id': latest_session.id,
+                        'status': latest_session.status,
+                        'completion_percentage': latest_session.completion_percentage,
+                        'duration_seconds': latest_session.duration_seconds,
+                    } if latest_session else None,
+                })
+
+            # Calculate summary
+            total = len(workouts_data)
+            completed = sum(1 for w in workouts_data if w['status'] == 'completed')
+            in_progress = sum(1 for w in workouts_data if w['status'] == 'in_progress')
+
+            result.append({
+                'client_id': client.id,
+                'client_name': f"{client.first_name or ''} {client.last_name or ''}".strip() or f"Клиент #{client.id}",
+                'workouts': workouts_data,
+                'summary': {
+                    'total': total,
+                    'completed': completed,
+                    'in_progress': in_progress,
+                    'pending': total - completed - in_progress,
+                },
+            })
+
+        # Filter out clients with no workouts today
+        result = [r for r in result if r['workouts']]
+
+        return Response({
+            'date': today.isoformat(),
+            'clients': result,
+        })

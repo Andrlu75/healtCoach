@@ -1,5 +1,5 @@
 from .templates import WorkoutTemplateViewSet, WorkoutTemplateBlockViewSet
-from .workouts import ClientWorkoutViewSet, WorkoutBlockViewSet, WorkoutExerciseViewSet
+from .workouts import ClientWorkoutViewSet, WorkoutBlockViewSet, WorkoutExerciseViewSet, TodayWorkoutsDashboardView
 from .scheduling import TrainingScheduleViewSet, TrainingProgramViewSet
 from .progress import WorkoutSessionViewSet
 
@@ -12,4 +12,5 @@ __all__ = [
     'TrainingScheduleViewSet',
     'TrainingProgramViewSet',
     'WorkoutSessionViewSet',
+    'TodayWorkoutsDashboardView',
 ]

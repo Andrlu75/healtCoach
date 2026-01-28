@@ -33,6 +33,45 @@ export const mealsApi = {
     api.get<MealsDashboardResponse>('/meals/dashboard/'),
 }
 
+// Workouts Dashboard
+export interface WorkoutDashboardItem {
+  id: number
+  name: string
+  scheduled_time: string | null
+  status: 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'skipped'
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  estimated_duration: number | null
+  exercises_count: number
+  session: {
+    id: number
+    status: string
+    completion_percentage: number
+    duration_seconds: number | null
+  } | null
+}
+
+export interface ClientWorkoutsDashboard {
+  client_id: number
+  client_name: string
+  workouts: WorkoutDashboardItem[]
+  summary: {
+    total: number
+    completed: number
+    in_progress: number
+    pending: number
+  }
+}
+
+export interface WorkoutsDashboardResponse {
+  date: string
+  clients: ClientWorkoutsDashboard[]
+}
+
+export const workoutsApi = {
+  dashboard: () =>
+    api.get<WorkoutsDashboardResponse>('/workouts/dashboard/'),
+}
+
 export const metricsApi = {
   list: (params?: { client_id?: number; type?: string; date_from?: string; date_to?: string }) =>
     api.get<HealthMetric[]>('/metrics/', { params }),

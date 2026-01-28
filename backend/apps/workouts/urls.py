@@ -9,6 +9,7 @@ from .views import (
     TrainingScheduleViewSet,
     TrainingProgramViewSet,
     WorkoutSessionViewSet,
+    TodayWorkoutsDashboardView,
 )
 from .views.fitdb import (
     FitDBWorkoutViewSet, FitDBWorkoutExerciseViewSet,
@@ -43,6 +44,7 @@ assignments_router.register('exercise-logs', FitDBExerciseLogViewSet, basename='
 assignments_router.register('activity-logs', FitDBActivityLogViewSet, basename='fitdb-activity-log')
 
 urlpatterns = [
+    path('dashboard/', TodayWorkoutsDashboardView.as_view(), name='workouts-dashboard'),
     path('fitdb/', include(fitdb_router.urls)),
     path('', include(assignments_router.urls)),
     path('', include(router.urls)),

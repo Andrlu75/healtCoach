@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Users, UserCheck, UserPlus, UserX, DollarSign, User, Utensils, X } from 'lucide-react'
+import { Users, UserCheck, UserPlus, UserX, DollarSign, User, Utensils, Dumbbell, X, Check, Clock, Play } from 'lucide-react'
 import { settingsApi } from '../api/settings'
-import { mealsApi, type MealsDashboardResponse } from '../api/data'
+import { mealsApi, workoutsApi, type MealsDashboardResponse, type WorkoutsDashboardResponse } from '../api/data'
 import type { DashboardStats, AIUsageResponse } from '../types'
 
 const statCards = [
@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [usage, setUsage] = useState<AIUsageResponse | null>(null)
   const [mealsDashboard, setMealsDashboard] = useState<MealsDashboardResponse | null>(null)
+  const [workoutsDashboard, setWorkoutsDashboard] = useState<WorkoutsDashboardResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [showCostsModal, setShowCostsModal] = useState(false)
   const [modalPeriod, setModalPeriod] = useState('month')
@@ -37,11 +38,13 @@ export default function Dashboard() {
     Promise.all([
       settingsApi.getDashboardStats(),
       mealsApi.dashboard(),
+      workoutsApi.dashboard(),
       settingsApi.getUsageStats('month'),
     ])
-      .then(([statsRes, mealsRes, usageRes]) => {
+      .then(([statsRes, mealsRes, workoutsRes, usageRes]) => {
         setStats(statsRes.data)
         setMealsDashboard(mealsRes.data)
+        setWorkoutsDashboard(workoutsRes.data)
         setUsage(usageRes.data)
       })
       .finally(() => setLoading(false))
@@ -175,6 +178,75 @@ export default function Dashboard() {
                 </div>
                 )
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Today's Workouts by Client */}
+      {workoutsDashboard && workoutsDashboard.clients.length > 0 && (
+        <div className="bg-card rounded-xl border border-border p-5 mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400">
+              <Dumbbell size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Тренировки на сегодня</h2>
+              <p className="text-xs text-muted-foreground">{workoutsDashboard.date}</p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <div className="inline-flex gap-4 min-w-full pb-2">
+              {workoutsDashboard.clients.map(client => (
+                <div key={client.client_id} className="w-64 flex-shrink-0 bg-muted rounded-lg p-3">
+                  {/* Header with name and summary */}
+                  <div className="mb-3">
+                    <div className="font-medium text-foreground truncate">{client.client_name}</div>
+
+                    {/* Summary */}
+                    <div className="mt-2 p-2 bg-card rounded-lg border border-border">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-lg font-bold text-foreground">{client.summary.completed}/{client.summary.total}</span>
+                        <span className="text-sm text-muted-foreground">выполнено</span>
+                      </div>
+                      <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all ${client.summary.completed === client.summary.total ? 'bg-green-500' : client.summary.completed > 0 ? 'bg-blue-500' : 'bg-gray-500'}`}
+                          style={{ width: `${client.summary.total > 0 ? (client.summary.completed / client.summary.total) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Workouts list */}
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {client.workouts.map(workout => (
+                      <div key={workout.id} className="flex items-center gap-2 bg-card rounded-lg p-2">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          workout.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                          workout.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                          workout.status === 'skipped' ? 'bg-red-500/20 text-red-400' :
+                          'bg-gray-500/20 text-gray-400'
+                        }`}>
+                          {workout.status === 'completed' ? <Check size={16} /> :
+                           workout.status === 'in_progress' ? <Play size={16} /> :
+                           <Clock size={16} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-foreground truncate">{workout.name}</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {workout.scheduled_time || '—'} • {workout.exercises_count} упр.
+                            {workout.session && workout.status !== 'completed' && (
+                              <span className="text-blue-400"> • {workout.session.completion_percentage}%</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
