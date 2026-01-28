@@ -1273,50 +1273,70 @@ async def confirm_draft(draft: 'MealDraft') -> Meal:
     """Подтвердить черновик и создать Meal."""
     from .models import MealDraft
 
+    logger.info('[SMART CONFIRM] Starting for draft=%s status=%s', draft.pk, draft.status)
+
     if draft.status != 'pending':
         raise ValueError(f'Draft is not pending: {draft.status}')
 
-    # Преобразуем ингредиенты в простой список для Meal
-    ingredients_list = [ing['name'] for ing in draft.ingredients]
+    try:
+        # Явно загружаем client (ForeignKey lazy loading проблема в async)
+        client = await sync_to_async(lambda: draft.client)()
+        logger.info('[SMART CONFIRM] Client loaded: %s', client.pk)
 
-    # Создаём Meal
-    meal = await sync_to_async(Meal.objects.create)(
-        client=draft.client,
-        image_type='food',
-        dish_name=draft.dish_name,
-        dish_type=draft.dish_type,
-        calories=draft.calories,
-        proteins=draft.proteins,
-        fats=draft.fats,
-        carbohydrates=draft.carbohydrates,
-        ingredients=ingredients_list,
-        ai_confidence=int(draft.ai_confidence * 100) if draft.ai_confidence <= 1 else int(draft.ai_confidence),
-        meal_time=timezone.now(),
-        health_analysis={
-            'smart_mode': True,
-            'estimated_weight': draft.estimated_weight,
-            'detailed_ingredients': draft.ingredients,
-        },
-    )
+        # Преобразуем ингредиенты в простой список для Meal
+        ingredients_list = [ing['name'] for ing in draft.ingredients]
+        logger.info('[SMART CONFIRM] Ingredients: %d items', len(ingredients_list))
 
-    # Копируем изображение
-    if draft.image:
-        # Сбрасываем указатель на начало файла перед чтением
-        await sync_to_async(draft.image.seek)(0)
-        image_data = await sync_to_async(draft.image.read)()
-        if image_data:
-            filename = f'meal_{meal.pk}_{timezone.now().strftime("%Y%m%d_%H%M%S")}.jpg'
-            await sync_to_async(meal.image.save)(filename, ContentFile(image_data), save=True)
+        # Создаём Meal
+        meal = await sync_to_async(Meal.objects.create)(
+            client=client,
+            image_type='food',
+            dish_name=draft.dish_name,
+            dish_type=draft.dish_type,
+            calories=draft.calories,
+            proteins=draft.proteins,
+            fats=draft.fats,
+            carbohydrates=draft.carbohydrates,
+            ingredients=ingredients_list,
+            ai_confidence=int(draft.ai_confidence * 100) if draft.ai_confidence <= 1 else int(draft.ai_confidence),
+            meal_time=timezone.now(),
+            health_analysis={
+                'smart_mode': True,
+                'estimated_weight': draft.estimated_weight,
+                'detailed_ingredients': draft.ingredients,
+            },
+        )
+        logger.info('[SMART CONFIRM] Meal created: %s', meal.pk)
 
-    # Обновляем черновик
-    draft.status = 'confirmed'
-    draft.confirmed_at = timezone.now()
-    draft.meal = meal
-    await sync_to_async(draft.save)()
+        # Копируем изображение
+        if draft.image:
+            try:
+                # Сбрасываем указатель на начало файла перед чтением
+                await sync_to_async(draft.image.seek)(0)
+                image_data = await sync_to_async(draft.image.read)()
+                if image_data:
+                    filename = f'meal_{meal.pk}_{timezone.now().strftime("%Y%m%d_%H%M%S")}.jpg'
+                    await sync_to_async(meal.image.save)(filename, ContentFile(image_data), save=True)
+                    logger.info('[SMART CONFIRM] Image copied: %d bytes', len(image_data))
+                else:
+                    logger.warning('[SMART CONFIRM] No image data to copy')
+            except Exception as img_err:
+                logger.warning('[SMART CONFIRM] Failed to copy image: %s', img_err)
+                # Продолжаем без изображения
 
-    logger.info('[SMART] Confirmed draft=%s -> meal=%s', draft.pk, meal.pk)
+        # Обновляем черновик
+        draft.status = 'confirmed'
+        draft.confirmed_at = timezone.now()
+        draft.meal = meal
+        await sync_to_async(draft.save)()
 
-    return meal
+        logger.info('[SMART CONFIRM] Draft updated, returning meal=%s', meal.pk)
+
+        return meal
+
+    except Exception as e:
+        logger.exception('[SMART CONFIRM] Error confirming draft=%s: %s', draft.pk, e)
+        raise
 
 
 async def cancel_draft(draft: 'MealDraft') -> None:
