@@ -688,6 +688,7 @@ class ClientProfileView(APIView):
             'daily_carbs': float(client.daily_carbs) if client.daily_carbs else None,
             'daily_water': float(client.daily_water) if client.daily_water else None,
             'onboarding_completed': client.onboarding_completed,
+            'meal_analysis_mode': client.meal_analysis_mode,
         })
 
     def patch(self, request):
@@ -736,6 +737,12 @@ class ClientProfileView(APIView):
             client.daily_water = data['daily_water']
             updated_fields.append('daily_water')
 
+        # Режим анализа еды
+        if 'meal_analysis_mode' in data:
+            if data['meal_analysis_mode'] in ('ask', 'fast', 'smart'):
+                client.meal_analysis_mode = data['meal_analysis_mode']
+                updated_fields.append('meal_analysis_mode')
+
         if updated_fields:
             client.save(update_fields=updated_fields)
 
@@ -753,4 +760,5 @@ class ClientProfileView(APIView):
             'daily_carbs': float(client.daily_carbs) if client.daily_carbs else None,
             'daily_water': float(client.daily_water) if client.daily_water else None,
             'onboarding_completed': client.onboarding_completed,
+            'meal_analysis_mode': client.meal_analysis_mode,
         })

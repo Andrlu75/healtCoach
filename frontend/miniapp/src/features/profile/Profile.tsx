@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { User, Target, Moon, Sun, LogOut, Check } from 'lucide-react'
+import { User, Target, Moon, Sun, LogOut, Check, Zap, Sparkles, HelpCircle } from 'lucide-react'
 import { useAuthStore } from '../auth'
 import { useThemeStore } from '../../shared/stores/theme'
 import { useTelegram, useHaptic } from '../../shared/hooks'
 import { Card } from '../../shared/components/ui'
 import { updateProfile } from '../../api/endpoints'
+
+type MealAnalysisMode = 'ask' | 'fast' | 'smart'
 
 function Profile() {
   const client = useAuthStore((s) => s.client)
@@ -15,6 +17,7 @@ function Profile() {
   const { showConfirm, close } = useTelegram()
   const { impact, notification } = useHaptic()
   const [savingGender, setSavingGender] = useState(false)
+  const [savingMode, setSavingMode] = useState(false)
 
   const handleThemeToggle = () => {
     impact('light')
@@ -45,6 +48,24 @@ function Profile() {
       notification('error')
     } finally {
       setSavingGender(false)
+    }
+  }
+
+  const handleModeChange = async (mode: MealAnalysisMode) => {
+    if (savingMode || client?.meal_analysis_mode === mode) return
+    impact('light')
+    setSavingMode(true)
+    try {
+      const response = await updateProfile({ meal_analysis_mode: mode })
+      if (client) {
+        setClient({ ...client, meal_analysis_mode: response.data.meal_analysis_mode })
+      }
+      notification('success')
+    } catch (error) {
+      console.error('Error updating meal analysis mode:', error)
+      notification('error')
+    } finally {
+      setSavingMode(false)
     }
   }
 
@@ -126,6 +147,137 @@ function Profile() {
               {client?.gender === 'female' && (
                 <Check size={16} className="text-blue-600" />
               )}
+            </div>
+          </motion.button>
+        </div>
+      </Card>
+
+      {/* Meal analysis mode */}
+      <Card variant="elevated" className="p-4">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+          Режим анализа еды
+        </h3>
+        <div className="space-y-2">
+          {/* Ask */}
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={() => handleModeChange('ask')}
+            disabled={savingMode}
+            className={`w-full p-3 rounded-xl border-2 transition-colors text-left ${
+              client?.meal_analysis_mode === 'ask'
+                ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                client?.meal_analysis_mode === 'ask'
+                  ? 'bg-blue-100 dark:bg-blue-900/50'
+                  : 'bg-gray-100 dark:bg-gray-700'
+              }`}>
+                <HelpCircle size={20} className={
+                  client?.meal_analysis_mode === 'ask' ? 'text-blue-600' : 'text-gray-500'
+                } />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-medium ${
+                    client?.meal_analysis_mode === 'ask'
+                      ? 'text-blue-700 dark:text-blue-300'
+                      : 'text-gray-700 dark:text-gray-300'
+                  }`}>
+                    Спрашивать каждый раз
+                  </span>
+                  {client?.meal_analysis_mode === 'ask' && (
+                    <Check size={16} className="text-blue-600" />
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Выбирать режим при каждом добавлении
+                </p>
+              </div>
+            </div>
+          </motion.button>
+
+          {/* Fast */}
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={() => handleModeChange('fast')}
+            disabled={savingMode}
+            className={`w-full p-3 rounded-xl border-2 transition-colors text-left ${
+              client?.meal_analysis_mode === 'fast'
+                ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                client?.meal_analysis_mode === 'fast'
+                  ? 'bg-blue-100 dark:bg-blue-900/50'
+                  : 'bg-gray-100 dark:bg-gray-700'
+              }`}>
+                <Zap size={20} className={
+                  client?.meal_analysis_mode === 'fast' ? 'text-blue-600' : 'text-gray-500'
+                } />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-medium ${
+                    client?.meal_analysis_mode === 'fast'
+                      ? 'text-blue-700 dark:text-blue-300'
+                      : 'text-gray-700 dark:text-gray-300'
+                  }`}>
+                    Быстрый режим
+                  </span>
+                  {client?.meal_analysis_mode === 'fast' && (
+                    <Check size={16} className="text-blue-600" />
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Распознавание и сохранение сразу
+                </p>
+              </div>
+            </div>
+          </motion.button>
+
+          {/* Smart */}
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={() => handleModeChange('smart')}
+            disabled={savingMode}
+            className={`w-full p-3 rounded-xl border-2 transition-colors text-left ${
+              client?.meal_analysis_mode === 'smart'
+                ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                client?.meal_analysis_mode === 'smart'
+                  ? 'bg-purple-100 dark:bg-purple-900/50'
+                  : 'bg-gray-100 dark:bg-gray-700'
+              }`}>
+                <Sparkles size={20} className={
+                  client?.meal_analysis_mode === 'smart' ? 'text-purple-600' : 'text-gray-500'
+                } />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-medium ${
+                    client?.meal_analysis_mode === 'smart'
+                      ? 'text-purple-700 dark:text-purple-300'
+                      : 'text-gray-700 dark:text-gray-300'
+                  }`}>
+                    Умный режим
+                  </span>
+                  {client?.meal_analysis_mode === 'smart' && (
+                    <Check size={16} className="text-purple-600" />
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Детальный анализ с редактированием ингредиентов
+                </p>
+              </div>
             </div>
           </motion.button>
         </div>

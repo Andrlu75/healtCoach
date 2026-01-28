@@ -142,6 +142,7 @@ export const updateProfile = (data: Partial<{
   daily_fats: number
   daily_carbs: number
   daily_water: number
+  meal_analysis_mode: 'ask' | 'fast' | 'smart'
 }>) => api.patch('/miniapp/profile/', data)
 
 // Reminders (client-facing)

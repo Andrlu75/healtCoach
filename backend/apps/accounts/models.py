@@ -81,6 +81,17 @@ class Client(models.Model):
     # Режим диалога
     manual_mode = models.BooleanField(default=False)
 
+    # Режим анализа еды
+    meal_analysis_mode = models.CharField(
+        max_length=10,
+        choices=[
+            ('ask', 'Спрашивать'),
+            ('fast', 'Быстрый'),
+            ('smart', 'Умный'),
+        ],
+        default='ask',
+    )
+
     # Онбординг
     onboarding_completed = models.BooleanField(default=False)
     onboarding_data = models.JSONField(default=dict, blank=True)

@@ -12,6 +12,7 @@ export interface ClientData {
   daily_carbs: number | null
   daily_water: number | null
   onboarding_completed: boolean
+  meal_analysis_mode: 'ask' | 'fast' | 'smart'
 }
 
 export interface Meal {

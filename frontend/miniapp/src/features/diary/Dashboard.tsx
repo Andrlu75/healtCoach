@@ -37,6 +37,16 @@ function Dashboard() {
 
   const handleAddMeal = () => {
     impact('light')
+    // Если режим выбран в настройках - сразу переходим
+    if (client?.meal_analysis_mode === 'fast') {
+      navigate('/diary/add')
+      return
+    }
+    if (client?.meal_analysis_mode === 'smart') {
+      navigate('/diary/add-smart')
+      return
+    }
+    // Иначе показываем меню выбора
     setShowModeMenu(true)
   }
 
