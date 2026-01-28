@@ -55,6 +55,7 @@ function AddMealSmart() {
   // Редактирование ингредиента
   const [editingIngredientIndex, setEditingIngredientIndex] = useState<number | null>(null)
   const [editedIngredient, setEditedIngredient] = useState<Partial<DraftIngredient>>({})
+  const [originalIngredient, setOriginalIngredient] = useState<Partial<DraftIngredient>>({})  // Для сравнения
   const [showIngredientModal, setShowIngredientModal] = useState(false)
 
   // AI комментарий после сохранения
@@ -282,25 +283,57 @@ function AddMealSmart() {
     if (!draft) return
     impact('light')
     const ing = draft.ingredients[index]
-    setEditingIngredientIndex(index)
-    setEditedIngredient({
+    const ingData = {
       name: ing.name,
       weight: ing.weight,
       calories: ing.calories,
       proteins: ing.proteins,
       fats: ing.fats,
       carbs: ing.carbs,
-    })
+    }
+    setEditingIngredientIndex(index)
+    setEditedIngredient(ingData)
+    setOriginalIngredient(ingData)  // Сохраняем оригинал для сравнения
     setShowIngredientModal(true)
   }
 
   const handleSaveIngredient = () => {
     if (!draft || editingIngredientIndex === null) return
     impact('light')
+
+    // Определяем, что изменилось
+    const changedData: Partial<DraftIngredient> = {}
+
+    if (editedIngredient.name !== originalIngredient.name) {
+      changedData.name = editedIngredient.name
+    }
+    if (editedIngredient.weight !== originalIngredient.weight) {
+      changedData.weight = editedIngredient.weight
+    }
+    // КБЖУ - если хоть одно изменилось, отправляем все изменённые
+    if (editedIngredient.calories !== originalIngredient.calories) {
+      changedData.calories = editedIngredient.calories
+    }
+    if (editedIngredient.proteins !== originalIngredient.proteins) {
+      changedData.proteins = editedIngredient.proteins
+    }
+    if (editedIngredient.fats !== originalIngredient.fats) {
+      changedData.fats = editedIngredient.fats
+    }
+    if (editedIngredient.carbs !== originalIngredient.carbs) {
+      changedData.carbs = editedIngredient.carbs
+    }
+
+    // Если ничего не изменилось - просто закрываем
+    if (Object.keys(changedData).length === 0) {
+      handleCloseIngredientModal()
+      return
+    }
+
     updateIngredientMutation.mutate({
       draftId: draft.id,
       index: editingIngredientIndex,
-      data: editedIngredient,
+      data: changedData,
     })
   }
 
@@ -308,6 +341,7 @@ function AddMealSmart() {
     setShowIngredientModal(false)
     setEditingIngredientIndex(null)
     setEditedIngredient({})
+    setOriginalIngredient({})
   }
 
   const handleConfirm = () => {

@@ -129,8 +129,10 @@ class MealDraft(models.Model):
         """Обновить данные ингредиента по индексу.
 
         data может содержать: name, weight, calories, proteins, fats, carbs
-        После редактирования ингредиент помечается как is_user_edited=True
-        и не будет пересчитываться при изменении общего веса.
+
+        Логика:
+        - Если меняется только weight (без КБЖУ) → КБЖУ пересчитывается пропорционально
+        - Если меняется КБЖУ напрямую → сохраняется как есть, ингредиент фиксируется
         """
         if not (0 <= index < len(self.ingredients)):
             raise ValueError(f'Индекс {index} вне диапазона')
@@ -139,19 +141,46 @@ class MealDraft(models.Model):
 
         if 'name' in data:
             ing['name'] = data['name']
-        if 'weight' in data:
-            ing['weight'] = float(data['weight'])
-        if 'calories' in data:
-            ing['calories'] = float(data['calories'])
-        if 'proteins' in data:
-            ing['proteins'] = float(data['proteins'])
-        if 'fats' in data:
-            ing['fats'] = float(data['fats'])
-        if 'carbs' in data:
-            ing['carbs'] = float(data['carbs'])
 
-        # Помечаем как отредактированный пользователем - не будет пересчитываться
-        ing['is_user_edited'] = True
+        # Проверяем, меняется ли только вес (без прямого изменения КБЖУ)
+        only_weight_changed = (
+            'weight' in data and
+            'calories' not in data and
+            'proteins' not in data and
+            'fats' not in data and
+            'carbs' not in data
+        )
+
+        if only_weight_changed:
+            # Пересчитываем КБЖУ пропорционально новому весу
+            old_weight = ing.get('weight', 0)
+            new_weight = float(data['weight'])
+
+            if old_weight > 0 and new_weight > 0:
+                ratio = new_weight / old_weight
+                ing['weight'] = round(new_weight, 1)
+                ing['calories'] = round(ing.get('calories', 0) * ratio, 1)
+                ing['proteins'] = round(ing.get('proteins', 0) * ratio, 2)
+                ing['fats'] = round(ing.get('fats', 0) * ratio, 2)
+                ing['carbs'] = round(ing.get('carbs', 0) * ratio, 2)
+            else:
+                ing['weight'] = new_weight
+            # НЕ ставим is_user_edited - это автоматический пересчёт
+        else:
+            # Пользователь меняет КБЖУ напрямую - фиксируем
+            if 'weight' in data:
+                ing['weight'] = float(data['weight'])
+            if 'calories' in data:
+                ing['calories'] = float(data['calories'])
+            if 'proteins' in data:
+                ing['proteins'] = float(data['proteins'])
+            if 'fats' in data:
+                ing['fats'] = float(data['fats'])
+            if 'carbs' in data:
+                ing['carbs'] = float(data['carbs'])
+
+            # Помечаем как отредактированный пользователем - не будет пересчитываться
+            ing['is_user_edited'] = True
 
         self.recalculate_nutrition()
 
