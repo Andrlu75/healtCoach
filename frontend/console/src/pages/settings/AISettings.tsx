@@ -362,6 +362,7 @@ export default function AISettings() {
       const endDate = now.toISOString().split('T')[0]
 
       const { data } = await settingsApi.getOpenAIUsage(startDate, endDate)
+      console.log('OpenAI Usage data:', JSON.stringify(data, null, 2))
       setOpenaiUsage(data)
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || err.message || 'Не удалось загрузить данные из OpenAI'
@@ -1041,12 +1042,19 @@ export default function AISettings() {
                 <p className="text-sm text-yellow-400">{openaiUsage.error}</p>
               ) : openaiUsage?.costs?.error ? (
                 <p className="text-sm text-yellow-400">{openaiUsage.costs.error}</p>
-              ) : openaiUsage?.costs?.data && openaiUsage.costs.data.length > 0 ? (
+              ) : openaiUsage?.costs?.data && Array.isArray(openaiUsage.costs.data) && openaiUsage.costs.data.length > 0 ? (
                 <div className="text-2xl font-bold text-green-400">
-                  ${openaiUsage.costs.data.reduce((sum: number, day: { results?: Array<{ amount?: { value?: number } }> }) => {
-                    const dayAmount = day.results?.reduce((s: number, r: { amount?: { value?: number } }) => s + (r.amount?.value || 0), 0) || 0
-                    return sum + dayAmount
-                  }, 0).toFixed(4)}
+                  ${(() => {
+                    try {
+                      const total = openaiUsage.costs.data.reduce((sum: number, day: { results?: Array<{ amount?: { value?: number } }> }) => {
+                        const dayAmount = day.results?.reduce((s: number, r: { amount?: { value?: number } }) => s + (r.amount?.value || 0), 0) || 0
+                        return sum + dayAmount
+                      }, 0)
+                      return Number(total).toFixed(4)
+                    } catch {
+                      return '0.0000'
+                    }
+                  })()}
                 </div>
               ) : openaiUsage?.costs?.data?.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Нет данных за этот период</p>
