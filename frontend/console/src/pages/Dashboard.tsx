@@ -205,45 +205,55 @@ export default function Dashboard() {
                     <div className="font-medium text-foreground truncate">{client.client_name}</div>
 
                     {/* Summary */}
-                    <div className="mt-2 p-2 bg-card rounded-lg border border-border">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-lg font-bold text-foreground">{client.summary.completed}/{client.summary.total}</span>
-                        <span className="text-sm text-muted-foreground">выполнено</span>
+                    {client.workouts.length > 0 ? (
+                      <div className="mt-2 p-2 bg-card rounded-lg border border-border">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-lg font-bold text-foreground">{client.summary.completed}/{client.summary.total}</span>
+                          <span className="text-sm text-muted-foreground">выполнено</span>
+                        </div>
+                        <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all ${client.summary.completed === client.summary.total && client.summary.total > 0 ? 'bg-green-500' : client.summary.completed > 0 ? 'bg-blue-500' : 'bg-gray-500'}`}
+                            style={{ width: `${client.summary.total > 0 ? (client.summary.completed / client.summary.total) * 100 : 0}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
-                        <div
-                          className={`h-full transition-all ${client.summary.completed === client.summary.total ? 'bg-green-500' : client.summary.completed > 0 ? 'bg-blue-500' : 'bg-gray-500'}`}
-                          style={{ width: `${client.summary.total > 0 ? (client.summary.completed / client.summary.total) * 100 : 0}%` }}
-                        />
+                    ) : (
+                      <div className="mt-2 p-2 bg-card rounded-lg border border-border">
+                        <p className="text-xs text-muted-foreground text-center">Не назначено</p>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Workouts list */}
                   <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {client.workouts.map(workout => (
-                      <div key={workout.id} className="flex items-center gap-2 bg-card rounded-lg p-2">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          workout.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                          workout.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
-                          workout.status === 'skipped' ? 'bg-red-500/20 text-red-400' :
-                          'bg-gray-500/20 text-gray-400'
-                        }`}>
-                          {workout.status === 'completed' ? <Check size={16} /> :
-                           workout.status === 'in_progress' ? <Play size={16} /> :
-                           <Clock size={16} />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium text-foreground truncate">{workout.name}</div>
-                          <div className="text-[10px] text-muted-foreground">
-                            {workout.scheduled_time || '—'} • {workout.exercises_count} упр.
-                            {workout.session && workout.status !== 'completed' && (
-                              <span className="text-blue-400"> • {workout.session.completion_percentage}%</span>
-                            )}
+                    {client.workouts.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-3">На сегодня тренировок нет</p>
+                    ) : (
+                      client.workouts.map(workout => (
+                        <div key={workout.id} className="flex items-center gap-2 bg-card rounded-lg p-2">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                            workout.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                            workout.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                            workout.status === 'skipped' ? 'bg-red-500/20 text-red-400' :
+                            'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {workout.status === 'completed' ? <Check size={16} /> :
+                             workout.status === 'in_progress' ? <Play size={16} /> :
+                             <Clock size={16} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium text-foreground truncate">{workout.name}</div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {workout.scheduled_time || '—'} • {workout.exercises_count} упр.
+                              {workout.session && workout.status !== 'completed' && (
+                                <span className="text-blue-400"> • {workout.session.completion_percentage}%</span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
               ))}

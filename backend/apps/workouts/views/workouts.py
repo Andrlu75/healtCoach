@@ -348,9 +348,7 @@ class TodayWorkoutsDashboardView(APIView):
                 },
             })
 
-        # Filter out clients with no workouts today
-        result = [r for r in result if r['workouts']]
-
+        # Don't filter - show all active clients (same as meals dashboard)
         return Response({
             'date': today.isoformat(),
             'clients': result,
