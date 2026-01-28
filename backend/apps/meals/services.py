@@ -1073,7 +1073,7 @@ async def analyze_food_smart(client: Client, image_data: bytes, caption: str = '
     response = await provider.analyze_image(
         image_data=image_data,
         prompt=prompt,
-        max_tokens=800,
+        max_tokens=4096,
         model=model,
     )
 
