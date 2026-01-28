@@ -374,15 +374,26 @@ class ClientMealDraftConfirmView(APIView):
         if not client:
             return Response(status=status.HTTP_403_FORBIDDEN)
 
+        logger.info('[DRAFT CONFIRM VIEW] Starting: draft_id=%s client=%s', draft_id, client.pk)
+
         try:
             draft = MealDraft.objects.get(pk=draft_id, client=client, status='pending')
         except MealDraft.DoesNotExist:
+            logger.warning('[DRAFT CONFIRM VIEW] Draft not found: %s', draft_id)
             return Response({'error': 'Черновик не найден'}, status=status.HTTP_404_NOT_FOUND)
 
-        meal = async_to_sync(confirm_draft)(draft)
+        try:
+            meal = async_to_sync(confirm_draft)(draft)
+            logger.info('[DRAFT CONFIRM VIEW] Meal created: %s', meal.pk)
+        except Exception as e:
+            logger.exception('[DRAFT CONFIRM VIEW] Error confirming draft: %s', e)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Notify coach
-        async_to_sync(_notify_coach_about_meal_miniapp)(client, meal)
+        try:
+            async_to_sync(_notify_coach_about_meal_miniapp)(client, meal)
+        except Exception as notify_err:
+            logger.warning('[DRAFT CONFIRM VIEW] Failed to notify coach: %s', notify_err)
 
         return Response({
             'status': 'confirmed',
