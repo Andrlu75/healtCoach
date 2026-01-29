@@ -24,9 +24,16 @@ const periodLabels: Record<string, string> = {
   month: 'Месяц',
 }
 
+// Тип для реальных затрат OpenAI
+interface OpenAIUsageData {
+  costs: { data?: Array<{ results?: Array<{ amount: { value: number } }> }> };
+  error?: string;
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [usage, setUsage] = useState<AIUsageResponse | null>(null)
+  const [openaiUsage, setOpenaiUsage] = useState<OpenAIUsageData | null>(null)
   const [mealsDashboard, setMealsDashboard] = useState<MealsDashboardResponse | null>(null)
   const [workoutsDashboard, setWorkoutsDashboard] = useState<WorkoutsDashboardResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -40,15 +47,23 @@ export default function Dashboard() {
       mealsApi.dashboard(),
       workoutsApi.dashboard(),
       settingsApi.getUsageStats('month'),
+      settingsApi.getOpenAIUsage(), // Реальные затраты OpenAI
     ])
-      .then(([statsRes, mealsRes, workoutsRes, usageRes]) => {
+      .then(([statsRes, mealsRes, workoutsRes, usageRes, openaiRes]) => {
         setStats(statsRes.data)
         setMealsDashboard(mealsRes.data)
         setWorkoutsDashboard(workoutsRes.data)
         setUsage(usageRes.data)
+        setOpenaiUsage(openaiRes.data as OpenAIUsageData)
       })
       .finally(() => setLoading(false))
   }, [])
+
+  // Вычисляем реальные затраты OpenAI (в долларах)
+  const realOpenAICost = openaiUsage?.costs?.data?.reduce((sum, bucket) => {
+    const bucketTotal = bucket.results?.reduce((s, r) => s + (r.amount?.value || 0), 0) || 0
+    return sum + bucketTotal
+  }, 0) || 0
 
   // Load usage for modal when period changes
   useEffect(() => {
@@ -88,7 +103,7 @@ export default function Dashboard() {
           </div>
         ))}
 
-        {/* AI Costs Card */}
+        {/* AI Costs Card - Реальные затраты OpenAI */}
         <div
           onClick={openCostsModal}
           className="bg-card rounded-xl border border-border p-5 cursor-pointer hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors"
@@ -97,12 +112,21 @@ export default function Dashboard() {
             <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400">
               <DollarSign size={20} />
             </div>
-            <span className="text-sm text-muted-foreground">Затраты AI</span>
+            <span className="text-sm text-muted-foreground">Затраты OpenAI</span>
           </div>
-          <p className="text-3xl font-bold text-foreground">
-            ${usage ? Number(usage.total_cost_usd).toFixed(2) : '—'}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">с начала месяца</p>
+          {openaiUsage?.error ? (
+            <>
+              <p className="text-xl font-bold text-muted-foreground">—</p>
+              <p className="text-xs text-yellow-500 mt-1">Нужен Admin API key</p>
+            </>
+          ) : (
+            <>
+              <p className="text-3xl font-bold text-foreground">
+                ${realOpenAICost.toFixed(2)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">с начала месяца (реальные)</p>
+            </>
+          )}
         </div>
       </div>
 
@@ -298,12 +322,28 @@ export default function Dashboard() {
 
             {/* Modal Content */}
             <div className="flex-1 overflow-y-auto p-5">
-              {/* Total cost */}
-              <div className="mb-5 p-4 bg-muted rounded-lg">
-                <span className="text-sm text-muted-foreground">Общие затраты за период</span>
-                <p className="text-2xl font-bold text-foreground mt-1">
-                  ${modalUsage ? Number(modalUsage.total_cost_usd).toFixed(4) : '—'}
-                </p>
+              {/* Total costs - два блока */}
+              <div className="grid grid-cols-2 gap-4 mb-5">
+                {/* Реальные затраты OpenAI */}
+                <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                  <span className="text-sm text-purple-400">OpenAI (реальные)</span>
+                  {openaiUsage?.error ? (
+                    <p className="text-lg font-bold text-muted-foreground mt-1">Нужен Admin key</p>
+                  ) : (
+                    <p className="text-2xl font-bold text-foreground mt-1">
+                      ${realOpenAICost.toFixed(2)}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">с начала месяца</p>
+                </div>
+                {/* Расчётные затраты */}
+                <div className="p-4 bg-muted rounded-lg">
+                  <span className="text-sm text-muted-foreground">Расчётные (по токенам)</span>
+                  <p className="text-2xl font-bold text-foreground mt-1">
+                    ${modalUsage ? Number(modalUsage.total_cost_usd).toFixed(4) : '—'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{periodLabels[modalPeriod]?.toLowerCase()}</p>
+                </div>
               </div>
 
               {/* Breakdown by model table */}
