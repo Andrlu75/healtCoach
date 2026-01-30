@@ -100,7 +100,7 @@ export default function PersonaSettings() {
               onClick={() => selectPersona(p.id)}
               className={`px-3 py-1.5 text-sm rounded-lg border ${
                 p.id === selectedId
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
+                  ? 'border-blue-500 bg-blue-500/20 text-blue-400'
                   : 'border-border text-secondary-foreground hover:bg-muted'
               }`}
             >

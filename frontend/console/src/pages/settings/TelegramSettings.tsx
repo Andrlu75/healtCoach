@@ -122,7 +122,7 @@ export default function TelegramSettings() {
       <h1 className="text-2xl font-bold text-foreground mb-6">Настройки Telegram</h1>
 
       {message && (
-        <div className={`mb-4 px-4 py-2 rounded-lg text-sm ${message.includes('Ошибка') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+        <div className={`mb-4 px-4 py-2 rounded-lg text-sm ${message.includes('Ошибка') ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
           {message}
         </div>
       )}
@@ -189,7 +189,7 @@ export default function TelegramSettings() {
             {bots.map(bot => (
               <div
                 key={bot.id}
-                className={`flex items-center justify-between p-4 rounded-lg border ${bot.is_active ? 'border-blue-300 bg-blue-50' : 'border-border bg-card'}`}
+                className={`flex items-center justify-between p-4 rounded-lg border ${bot.is_active ? 'border-blue-500/50 bg-blue-500/10' : 'border-border bg-card'}`}
               >
                 <div className="flex items-center gap-3">
                   <Bot size={20} className={bot.is_active ? 'text-blue-600' : 'text-muted-foreground'} />
@@ -197,7 +197,7 @@ export default function TelegramSettings() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-foreground">{bot.name}</span>
                       {bot.is_active && (
-                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Активный</span>
+                        <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">Активный</span>
                       )}
                     </div>
                     <span className="text-xs text-muted-foreground">{bot.masked_token}</span>
@@ -207,7 +207,7 @@ export default function TelegramSettings() {
                   {!bot.is_active && (
                     <button
                       onClick={() => handleSwitch(bot.id)}
-                      className="px-3 py-1.5 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                      className="px-3 py-1.5 text-xs bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors"
                     >
                       Активировать
                     </button>

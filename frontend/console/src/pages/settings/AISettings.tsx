@@ -608,7 +608,7 @@ export default function AISettings() {
                           setEditingAdminKey(p)
                           setAdminKeyValue('')
                         }}
-                        className="flex items-center gap-1.5 text-sm text-blue-500 hover:text-blue-700 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 px-3 py-1.5 rounded-lg transition-colors"
                       >
                         <Settings size={14} />
                         Admin key
@@ -617,7 +617,7 @@ export default function AISettings() {
                     <button
                       onClick={() => handleDeleteProvider(p.id, p.provider)}
                       disabled={deleting === p.id}
-                      className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/20 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                     >
                       <Trash2 size={14} />
                       {deleting === p.id ? '...' : 'Удалить'}
@@ -676,7 +676,7 @@ export default function AISettings() {
                         (settings.voice_provider === m.provider && settings.voice_model === m.model_id)
                       )
                       return (
-                        <div key={m.id} className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${isAssigned ? 'bg-blue-50/50 border-blue-100' : 'bg-muted border-border/50 hover:border-border'}`}>
+                        <div key={m.id} className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${isAssigned ? 'bg-blue-500/10 border-blue-500/30' : 'bg-muted border-border/50 hover:border-border'}`}>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-foreground">{m.model_name}</span>
@@ -696,7 +696,7 @@ export default function AISettings() {
                           <button
                             onClick={() => handleDeleteModel(m.id)}
                             disabled={deletingModel === m.id}
-                            className="flex items-center gap-1 text-sm text-red-400 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 ml-3"
+                            className="flex items-center gap-1 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/20 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 ml-3"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -729,9 +729,9 @@ export default function AISettings() {
               {/* Current assignments summary */}
               <div className="grid grid-cols-3 gap-3 mb-6">
                 {([
-                  { key: 'text' as const, label: 'Текст', desc: 'Текстовые сообщения', activeClass: 'border-blue-200 bg-blue-50', activeLabel: 'text-blue-600', icon: '💬' },
-                  { key: 'vision' as const, label: 'Фото', desc: 'Анализ изображений', activeClass: 'border-green-200 bg-green-50', activeLabel: 'text-green-600', icon: '📷' },
-                  { key: 'voice' as const, label: 'Голос', desc: 'Голосовые сообщения', activeClass: 'border-purple-200 bg-purple-50', activeLabel: 'text-purple-600', icon: '🎙' },
+                  { key: 'text' as const, label: 'Текст', desc: 'Текстовые сообщения', activeClass: 'border-blue-500/50 bg-blue-500/10', activeLabel: 'text-blue-400', icon: '💬' },
+                  { key: 'vision' as const, label: 'Фото', desc: 'Анализ изображений', activeClass: 'border-green-500/50 bg-green-500/10', activeLabel: 'text-green-400', icon: '📷' },
+                  { key: 'voice' as const, label: 'Голос', desc: 'Голосовые сообщения', activeClass: 'border-purple-500/50 bg-purple-500/10', activeLabel: 'text-purple-400', icon: '🎙' },
                 ]).map(task => {
                   const provKey = `${task.key}_provider` as keyof AIModelSelection
                   const modelKey = `${task.key}_model` as keyof AIModelSelection
@@ -774,7 +774,7 @@ export default function AISettings() {
                   return (
                     <div
                       key={m.id}
-                      className={`p-4 rounded-xl border-2 transition-all ${isAssigned ? 'border-blue-200 bg-gradient-to-r from-blue-50/50 to-white shadow-sm' : 'border-border/50 bg-card hover:border-border'}`}
+                      className={`p-4 rounded-xl border-2 transition-all ${isAssigned ? 'border-blue-500/50 bg-blue-500/10 shadow-sm' : 'border-border/50 bg-card hover:border-border'}`}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div>
@@ -801,8 +801,8 @@ export default function AISettings() {
                             onClick={() => toggleFunction('text')}
                             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${
                               isText
-                                ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
-                                : 'bg-secondary text-secondary-foreground hover:bg-blue-50 hover:text-blue-600'
+                                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
+                                : 'bg-secondary text-secondary-foreground hover:bg-blue-500/20 hover:text-blue-400'
                             }`}
                           >
                             {isText && <Check size={12} />}
@@ -819,8 +819,8 @@ export default function AISettings() {
                             onClick={() => toggleFunction('vision')}
                             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${
                               isVision
-                                ? 'bg-green-600 text-white shadow-sm shadow-green-200'
-                                : 'bg-secondary text-secondary-foreground hover:bg-green-50 hover:text-green-600'
+                                ? 'bg-green-600 text-white shadow-sm shadow-green-500/30'
+                                : 'bg-secondary text-secondary-foreground hover:bg-green-500/20 hover:text-green-400'
                             }`}
                           >
                             {isVision && <Check size={12} />}
@@ -928,7 +928,7 @@ export default function AISettings() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={!settings.vision_model || testing !== null}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs font-medium hover:bg-green-100 disabled:opacity-50 transition-colors border border-green-200"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-xs font-medium hover:bg-green-500/30 disabled:opacity-50 transition-colors border border-green-500/30"
                 >
                   {testing === 'vision' ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
                   Тест фото
@@ -1013,7 +1013,7 @@ export default function AISettings() {
             </div>
 
             {testError && (
-              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+              <div className="mt-3 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-sm text-red-400">
                 {testError}
               </div>
             )}

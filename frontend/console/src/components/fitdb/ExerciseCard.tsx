@@ -27,8 +27,8 @@ export function ExerciseCard({ exercise, onEdit, onDelete }: ExerciseCardProps) 
           />
         </div>
       ) : (
-        <div className="aspect-video bg-gray-50 flex items-center justify-center">
-          <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-3xl">
+        <div className="aspect-video bg-muted flex items-center justify-center">
+          <div className="w-16 h-16 rounded-2xl bg-blue-500/20 flex items-center justify-center text-3xl">
             {muscleGroupIcons[exercise.muscleGroups[0]] || '💪'}
           </div>
         </div>
@@ -37,21 +37,21 @@ export function ExerciseCard({ exercise, onEdit, onDelete }: ExerciseCardProps) 
       <div className="p-5">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
-            <h3 className="font-semibold text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
+            <h3 className="font-semibold text-lg text-foreground group-hover:text-blue-400 transition-colors">
               {exercise.name}
             </h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               {exercise.muscleGroups.map(g => muscleGroupLabels[g]).join(', ')}
             </p>
           </div>
         </div>
 
-        <p className="text-sm text-gray-500 mb-4 line-clamp-2">
+        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
           {exercise.description}
         </p>
 
         <div className="flex flex-wrap gap-2 mb-4">
-          <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+          <span className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs">
             {categoryLabels[exercise.category]}
           </span>
           <span className={`px-2 py-1 rounded text-xs border ${difficultyColors[exercise.difficulty]}`}>
@@ -60,7 +60,7 @@ export function ExerciseCard({ exercise, onEdit, onDelete }: ExerciseCardProps) 
         </div>
 
         {exercise.equipment && (
-          <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
             <Dumbbell className="w-4 h-4" />
             <span>{exercise.equipment}</span>
           </div>
@@ -69,14 +69,14 @@ export function ExerciseCard({ exercise, onEdit, onDelete }: ExerciseCardProps) 
         <div className="flex gap-2">
           <button
             onClick={() => onEdit(exercise)}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-muted transition-colors text-sm"
           >
             <Pencil className="w-4 h-4" />
             Изменить
           </button>
           <button
             onClick={() => onDelete(exercise.id)}
-            className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+            className="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
           </button>
