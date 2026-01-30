@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 
 from .client_views import (
     ClientDailySummaryView,
@@ -35,4 +35,7 @@ urlpatterns = [
     path('reminders/', ClientReminderListView.as_view(), name='client_reminders'),
     path('onboarding/questions/', ClientOnboardingQuestionsView.as_view(), name='client_onboarding_questions'),
     path('onboarding/submit/', ClientOnboardingSubmitView.as_view(), name='client_onboarding_submit'),
+
+    # Integrations
+    path('integrations/', include('apps.integrations.client_urls')),
 ]

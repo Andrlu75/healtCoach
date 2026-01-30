@@ -6,6 +6,7 @@ import { useThemeStore } from '../../shared/stores/theme'
 import { useTelegram, useHaptic } from '../../shared/hooks'
 import { Card } from '../../shared/components/ui'
 import { updateProfile } from '../../api/endpoints'
+import { GoogleFitConnect } from '../integrations'
 
 type MealAnalysisMode = 'ask' | 'fast' | 'smart'
 
@@ -305,6 +306,9 @@ function Profile() {
           </div>
         </Card>
       )}
+
+      {/* Integrations */}
+      <GoogleFitConnect />
 
       <Card variant="elevated" className="overflow-hidden">
         <motion.button

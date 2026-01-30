@@ -9,6 +9,7 @@ class HealthMetric(models.Model):
         ('heart_rate', 'Пульс'),
         ('blood_pressure', 'Давление'),
         ('water', 'Вода'),
+        ('active_calories', 'Калории активности'),
         ('custom', 'Другое'),
     ]
     SOURCE_CHOICES = [

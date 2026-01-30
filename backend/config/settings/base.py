@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'apps.bot',
     'apps.exercises',
     'apps.workouts',
+    'apps.integrations',
 ]
 
 MIDDLEWARE = [
@@ -176,6 +177,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'reports.generate_weekly_reports',
         'schedule': crontab(hour=10, minute=0, day_of_week=1),
     },
+    'sync-google-fit-hourly': {
+        'task': 'integrations.sync_all_google_fit',
+        'schedule': 3600.0,  # каждый час
+    },
 }
 
 # S3 Storage
@@ -206,3 +211,11 @@ TELEGRAM_MINIAPP_URL = config('TELEGRAM_MINIAPP_URL', default='')
 
 # Weather
 OPENWEATHERMAP_API_KEY = config('OPENWEATHERMAP_API_KEY', default='')
+
+# Google Fit Integration
+GOOGLE_FIT_CLIENT_ID = config('GOOGLE_FIT_CLIENT_ID', default='')
+GOOGLE_FIT_CLIENT_SECRET = config('GOOGLE_FIT_CLIENT_SECRET', default='')
+GOOGLE_FIT_REDIRECT_URI = config('GOOGLE_FIT_REDIRECT_URI', default='http://localhost:8000/api/integrations/google-fit/callback/')
+
+# Encryption key for tokens (Fernet) - generate with: from cryptography.fernet import Fernet; Fernet.generate_key()
+ENCRYPTION_KEY = config('ENCRYPTION_KEY', default='JlVHjJ8gY-w8BXBmLcLJTd5_6u3qJgBfLZhVNxlPvXk=')

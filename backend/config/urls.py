@@ -20,6 +20,7 @@ urlpatterns = [
     path('api/weather/', include('apps.weather.urls')),
     path('api/exercises/', include('apps.exercises.urls')),
     path('api/workouts/', include('apps.workouts.urls')),
+    path('api/integrations/', include('apps.integrations.urls')),
 ]
 
 if settings.DEBUG:
