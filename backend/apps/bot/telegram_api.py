@@ -76,6 +76,64 @@ async def send_message(token: str, chat_id: int | str, text: str, parse_mode: st
     return last_result
 
 
+class ChatMigratedException(Exception):
+    """Raised when group chat is upgraded to supergroup."""
+    def __init__(self, old_chat_id: int | str, new_chat_id: int):
+        self.old_chat_id = old_chat_id
+        self.new_chat_id = new_chat_id
+        super().__init__(f'Chat {old_chat_id} migrated to {new_chat_id}')
+
+
+async def send_notification(token: str, chat_id: int | str, text: str, parse_mode: str | None = 'HTML') -> tuple[dict | None, int | str | None]:
+    """Send notification message with migration handling.
+
+    Returns: (result, new_chat_id or None)
+    If chat was migrated, automatically retries with new chat_id and returns it.
+    """
+    url = f'{TELEGRAM_API}/bot{token}/sendMessage'
+    payload = {'chat_id': chat_id, 'text': text}
+    if parse_mode:
+        payload['parse_mode'] = parse_mode
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(url, json=payload)
+        result = resp.json()
+
+        if result.get('ok'):
+            return result.get('result'), None
+
+        # Check for chat migration
+        error_code = result.get('error_code')
+        description = result.get('description', '')
+
+        if error_code == 400 and 'migrated' in description.lower():
+            # Extract new chat_id from parameters
+            new_chat_id = result.get('parameters', {}).get('migrate_to_chat_id')
+            if new_chat_id:
+                logger.info('[TELEGRAM] Chat %s migrated to %s, retrying...', chat_id, new_chat_id)
+                # Retry with new chat_id
+                payload['chat_id'] = new_chat_id
+                resp = await client.post(url, json=payload)
+                retry_result = resp.json()
+                if retry_result.get('ok'):
+                    return retry_result.get('result'), new_chat_id
+                logger.error('Failed to send to migrated chat %s: %s', new_chat_id, retry_result)
+            else:
+                logger.error('Chat migrated but no new chat_id in response: %s', result)
+
+        # Fallback without parse_mode
+        if parse_mode:
+            del payload['parse_mode']
+            payload['chat_id'] = chat_id  # Reset to original
+            resp = await client.post(url, json=payload)
+            result = resp.json()
+            if result.get('ok'):
+                return result.get('result'), None
+
+        logger.error('Failed to send notification to chat %s: %s', chat_id, result)
+        return None, None
+
+
 async def send_message_with_webapp(
     token: str,
     chat_id: int | str,

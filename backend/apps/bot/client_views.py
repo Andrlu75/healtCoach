@@ -546,7 +546,7 @@ class ClientReminderListView(APIView):
 async def _notify_coach_about_meal_miniapp(client: Client, meal: Meal):
     """Send notification about meal to coach's report chat (from miniapp)."""
     from asgiref.sync import sync_to_async
-    from apps.bot.telegram_api import send_message
+    from apps.bot.telegram_api import send_notification
 
     try:
         # Get bot for client's coach
@@ -557,7 +557,8 @@ async def _notify_coach_about_meal_miniapp(client: Client, meal: Meal):
             return
 
         # Get coach's notification chat ID
-        notification_chat_id = await sync_to_async(lambda: client.coach.telegram_notification_chat_id)()
+        coach = await sync_to_async(lambda: client.coach)()
+        notification_chat_id = coach.telegram_notification_chat_id
         if not notification_chat_id:
             return
 
@@ -601,8 +602,17 @@ async def _notify_coach_about_meal_miniapp(client: Client, meal: Meal):
         else:
             message += f'📊 За день: {int(daily_calories)} ккал'
 
-        await send_message(bot.token, notification_chat_id, message, parse_mode='HTML')
-        logger.info('[NOTIFY] Sent miniapp meal notification for client=%s to chat=%s', client.pk, notification_chat_id)
+        result, new_chat_id = await send_notification(bot.token, notification_chat_id, message, parse_mode='HTML')
+
+        # Обновляем chat_id если группа мигрировала в супергруппу
+        if new_chat_id:
+            coach.telegram_notification_chat_id = str(new_chat_id)
+            await sync_to_async(coach.save)(update_fields=['telegram_notification_chat_id'])
+            logger.info('[NOTIFY] Updated notification chat_id for coach=%s: %s -> %s',
+                       coach.pk, notification_chat_id, new_chat_id)
+
+        if result:
+            logger.info('[NOTIFY] Sent miniapp meal notification for client=%s to chat=%s', client.pk, notification_chat_id)
 
     except Exception as e:
         logger.warning('[NOTIFY] Failed to send miniapp meal notification: %s', e)

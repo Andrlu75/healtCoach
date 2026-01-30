@@ -33,7 +33,7 @@ from apps.metrics.services import (
 )
 from apps.persona.models import TelegramBot
 
-from ..telegram_api import get_file, send_chat_action, send_message
+from ..telegram_api import get_file, send_chat_action, send_message, send_notification
 from ..services import get_ai_vision_response, _get_persona, _get_api_key
 
 logger = logging.getLogger(__name__)
@@ -476,8 +476,17 @@ async def _notify_coach_about_meal(bot: TelegramBot, client: Client, analysis: d
         else:
             message += f'📊 За день: {int(daily_calories)} ккал'
 
-        await send_message(bot.token, notification_chat_id, message, parse_mode='HTML')
-        logger.info('[NOTIFY] Sent meal notification for client=%s to chat=%s', client.pk, notification_chat_id)
+        result, new_chat_id = await send_notification(bot.token, notification_chat_id, message, parse_mode='HTML')
+
+        # Обновляем chat_id если группа мигрировала в супергруппу
+        if new_chat_id:
+            coach.telegram_notification_chat_id = str(new_chat_id)
+            await sync_to_async(coach.save)(update_fields=['telegram_notification_chat_id'])
+            logger.info('[NOTIFY] Updated notification chat_id for coach=%s: %s -> %s',
+                       coach.pk, notification_chat_id, new_chat_id)
+
+        if result:
+            logger.info('[NOTIFY] Sent meal notification for client=%s to chat=%s', client.pk, notification_chat_id)
 
     except Exception as e:
         logger.warning('[NOTIFY] Failed to send meal notification: %s', e)
