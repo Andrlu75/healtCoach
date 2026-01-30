@@ -11,6 +11,9 @@ export interface MealDashboardItem {
   carbs: number
   meal_time: string
   thumbnail: string | null
+  image: string | null
+  ai_comment: string
+  ingredients: string[]
 }
 
 export interface ClientMealsDashboard {

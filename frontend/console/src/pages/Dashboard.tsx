@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Users, UserCheck, UserPlus, UserX, DollarSign, User, Utensils, Dumbbell, X, Check, Clock, Play } from 'lucide-react'
+import { Users, UserCheck, UserPlus, UserX, DollarSign, User, Utensils, Dumbbell, X, Check, Clock, Play, MessageSquare } from 'lucide-react'
 import { settingsApi } from '../api/settings'
-import { mealsApi, workoutsApi, type MealsDashboardResponse, type WorkoutsDashboardResponse } from '../api/data'
+import { mealsApi, workoutsApi, type MealsDashboardResponse, type WorkoutsDashboardResponse, type MealDashboardItem } from '../api/data'
 import type { DashboardStats, AIUsageResponse } from '../types'
 
 const statCards = [
@@ -33,6 +33,10 @@ export default function Dashboard() {
   const [showCostsModal, setShowCostsModal] = useState(false)
   const [modalPeriod, setModalPeriod] = useState('month')
   const [modalUsage, setModalUsage] = useState<AIUsageResponse | null>(null)
+
+  // Модальное окно с деталями блюда
+  const [selectedMeal, setSelectedMeal] = useState<MealDashboardItem | null>(null)
+  const [selectedMealClientName, setSelectedMealClientName] = useState<string>('')
 
   useEffect(() => {
     Promise.all([
@@ -161,7 +165,14 @@ export default function Dashboard() {
                       <p className="text-xs text-muted-foreground text-center py-3">Нет приёмов пищи</p>
                     ) : (
                       client.meals.map(meal => (
-                        <div key={meal.id} className="flex items-center gap-2 bg-card rounded-lg p-2">
+                        <div
+                          key={meal.id}
+                          className="flex items-center gap-2 bg-card rounded-lg p-2 cursor-pointer hover:bg-muted transition-colors"
+                          onClick={() => {
+                            setSelectedMeal(meal)
+                            setSelectedMealClientName(client.client_name)
+                          }}
+                        >
                           {meal.thumbnail && (
                             <img src={meal.thumbnail} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
                           )}
@@ -169,6 +180,7 @@ export default function Dashboard() {
                             <div className="text-xs font-medium text-foreground truncate">{meal.dish_name}</div>
                             <div className="text-[10px] text-muted-foreground">
                               {meal.meal_time} • {meal.calories} ккал
+                              {meal.ai_comment && <MessageSquare size={10} className="inline ml-1 text-blue-400" />}
                             </div>
                           </div>
                         </div>
@@ -381,6 +393,83 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">Нет данных по клиентам</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Meal Detail Modal */}
+      {selectedMeal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedMeal(null)}>
+          <div className="bg-card rounded-xl border border-border w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-semibold text-foreground truncate">{selectedMeal.dish_name}</h2>
+                <p className="text-xs text-muted-foreground">{selectedMealClientName} • {selectedMeal.meal_time}</p>
+              </div>
+              <button onClick={() => setSelectedMeal(null)} className="p-1 hover:bg-muted rounded-lg transition-colors ml-2">
+                <X size={20} className="text-muted-foreground" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Image */}
+              {selectedMeal.image && (
+                <div className="rounded-lg overflow-hidden">
+                  <img src={selectedMeal.image} alt={selectedMeal.dish_name} className="w-full h-auto max-h-64 object-cover" />
+                </div>
+              )}
+
+              {/* KBJU Summary */}
+              <div className="grid grid-cols-4 gap-2">
+                <div className="bg-orange-500/20 rounded-lg p-3 text-center">
+                  <div className="text-lg font-bold text-orange-400">{selectedMeal.calories}</div>
+                  <div className="text-[10px] text-muted-foreground">ккал</div>
+                </div>
+                <div className="bg-red-500/20 rounded-lg p-3 text-center">
+                  <div className="text-lg font-bold text-red-400">{selectedMeal.proteins}</div>
+                  <div className="text-[10px] text-muted-foreground">белки</div>
+                </div>
+                <div className="bg-yellow-500/20 rounded-lg p-3 text-center">
+                  <div className="text-lg font-bold text-yellow-400">{selectedMeal.fats}</div>
+                  <div className="text-[10px] text-muted-foreground">жиры</div>
+                </div>
+                <div className="bg-blue-500/20 rounded-lg p-3 text-center">
+                  <div className="text-lg font-bold text-blue-400">{selectedMeal.carbs}</div>
+                  <div className="text-[10px] text-muted-foreground">углеводы</div>
+                </div>
+              </div>
+
+              {/* Ingredients */}
+              {selectedMeal.ingredients && selectedMeal.ingredients.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-secondary-foreground mb-2">Ингредиенты</h3>
+                  <div className="bg-muted rounded-lg p-3">
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedMeal.ingredients.map((ingredient, idx) => (
+                        <span key={idx} className="text-xs bg-secondary px-2 py-1 rounded-md text-secondary-foreground">
+                          {typeof ingredient === 'string' ? ingredient : (ingredient as { name?: string }).name || String(ingredient)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* AI Comment */}
+              {selectedMeal.ai_comment && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <MessageSquare size={14} className="text-blue-400" />
+                    <h3 className="text-sm font-medium text-secondary-foreground">Комментарий AI</h3>
+                  </div>
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                    <p className="text-sm text-foreground whitespace-pre-line">{selectedMeal.ai_comment}</p>
+                  </div>
+                </div>
               )}
             </div>
           </div>

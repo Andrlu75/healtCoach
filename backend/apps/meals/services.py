@@ -433,6 +433,7 @@ async def save_meal(client: Client, image_data: bytes, analysis: dict) -> Meal:
         carbohydrates=analysis.get('carbohydrates'),
         ingredients=analysis.get('ingredients', []),
         ai_confidence=analysis.get('confidence'),
+        ai_comment=analysis.get('ai_response', ''),
         meal_time=now,
     )
 
@@ -1352,6 +1353,16 @@ async def confirm_draft(draft: 'MealDraft') -> Meal:
             except Exception as img_err:
                 logger.warning('[SMART CONFIRM] Failed to copy image: %s', img_err)
                 # Продолжаем без изображения
+
+        # Генерируем AI комментарий
+        try:
+            ai_comment = await generate_meal_comment(client, meal)
+            if ai_comment:
+                meal.ai_comment = ai_comment
+                await sync_to_async(meal.save)(update_fields=['ai_comment'])
+                logger.info('[SMART CONFIRM] AI comment generated for meal=%s', meal.pk)
+        except Exception as comment_err:
+            logger.warning('[SMART CONFIRM] Failed to generate AI comment: %s', comment_err)
 
         # Обновляем черновик
         draft.status = 'confirmed'

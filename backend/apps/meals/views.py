@@ -142,6 +142,9 @@ class TodayMealsDashboardView(APIView):
                     'carbs': meal.carbohydrates or 0,
                     'meal_time': meal.meal_time.strftime('%H:%M') if meal.meal_time else '',
                     'thumbnail': meal.thumbnail.url if meal.thumbnail else (meal.image.url if meal.image else None),
+                    'image': meal.image.url if meal.image else None,
+                    'ai_comment': meal.ai_comment or '',
+                    'ingredients': meal.ingredients or [],
                 })
 
             # Calculate totals
@@ -235,6 +238,7 @@ class MealDraftConfirmView(APIView):
             'status': 'confirmed',
             'meal_id': meal.id,
             'meal': MealSerializer(meal).data,
+            'ai_response': meal.ai_comment or '',
         })
 
 

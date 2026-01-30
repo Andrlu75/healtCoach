@@ -47,7 +47,7 @@ class MealSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'image', 'thumbnail', 'image_type', 'dish_name', 'dish_type',
             'calories', 'proteins', 'fats', 'carbohydrates',
-            'ingredients', 'ai_confidence', 'meal_time', 'created_at',
+            'ingredients', 'ai_confidence', 'ai_comment', 'meal_time', 'created_at',
         ]
         read_only_fields = fields
 

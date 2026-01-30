@@ -209,6 +209,7 @@ class Meal(models.Model):
     ingredients = models.JSONField(default=list, blank=True)
     health_analysis = models.JSONField(default=dict, blank=True)
     ai_confidence = models.IntegerField(null=True, blank=True)
+    ai_comment = models.TextField(blank=True, verbose_name='Комментарий AI')
 
     plate_type = models.CharField(max_length=100, blank=True)
     layout = models.CharField(max_length=200, blank=True)
