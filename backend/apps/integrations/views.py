@@ -109,6 +109,7 @@ class GoogleFitCallbackView(APIView):
             return self._render_popup_response(success=False, error='client_not_found')
 
         try:
+            # Сначала создаём/обновляем запись
             connection, created = GoogleFitConnection.objects.update_or_create(
                 client=client,
                 defaults={
@@ -117,22 +118,33 @@ class GoogleFitCallbackView(APIView):
                     'token_expires_at': credentials.expiry or timezone.now() + timedelta(hours=1),
                     'error_count': 0,
                     'last_error': '',
+                    'access_token_encrypted': '',
+                    'refresh_token_encrypted': '',
                 }
             )
-            connection.set_tokens(
-                credentials.token,
-                credentials.refresh_token or ''
-            )
-            connection.save()
 
+            # Шифруем токены отдельно для лучшей диагностики
+            try:
+                connection.set_tokens(
+                    credentials.token,
+                    credentials.refresh_token or ''
+                )
+            except Exception as enc_error:
+                logger.exception('Token encryption error: %s', enc_error)
+                return self._render_popup_response(success=False, error=f'encryption_failed: {type(enc_error).__name__}')
+
+            connection.save()
             logger.info('Google Fit connected for client %s', client_id)
 
             # Trigger initial sync
-            sync_google_fit_for_client.delay(client.pk)
+            try:
+                sync_google_fit_for_client.delay(client.pk)
+            except Exception as celery_error:
+                logger.warning('Could not queue sync task: %s', celery_error)
 
         except Exception as e:
-            logger.exception('Error saving Google Fit connection: %s', e)
-            return self._render_popup_response(success=False, error='save_failed')
+            logger.exception('Error saving Google Fit connection: %s - %s', type(e).__name__, str(e))
+            return self._render_popup_response(success=False, error=f'save_failed: {type(e).__name__}')
 
         return self._render_popup_response(success=True)
 
