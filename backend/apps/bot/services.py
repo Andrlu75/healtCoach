@@ -11,14 +11,54 @@ from core.ai.factory import get_ai_provider
 
 logger = logging.getLogger(__name__)
 
+# Типичные женские окончания русских имён
+FEMALE_NAME_ENDINGS = ('а', 'я', 'ия', 'ья', 'ея')
+# Исключения - мужские имена на -а/-я
+MALE_NAMES_EXCEPTIONS = {
+    'никита', 'илья', 'кузьма', 'фома', 'лука', 'савва', 'данила', 'гаврила',
+    'миша', 'саша', 'женя', 'валера', 'дима', 'вова', 'коля', 'петя', 'ваня',
+    'серёжа', 'лёша', 'костя', 'гоша', 'паша', 'стёпа', 'толя', 'федя', 'юра',
+}
+
+
+def _detect_gender_from_name(first_name: str) -> str | None:
+    """Определить пол по русскому имени. Возвращает 'male'/'female' или None."""
+    if not first_name:
+        return None
+
+    name_lower = first_name.lower().strip()
+
+    # Проверяем исключения (мужские имена на -а/-я)
+    if name_lower in MALE_NAMES_EXCEPTIONS:
+        return 'male'
+
+    # Проверяем женские окончания
+    for ending in FEMALE_NAME_ENDINGS:
+        if name_lower.endswith(ending):
+            return 'female'
+
+    # По умолчанию считаем мужским (имена на согласную)
+    return 'male'
+
 
 def _build_client_context(client: Client) -> str:
     """Build client context string with personal info including gender."""
     parts = []
 
-    # Gender
-    if client.gender:
-        gender_label = 'мужчина' if client.gender == 'male' else 'женщина'
+    # Gender - сначала из поля, потом автоопределение по имени
+    gender = client.gender
+    if not gender and client.first_name:
+        gender = _detect_gender_from_name(client.first_name)
+        logger.info('[CONTEXT] Auto-detected gender for %s: %s', client.first_name, gender)
+
+    if gender:
+        # Нормализуем значение
+        if gender.lower() in ('male', 'м', 'мужской', 'муж'):
+            gender_label = 'мужчина'
+            gender = 'male'
+        else:
+            gender_label = 'женщина'
+            gender = 'female'
         parts.append(f'Пол клиента: {gender_label}')
 
     # Name
@@ -58,7 +98,8 @@ def _build_system_prompt(persona_prompt: str, client: Client) -> str:
     if client_context:
         # Add client context and instruction to consider gender
         gender_instruction = ''
-        if client.gender:
+        # Проверяем наличие пола в контексте (включая автоопределённый)
+        if 'Пол клиента:' in client_context:
             gender_instruction = (
                 '\n\nВАЖНО: При всех ответах учитывай пол клиента. '
                 'Используй соответствующие формы обращения и рекомендации, '

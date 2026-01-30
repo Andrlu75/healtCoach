@@ -720,7 +720,7 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
             client_context = _build_client_context(client)
             if client_context:
                 food_system_prompt = food_system_prompt + client_context
-                if client.gender:
+                if 'Пол клиента:' in client_context:
                     food_system_prompt += '\n\nВАЖНО: При рекомендациях учитывай пол клиента.'
 
             text_response = await text_provider.complete(
@@ -924,7 +924,7 @@ async def recalculate_meal_for_client(client: Client, previous_analysis: dict, c
             client_context = _build_client_context(client)
             if client_context:
                 food_system_prompt = food_system_prompt + client_context
-                if client.gender:
+                if 'Пол клиента:' in client_context:
                     food_system_prompt += '\n\nВАЖНО: При рекомендациях учитывай пол клиента.'
 
             text_response = await text_provider.complete(
@@ -1455,7 +1455,7 @@ async def generate_meal_comment(client: Client, meal: Meal) -> str:
     client_context = _build_client_context(client)
     if client_context:
         food_system_prompt = food_system_prompt + client_context
-        if client.gender:
+        if 'Пол клиента:' in client_context:
             food_system_prompt += '\n\nВАЖНО: При рекомендациях учитывай пол клиента.'
 
     try:
