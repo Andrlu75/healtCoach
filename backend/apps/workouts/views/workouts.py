@@ -1,3 +1,4 @@
+from django.db import models
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -296,6 +297,9 @@ class TodayWorkoutsDashboardView(APIView):
     """Get today's workouts for all clients - for dashboard display."""
 
     def get(self, request):
+        from apps.workouts.models import FitDBWorkoutAssignment, FitDBWorkoutSession
+        from apps.workouts.models import WorkoutTemplateExercise
+
         coach = request.user.coach_profile
         today = timezone.localdate()
 
@@ -304,15 +308,61 @@ class TodayWorkoutsDashboardView(APIView):
 
         result = []
         for client in clients:
-            # Get workouts scheduled for today
-            workouts = ClientWorkout.objects.filter(
+            workouts_data = []
+
+            # 1. Get FitDB assignments: today's due_date OR pending without completed status
+            fitdb_assignments = FitDBWorkoutAssignment.objects.filter(
+                client=client,
+            ).filter(
+                # Show: today's assignments OR pending ones (not yet completed)
+                models.Q(due_date=today) | models.Q(due_date__isnull=True, status='pending')
+            ).exclude(
+                status='completed'
+            ).select_related('workout')
+
+            for assignment in fitdb_assignments:
+                # Get latest session for this workout+client
+                latest_session = FitDBWorkoutSession.objects.filter(
+                    workout=assignment.workout,
+                    client=client,
+                ).order_by('-started_at').first()
+
+                # Calculate exercises count from WorkoutTemplateExercise
+                exercises_count = WorkoutTemplateExercise.objects.filter(
+                    block__template=assignment.workout
+                ).count()
+
+                # Determine status
+                status = assignment.status
+                if latest_session:
+                    if latest_session.completed_at:
+                        status = 'completed'
+                    else:
+                        status = 'in_progress'
+
+                workouts_data.append({
+                    'id': assignment.id,
+                    'name': assignment.workout.name,
+                    'scheduled_time': None,
+                    'status': status,
+                    'difficulty': 'intermediate',
+                    'estimated_duration': None,
+                    'exercises_count': exercises_count,
+                    'session': {
+                        'id': latest_session.id,
+                        'status': 'completed' if latest_session.completed_at else 'in_progress',
+                        'completion_percentage': 100 if latest_session.completed_at else 50,
+                        'duration_seconds': latest_session.duration_seconds,
+                    } if latest_session else None,
+                })
+
+            # 2. Also check old ClientWorkout system for backwards compatibility
+            old_workouts = ClientWorkout.objects.filter(
                 client=client,
                 scheduled_date=today,
             ).select_related('template').prefetch_related('sessions')
 
-            workouts_data = []
-            for workout in workouts:
-                # Get latest session for this workout
+            for workout in old_workouts:
                 latest_session = workout.sessions.order_by('-started_at').first()
 
                 workouts_data.append({
@@ -334,7 +384,7 @@ class TodayWorkoutsDashboardView(APIView):
             # Calculate summary
             total = len(workouts_data)
             completed = sum(1 for w in workouts_data if w['status'] == 'completed')
-            in_progress = sum(1 for w in workouts_data if w['status'] == 'in_progress')
+            in_progress = sum(1 for w in workouts_data if w['status'] in ('in_progress', 'active'))
 
             result.append({
                 'client_id': client.id,
@@ -348,7 +398,6 @@ class TodayWorkoutsDashboardView(APIView):
                 },
             })
 
-        # Don't filter - show all active clients (same as meals dashboard)
         return Response({
             'date': today.isoformat(),
             'clients': result,
