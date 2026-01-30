@@ -128,7 +128,7 @@ class TodayMealsDashboardView(APIView):
                 client=client,
                 image_type='food',
                 meal_time__date=target_date,
-            ).order_by('meal_time')
+            ).order_by('-meal_time')  # Новые сверху
 
             meals_data = []
             for meal in meals:
