@@ -198,11 +198,17 @@ async def complete_onboarding(client: Client):
         client.daily_fats = round(norms['fats'], 1)
         client.daily_carbs = round(norms['carbs'], 1)
 
+    # Сохраняем пол в нормализованном виде
+    if gender in ('male', 'м', 'мужской', 'муж'):
+        client.gender = 'male'
+    elif gender in ('female', 'ж', 'женский', 'жен'):
+        client.gender = 'female'
+
     client.onboarding_completed = True
     client.status = 'active'
     await sync_to_async(client.save)(update_fields=[
         'daily_calories', 'daily_proteins', 'daily_fats', 'daily_carbs',
-        'onboarding_completed', 'status', 'onboarding_data',
+        'onboarding_completed', 'status', 'onboarding_data', 'gender',
     ])
 
     logger.info('Onboarding completed for client %s', client.pk)
