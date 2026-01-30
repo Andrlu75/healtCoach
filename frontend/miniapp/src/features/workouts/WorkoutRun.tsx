@@ -28,6 +28,15 @@ interface SetLog {
   skipped?: boolean
 }
 
+interface ExerciseStats {
+  id: string
+  name: string
+  totalSets: number
+  completedSets: number
+  skippedSets: number
+  status: 'completed' | 'partial' | 'skipped'
+}
+
 interface WorkoutStats {
   totalSets: number
   completedSets: number
@@ -35,8 +44,10 @@ interface WorkoutStats {
   totalExercises: number
   completedExercises: number
   partialExercises: number
+  skippedExercises: number
   completionPercent: number
   duration: number
+  exerciseDetails: ExerciseStats[]
 }
 
 export default function WorkoutRun() {
@@ -166,6 +177,8 @@ export default function WorkoutRun() {
     let skippedSets = 0
     let completedExercises = 0
     let partialExercises = 0
+    let skippedExercises = 0
+    const exerciseDetails: ExerciseStats[] = []
 
     exercises.forEach(ex => {
       const sets = setLogs[ex.id] || []
@@ -176,11 +189,26 @@ export default function WorkoutRun() {
       completedSets += completed
       skippedSets += skipped
 
+      let status: 'completed' | 'partial' | 'skipped'
       if (completed === sets.length) {
         completedExercises++
+        status = 'completed'
       } else if (completed > 0) {
         partialExercises++
+        status = 'partial'
+      } else {
+        skippedExercises++
+        status = 'skipped'
       }
+
+      exerciseDetails.push({
+        id: ex.id,
+        name: ex.exercise.name,
+        totalSets: sets.length,
+        completedSets: completed,
+        skippedSets: skipped,
+        status,
+      })
     })
 
     const duration = Math.floor((new Date().getTime() - startTimeRef.current.getTime()) / 1000)
@@ -193,8 +221,10 @@ export default function WorkoutRun() {
       totalExercises: exercises.length,
       completedExercises,
       partialExercises,
+      skippedExercises,
       completionPercent,
       duration,
+      exerciseDetails,
     }
   }
 
@@ -706,23 +736,45 @@ export default function WorkoutRun() {
                     </motion.p>
                   </div>
 
+                  {/* Summary Stats */}
                   <motion.div
                     initial={{ y: 30, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.7 }}
-                    className="space-y-2 mb-6 bg-gray-50 dark:bg-gray-800 rounded-2xl p-4"
+                    className="grid grid-cols-3 gap-2 mb-4"
                   >
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-500 dark:text-gray-400">Время</span>
-                      <span className="font-semibold text-gray-900 dark:text-white">{formatDuration(finalStats.duration)}</span>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 text-center">
+                      <p className="text-xl font-bold text-gray-900 dark:text-white">{formatDuration(finalStats.duration)}</p>
+                      <p className="text-xs text-gray-500">время</p>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-500 dark:text-gray-400">Подходов</span>
-                      <span className="font-semibold text-green-600">{finalStats.completedSets}</span>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 text-center">
+                      <p className="text-xl font-bold text-green-600">{finalStats.completedSets}</p>
+                      <p className="text-xs text-gray-500">подходов</p>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-500 dark:text-gray-400">Упражнений</span>
-                      <span className="font-semibold text-green-600">{finalStats.completedExercises}</span>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 text-center">
+                      <p className="text-xl font-bold text-green-600">{finalStats.completedExercises}</p>
+                      <p className="text-xs text-gray-500">упражнений</p>
+                    </div>
+                  </motion.div>
+
+                  {/* Exercise List */}
+                  <motion.div
+                    initial={{ y: 30, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.75 }}
+                    className="mb-6 max-h-32 overflow-y-auto"
+                  >
+                    <div className="space-y-1">
+                      {finalStats.exerciseDetails.map((ex, index) => (
+                        <div
+                          key={ex.id}
+                          className="flex items-center gap-2 py-1"
+                        >
+                          <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{ex.name}</span>
+                          <span className="text-xs text-gray-400 ml-auto flex-shrink-0">{ex.completedSets} подх.</span>
+                        </div>
+                      ))}
                     </div>
                   </motion.div>
 
@@ -739,22 +791,23 @@ export default function WorkoutRun() {
                 </div>
               </motion.div>
             ) : (
-              /* Partial completion - simple stats */
+              /* Partial completion - detailed stats */
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-sm p-6"
+                className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-sm p-6 max-h-[85vh] overflow-y-auto"
               >
-                <div className="text-center mb-6">
-                  <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                {/* Header with percentage */}
+                <div className="text-center mb-5">
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${
                     finalStats.completionPercent >= 75
                       ? 'bg-green-100 dark:bg-green-900/30'
                       : finalStats.completionPercent >= 50
                       ? 'bg-yellow-100 dark:bg-yellow-900/30'
                       : 'bg-orange-100 dark:bg-orange-900/30'
                   }`}>
-                    <Flag className={`w-10 h-10 ${
+                    <Flag className={`w-8 h-8 ${
                       finalStats.completionPercent >= 75
                         ? 'text-green-500'
                         : finalStats.completionPercent >= 50
@@ -762,51 +815,130 @@ export default function WorkoutRun() {
                         : 'text-orange-500'
                     }`} />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
                     Тренировка завершена
                   </h3>
-                  <p className={`text-4xl font-bold mb-1 ${
-                    finalStats.completionPercent >= 75
-                      ? 'text-green-500'
-                      : finalStats.completionPercent >= 50
-                      ? 'text-yellow-500'
-                      : 'text-orange-500'
-                  }`}>
-                    {finalStats.completionPercent}%
-                  </p>
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">выполнено</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className={`text-3xl font-bold ${
+                      finalStats.completionPercent >= 75
+                        ? 'text-green-500'
+                        : finalStats.completionPercent >= 50
+                        ? 'text-yellow-500'
+                        : 'text-orange-500'
+                    }`}>
+                      {finalStats.completionPercent}%
+                    </span>
+                    <span className="text-gray-400 dark:text-gray-500">·</span>
+                    <span className="text-gray-500 dark:text-gray-400">{formatDuration(finalStats.duration)}</span>
+                  </div>
                 </div>
 
-                <div className="space-y-3 mb-6">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                    <span className="text-gray-500 dark:text-gray-400">Длительность</span>
-                    <span className="font-semibold text-gray-900 dark:text-white">{formatDuration(finalStats.duration)}</span>
+                {/* Summary Stats */}
+                <div className="grid grid-cols-3 gap-2 mb-5">
+                  <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-green-600">{finalStats.completedSets}</p>
+                    <p className="text-xs text-green-600/70">выполнено</p>
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                    <span className="text-gray-500 dark:text-gray-400">Подходов выполнено</span>
-                    <span className="font-semibold text-green-600">{finalStats.completedSets} из {finalStats.totalSets}</span>
+                  <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-orange-500">{finalStats.totalSets - finalStats.completedSets - finalStats.skippedSets}</p>
+                    <p className="text-xs text-orange-500/70">не начато</p>
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                    <span className="text-gray-500 dark:text-gray-400">Упражнений полностью</span>
-                    <span className="font-semibold text-gray-900 dark:text-white">{finalStats.completedExercises} из {finalStats.totalExercises}</span>
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-gray-400">{finalStats.skippedSets}</p>
+                    <p className="text-xs text-gray-400">пропущено</p>
                   </div>
-                  {finalStats.partialExercises > 0 && (
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                      <span className="text-gray-500 dark:text-gray-400">Упражнений частично</span>
-                      <span className="font-semibold text-orange-500">{finalStats.partialExercises}</span>
-                    </div>
-                  )}
-                  {finalStats.skippedSets > 0 && (
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-gray-500 dark:text-gray-400">Пропущено подходов</span>
-                      <span className="font-semibold text-gray-400">{finalStats.skippedSets}</span>
-                    </div>
-                  )}
                 </div>
+
+                {/* Exercise Details */}
+                <div className="mb-5">
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Детали по упражнениям</h4>
+                  <div className="space-y-2">
+                    {finalStats.exerciseDetails.map((ex, index) => (
+                      <motion.div
+                        key={ex.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className={`rounded-xl p-3 border ${
+                          ex.status === 'completed'
+                            ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800'
+                            : ex.status === 'partial'
+                            ? 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800'
+                            : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                              ex.status === 'completed'
+                                ? 'bg-green-500'
+                                : ex.status === 'partial'
+                                ? 'bg-orange-500'
+                                : 'bg-gray-300 dark:bg-gray-600'
+                            }`}>
+                              {ex.status === 'completed' ? (
+                                <Check className="w-4 h-4 text-white" />
+                              ) : ex.status === 'partial' ? (
+                                <span className="text-xs font-bold text-white">{ex.completedSets}</span>
+                              ) : (
+                                <X className="w-4 h-4 text-white" />
+                              )}
+                            </div>
+                            <span className={`text-sm font-medium truncate ${
+                              ex.status === 'skipped' ? 'text-gray-400' : 'text-gray-900 dark:text-white'
+                            }`}>
+                              {ex.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                            <span className={`text-sm font-semibold ${
+                              ex.status === 'completed'
+                                ? 'text-green-600'
+                                : ex.status === 'partial'
+                                ? 'text-orange-500'
+                                : 'text-gray-400'
+                            }`}>
+                              {ex.completedSets}/{ex.totalSets}
+                            </span>
+                            <span className="text-xs text-gray-400">подх.</span>
+                          </div>
+                        </div>
+                        {ex.status === 'partial' && (
+                          <div className="mt-2 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-orange-500 rounded-full transition-all"
+                              style={{ width: `${(ex.completedSets / ex.totalSets) * 100}%` }}
+                            />
+                          </div>
+                        )}
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Not completed section */}
+                {(finalStats.skippedExercises > 0 || finalStats.partialExercises > 0) && (
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 mb-5">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                      {finalStats.skippedExercises > 0 && (
+                        <span>Не начато: {finalStats.skippedExercises} упр. </span>
+                      )}
+                      {finalStats.partialExercises > 0 && (
+                        <span>Частично: {finalStats.partialExercises} упр.</span>
+                      )}
+                    </p>
+                  </div>
+                )}
 
                 <button
                   onClick={() => navigate('/workouts')}
-                  className="w-full bg-blue-500 text-white rounded-2xl py-4 font-semibold"
+                  className={`w-full rounded-2xl py-4 font-semibold ${
+                    finalStats.completionPercent >= 75
+                      ? 'bg-green-500 text-white'
+                      : finalStats.completionPercent >= 50
+                      ? 'bg-yellow-500 text-white'
+                      : 'bg-orange-500 text-white'
+                  }`}
                 >
                   Готово
                 </button>
