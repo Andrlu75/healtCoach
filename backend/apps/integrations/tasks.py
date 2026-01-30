@@ -253,10 +253,14 @@ def _sync_calories(service, client: Client, start_time: datetime, end_time: date
 
 def _sync_sleep(service, client: Client, start_time: datetime, end_time: datetime) -> int:
     """Синхронизирует сон."""
+    # Google Fit API требует формат RFC3339 без микросекунд
+    start_str = start_time.replace(microsecond=0).strftime('%Y-%m-%dT%H:%M:%SZ')
+    end_str = end_time.replace(microsecond=0).strftime('%Y-%m-%dT%H:%M:%SZ')
+
     sessions = service.users().sessions().list(
         userId='me',
-        startTime=start_time.isoformat() + 'Z',
-        endTime=end_time.isoformat() + 'Z',
+        startTime=start_str,
+        endTime=end_str,
         activityType=72,  # Sleep activity type
     ).execute()
 
