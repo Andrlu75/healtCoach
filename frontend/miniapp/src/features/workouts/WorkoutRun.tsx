@@ -985,6 +985,21 @@ export default function WorkoutRun() {
               </motion.div>
             ))}
           </div>
+
+          {/* Finish Exercise Button */}
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => {
+              selection()
+              setCurrentExerciseIndex(null)
+              setIsResting(false)
+              if (timerRef.current) clearInterval(timerRef.current)
+            }}
+            className="w-full mt-6 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-2xl py-4 font-medium flex items-center justify-center gap-2"
+          >
+            <Check className="w-5 h-5" />
+            Закончить упражнение
+          </motion.button>
         </>
       ) : (
         <div className="text-center py-12">
