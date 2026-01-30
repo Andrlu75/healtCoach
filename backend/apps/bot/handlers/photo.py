@@ -229,6 +229,11 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
 
     await send_message(bot.token, chat_id, response_text)
 
+    # Сохраняем AI комментарий в meal
+    if persona.food_response_prompt and response_text:
+        meal.ai_comment = response_text
+        await sync_to_async(meal.save)(update_fields=['ai_comment'])
+
     # Send notification to coach's report chat
     await _notify_coach_about_meal(bot, client, analysis, summary)
 
@@ -279,7 +284,7 @@ async def _handle_food_photo(bot: TelegramBot, client: Client, chat_id: int, ima
     # Extract meta before saving
     meta = analysis.pop('_meta', {})
 
-    await save_meal(client, image_data, analysis)
+    meal = await save_meal(client, image_data, analysis)
     summary = await get_daily_summary(client)
 
     # Check if persona has food_response_prompt
@@ -394,6 +399,11 @@ async def _handle_food_photo(bot: TelegramBot, client: Client, chat_id: int, ima
         }
 
     await send_message(bot.token, chat_id, response_text)
+
+    # Сохраняем AI комментарий в meal
+    if persona.food_response_prompt and response_text:
+        meal.ai_comment = response_text
+        await sync_to_async(meal.save)(update_fields=['ai_comment'])
 
     # Log interaction
     await sync_to_async(InteractionLog.objects.create)(
