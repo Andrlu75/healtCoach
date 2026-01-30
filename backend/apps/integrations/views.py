@@ -154,6 +154,7 @@ class GoogleFitCallbackView(APIView):
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>Google Fit</title>
     <style>
         body {{
