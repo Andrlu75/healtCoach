@@ -4,6 +4,8 @@ from datetime import timedelta
 from django.conf import settings
 from django.http import HttpResponse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -63,12 +65,14 @@ class GoogleFitAuthURLView(APIView):
         })
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class GoogleFitCallbackView(APIView):
     """
     Обрабатывает callback от Google OAuth.
     Возвращает HTML страницу, которая отправляет postMessage и закрывает popup.
     """
     permission_classes = [AllowAny]
+    authentication_classes = []  # Отключаем аутентификацию для callback
 
     def get(self, request):
         code = request.query_params.get('code')
@@ -181,7 +185,11 @@ class GoogleFitCallbackView(APIView):
 </body>
 </html>
 '''
-        return HttpResponse(html, content_type='text/html')
+        response = HttpResponse(html, content_type='text/html')
+        # Разрешаем показ в popup окне
+        response['X-Frame-Options'] = 'ALLOWALL'
+        response['Cross-Origin-Opener-Policy'] = 'unsafe-none'
+        return response
 
 
 class GoogleFitStatusView(APIView):
