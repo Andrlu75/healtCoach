@@ -606,8 +606,9 @@ async def _notify_coach_about_meal_miniapp(client: Client, meal: Meal):
         image_data = None
         if meal.image:
             try:
+                # Сбрасываем указатель на начало перед чтением
+                await sync_to_async(lambda: meal.image.seek(0))()
                 image_data = await sync_to_async(lambda: meal.image.read())()
-                await sync_to_async(lambda: meal.image.seek(0))()  # Reset file pointer
             except Exception as img_err:
                 logger.warning('[NOTIFY] Could not read meal image: %s', img_err)
 
