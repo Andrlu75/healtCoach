@@ -765,7 +765,7 @@ export default function WorkoutRun() {
                     className="mb-6 max-h-32 overflow-y-auto"
                   >
                     <div className="space-y-1">
-                      {finalStats.exerciseDetails.map((ex, index) => (
+                      {finalStats.exerciseDetails.map((ex) => (
                         <div
                           key={ex.id}
                           className="flex items-center gap-2 py-1"
