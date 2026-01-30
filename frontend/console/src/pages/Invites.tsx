@@ -50,25 +50,27 @@ export default function Invites() {
       <h1 className="text-2xl font-bold text-foreground mb-6">Инвайт-ссылки</h1>
 
       {/* Create */}
-      <div className="bg-card rounded-xl border border-border p-4 mb-6 flex items-end gap-3">
-        <div>
-          <label className="text-xs text-muted-foreground">Макс. использований</label>
-          <input
-            type="number"
-            min="1"
-            value={maxUses}
-            onChange={(e) => setMaxUses(e.target.value)}
-            className="mt-1 w-24 px-3 py-2 text-sm bg-background text-foreground border border-border rounded-lg"
-          />
+      <div className="bg-card rounded-xl border border-border p-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+          <div className="flex-1 sm:flex-none">
+            <label className="text-xs text-muted-foreground">Макс. использований</label>
+            <input
+              type="number"
+              min="1"
+              value={maxUses}
+              onChange={(e) => setMaxUses(e.target.value)}
+              className="mt-1 w-full sm:w-24 px-3 py-2 text-sm bg-background text-foreground border border-border rounded-lg"
+            />
+          </div>
+          <button
+            onClick={createInvite}
+            disabled={creating}
+            className="flex items-center justify-center gap-2 px-3 py-2 bg-primary text-primary-foreground text-sm rounded-lg hover:bg-primary/90 disabled:opacity-50"
+          >
+            <Plus size={16} />
+            {creating ? 'Создание...' : 'Создать инвайт'}
+          </button>
         </div>
-        <button
-          onClick={createInvite}
-          disabled={creating}
-          className="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground text-sm rounded-lg hover:bg-primary/90 disabled:opacity-50"
-        >
-          <Plus size={16} />
-          {creating ? 'Создание...' : 'Создать инвайт'}
-        </button>
       </div>
 
       {/* List */}
@@ -79,33 +81,35 @@ export default function Invites() {
       ) : (
         <div className="space-y-2">
           {invites.map((inv) => (
-            <div key={inv.id} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <code className="text-sm bg-muted px-2 py-0.5 rounded text-secondary-foreground truncate max-w-xs">
-                    {inv.invite_url}
-                  </code>
-                  <button
-                    onClick={() => copyLink(inv)}
-                    className="p-1 text-muted-foreground hover:text-primary"
-                  >
-                    {copied === inv.id ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
-                  </button>
+            <div key={inv.id} className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <code className="text-xs sm:text-sm bg-muted px-2 py-0.5 rounded text-secondary-foreground truncate block max-w-full">
+                      {inv.invite_url}
+                    </code>
+                    <button
+                      onClick={() => copyLink(inv)}
+                      className="p-1.5 text-muted-foreground hover:text-primary shrink-0"
+                    >
+                      {copied === inv.id ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 sm:gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
+                    <span>{inv.uses_count}/{inv.max_uses} исп.</span>
+                    <span>{dayjs(inv.created_at).format('DD.MM.YY')}</span>
+                    {!inv.is_active && (
+                      <span className="text-red-400">Неактивен</span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                  <span>Использований: {inv.uses_count}/{inv.max_uses}</span>
-                  <span>Создан: {dayjs(inv.created_at).format('DD.MM.YY')}</span>
-                  {!inv.is_active && (
-                    <span className="text-red-400">Неактивен</span>
-                  )}
-                </div>
+                <button
+                  onClick={() => deleteInvite(inv.id)}
+                  className="p-2 text-muted-foreground hover:text-red-400 shrink-0"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
-              <button
-                onClick={() => deleteInvite(inv.id)}
-                className="p-2 text-muted-foreground hover:text-red-400"
-              >
-                <Trash2 size={16} />
-              </button>
             </div>
           ))}
         </div>

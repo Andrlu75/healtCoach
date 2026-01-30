@@ -268,26 +268,35 @@ export default function ClientDetail() {
         <div className="h-28 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600" />
 
         {/* Profile content */}
-        <div className="px-6 pb-6">
-          <div className="flex items-end gap-5 -mt-14">
+        <div className="px-4 sm:px-6 pb-6">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-5 -mt-10 sm:-mt-14">
             {/* Avatar */}
-            <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 border-4 border-white shadow-lg flex items-center justify-center shrink-0">
-              <span className="text-3xl font-bold text-white">{initials}</span>
+            <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 border-4 border-white shadow-lg flex items-center justify-center shrink-0">
+              <span className="text-2xl sm:text-3xl font-bold text-white">{initials}</span>
             </div>
 
             {/* Info */}
-            <div className="flex-1 min-w-0 pb-2">
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl font-bold text-foreground">
-                  {client.first_name} {client.last_name}
-                </h1>
-                <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${status.bg} ${status.text}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
-                  {status.label}
-                </span>
+            <div className="flex-1 min-w-0 sm:pb-2">
+              <div className="flex items-start sm:items-center justify-between sm:justify-start gap-2 sm:gap-3 flex-wrap">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-bold text-foreground">
+                    {client.first_name} {client.last_name}
+                  </h1>
+                  <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${status.bg} ${status.text}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+                    {status.label}
+                  </span>
+                </div>
+                {/* Delete button - mobile */}
+                <button
+                  onClick={handleDelete}
+                  className="sm:hidden flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
 
-              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
+              <div className="flex items-center gap-3 sm:gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
                 {client.telegram_username && (
                   <span className="flex items-center gap-1.5 hover:text-primary transition-colors">
                     <Send size={14} />
@@ -301,7 +310,7 @@ export default function ClientDetail() {
                   </span>
                 )}
                 {client.timezone && (
-                  <span className="flex items-center gap-1.5">
+                  <span className="hidden sm:flex items-center gap-1.5">
                     <Clock size={14} />
                     {timezoneOptions.find((tz) => tz.value === client.timezone)?.label || client.timezone}
                   </span>
@@ -309,13 +318,13 @@ export default function ClientDetail() {
               </div>
             </div>
 
-            {/* Delete button */}
+            {/* Delete button - desktop */}
             <button
               onClick={handleDelete}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
             >
               <Trash2 size={16} />
-              <span className="hidden sm:inline">Удалить</span>
+              <span>Удалить</span>
             </button>
           </div>
 
@@ -751,8 +760,8 @@ function MetricsTab({ metrics }: { metrics: HealthMetric[] }) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
+    <div className="overflow-x-auto -mx-5 px-5">
+      <table className="w-full min-w-[500px]">
         <thead>
           <tr className="border-b border-border">
             <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Дата</th>
@@ -764,9 +773,9 @@ function MetricsTab({ metrics }: { metrics: HealthMetric[] }) {
         <tbody className="divide-y divide-border/50">
           {metrics.map((m) => (
             <tr key={m.id} className="hover:bg-muted transition-colors">
-              <td className="px-4 py-3 text-sm text-muted-foreground">{dayjs(m.recorded_at).format('D MMM YYYY, HH:mm')}</td>
+              <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">{dayjs(m.recorded_at).format('D MMM YYYY, HH:mm')}</td>
               <td className="px-4 py-3 text-sm font-medium text-foreground">{m.metric_type}</td>
-              <td className="px-4 py-3 text-sm text-right font-medium text-foreground">{m.value} <span className="text-muted-foreground font-normal">{m.unit}</span></td>
+              <td className="px-4 py-3 text-sm text-right font-medium text-foreground whitespace-nowrap">{m.value} <span className="text-muted-foreground font-normal">{m.unit}</span></td>
               <td className="px-4 py-3 text-sm text-muted-foreground">{m.source}</td>
             </tr>
           ))}

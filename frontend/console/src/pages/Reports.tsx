@@ -69,7 +69,7 @@ export default function Reports() {
       {showGenerate && (
         <div className="bg-card rounded-xl border border-primary/30 p-4 mb-4">
           <h3 className="text-sm font-medium text-foreground mb-3">Новый отчёт</h3>
-          <div className="grid grid-cols-3 gap-3 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
             <div>
               <label className="text-xs text-muted-foreground">Клиент</label>
               <select
@@ -125,7 +125,7 @@ export default function Reports() {
       )}
 
       {/* Filters */}
-      <div className="flex gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <select
           value={filterClient}
           onChange={(e) => setFilterClient(e.target.value)}
@@ -155,59 +155,103 @@ export default function Reports() {
           Отчёты не найдены
         </div>
       ) : (
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-muted">
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Клиент</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Тип</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Период</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Сводка</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground">PDF</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Создан</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reports.map((r) => (
-                <tr key={r.id} className="border-b border-border/50">
-                  <td className="px-4 py-3 text-sm text-foreground">{r.client_name}</td>
-                  <td className="px-4 py-3">
+        <>
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {reports.map((r) => (
+              <div key={r.id} className="bg-card rounded-xl border border-border p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <div className="font-medium text-foreground">{r.client_name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {dayjs(r.period_start).format('DD.MM')} — {dayjs(r.period_end).format('DD.MM')}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       r.report_type === 'daily'
                         ? 'bg-blue-500/20 text-blue-400'
                         : 'bg-purple-500/20 text-purple-400'
                     }`}>
-                      {r.report_type === 'daily' ? 'Дневной' : 'Недельный'}
+                      {r.report_type === 'daily' ? 'Дн.' : 'Нед.'}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {dayjs(r.period_start).format('DD.MM')} — {dayjs(r.period_end).format('DD.MM')}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-secondary-foreground max-w-xs truncate">
-                    {r.summary || '—'}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {r.pdf_url ? (
+                    {r.pdf_url && (
                       <a
                         href={r.pdf_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-primary hover:text-primary/80"
+                        className="p-1.5 bg-primary/20 text-primary rounded-lg"
                       >
                         <Download size={14} />
                       </a>
-                    ) : (
-                      <FileText size={14} className="text-muted-foreground/50 mx-auto" />
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {dayjs(r.created_at).format('DD.MM.YY HH:mm')}
-                  </td>
+                  </div>
+                </div>
+                {r.summary && (
+                  <p className="text-sm text-secondary-foreground line-clamp-2">{r.summary}</p>
+                )}
+                <div className="text-xs text-muted-foreground mt-2">
+                  {dayjs(r.created_at).format('DD.MM.YY HH:mm')}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block bg-card rounded-xl border border-border overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-muted">
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Клиент</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Тип</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Период</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Сводка</th>
+                  <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground">PDF</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Создан</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {reports.map((r) => (
+                  <tr key={r.id} className="border-b border-border/50">
+                    <td className="px-4 py-3 text-sm text-foreground">{r.client_name}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        r.report_type === 'daily'
+                          ? 'bg-blue-500/20 text-blue-400'
+                          : 'bg-purple-500/20 text-purple-400'
+                      }`}>
+                        {r.report_type === 'daily' ? 'Дневной' : 'Недельный'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {dayjs(r.period_start).format('DD.MM')} — {dayjs(r.period_end).format('DD.MM')}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-secondary-foreground max-w-xs truncate">
+                      {r.summary || '—'}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {r.pdf_url ? (
+                        <a
+                          href={r.pdf_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-primary hover:text-primary/80"
+                        >
+                          <Download size={14} />
+                        </a>
+                      ) : (
+                        <FileText size={14} className="text-muted-foreground/50 mx-auto" />
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {dayjs(r.created_at).format('DD.MM.YY HH:mm')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   )

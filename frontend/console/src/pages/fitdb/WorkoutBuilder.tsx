@@ -267,29 +267,29 @@ const WorkoutBuilder = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/fitdb/workouts')}>
+        <div className="container mx-auto px-4 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/fitdb/workouts')} className="shrink-0">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-              <div>
-                <h1 className="text-xl font-bold text-foreground">
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">
                   {id ? 'Редактирование' : 'Новая тренировка'}
                 </h1>
-                <p className="text-sm text-muted-foreground">
-                  {workoutItems.length} упражнений • ~{Math.round(totalTime / 60)} мин
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  {workoutItems.length} упр. • ~{Math.round(totalTime / 60)} мин
                 </p>
               </div>
             </div>
-            
-            <Button onClick={handleSave} disabled={saving} className="shadow-glow">
+
+            <Button onClick={handleSave} disabled={saving} className="shadow-glow shrink-0" size="sm">
               {saving ? (
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                <Loader2 className="w-4 h-4 sm:mr-2 animate-spin" />
               ) : (
-                <Save className="w-5 h-5 mr-2" />
+                <Save className="w-4 h-4 sm:mr-2" />
               )}
-              Сохранить
+              <span className="hidden sm:inline">Сохранить</span>
             </Button>
           </div>
         </div>
@@ -366,7 +366,7 @@ const WorkoutBuilder = () => {
                     </div>
 
                     {/* Parameters */}
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <div>
                         <label className="text-xs text-muted-foreground">Подходы</label>
                         <Input

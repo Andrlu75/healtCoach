@@ -538,7 +538,7 @@ export default function AISettings() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-1 bg-secondary p-1 rounded-xl mb-6">
+      <div className="flex gap-1 bg-secondary p-1 rounded-xl mb-6 overflow-x-auto">
         {TABS.map(tab => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
@@ -546,14 +546,14 @@ export default function AISettings() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex-1 justify-center ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex-1 justify-center whitespace-nowrap ${
                 isActive
                   ? 'bg-card text-blue-600 shadow-sm'
                   : 'text-muted-foreground hover:text-secondary-foreground hover:bg-muted'
               }`}
             >
               <Icon size={16} />
-              <span>{tab.label}</span>
+              <span className="hidden sm:inline">{tab.label}</span>
             </button>
           )
         })}
@@ -727,7 +727,7 @@ export default function AISettings() {
           ) : (
             <>
               {/* Current assignments summary */}
-              <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
                 {([
                   { key: 'text' as const, label: 'Текст', desc: 'Текстовые сообщения', activeClass: 'border-blue-500/50 bg-blue-500/10', activeLabel: 'text-blue-400', icon: '💬' },
                   { key: 'vision' as const, label: 'Фото', desc: 'Анализ изображений', activeClass: 'border-green-500/50 bg-green-500/10', activeLabel: 'text-green-400', icon: '📷' },
@@ -861,7 +861,7 @@ export default function AISettings() {
           {/* Parameters */}
           <div className="mt-6 pt-5 border-t border-border">
             <h3 className="text-sm font-semibold text-secondary-foreground mb-4">Параметры генерации</h3>
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div className="bg-muted rounded-lg p-4">
                 <label className="block text-sm text-secondary-foreground mb-2">
                   Температура: <span className="font-semibold text-foreground">{settings.temperature}</span>
@@ -1103,8 +1103,8 @@ export default function AISettings() {
               <p className="text-muted-foreground text-sm">Нет данных за выбранный период</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto rounded-lg border border-border -mx-4 sm:mx-0 px-4 sm:px-0">
+              <table className="w-full text-sm min-w-[600px]">
                 <thead>
                   <tr className="bg-muted border-b border-border">
                     <th className="text-left py-3 px-4 font-medium text-secondary-foreground">Провайдер</th>

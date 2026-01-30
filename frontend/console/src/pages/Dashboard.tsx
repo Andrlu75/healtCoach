@@ -123,12 +123,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <div className="inline-flex gap-4 min-w-full pb-2">
+          <div className="overflow-x-auto md:overflow-visible">
+            <div className="flex flex-col gap-4 md:flex-row md:flex-wrap lg:flex-nowrap lg:overflow-x-auto pb-2">
               {mealsDashboard.clients.map(client => {
                 const caloriesPercent = Math.round((client.totals.calories / client.norms.calories) * 100)
                 return (
-                <div key={client.client_id} className="w-64 flex-shrink-0 bg-muted rounded-lg p-3">
+                <div key={client.client_id} className="w-full md:w-64 flex-shrink-0 bg-muted rounded-lg p-3">
                   {/* Header with name and KBJU summary */}
                   <div className="mb-3">
                     <div className="font-medium text-foreground truncate">{client.client_name}</div>
@@ -208,10 +208,10 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <div className="inline-flex gap-4 min-w-full pb-2">
+          <div className="overflow-x-auto md:overflow-visible">
+            <div className="flex flex-col gap-4 md:flex-row md:flex-wrap lg:flex-nowrap lg:overflow-x-auto pb-2">
               {workoutsDashboard.clients.map(client => (
-                <div key={client.client_id} className="w-64 flex-shrink-0 bg-muted rounded-lg p-3">
+                <div key={client.client_id} className="w-full md:w-64 flex-shrink-0 bg-muted rounded-lg p-3">
                   {/* Header with name and summary */}
                   <div className="mb-3">
                     <div className="font-medium text-foreground truncate">{client.client_name}</div>
@@ -279,20 +279,25 @@ export default function Dashboard() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowCostsModal(false)}>
           <div className="bg-card rounded-xl border border-border w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b border-border">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400">
-                  <DollarSign size={20} />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-5 border-b border-border gap-3">
+              <div className="flex items-center justify-between sm:justify-start gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400">
+                    <DollarSign size={20} />
+                  </div>
+                  <h2 className="text-lg font-semibold text-foreground">Затраты AI</h2>
                 </div>
-                <h2 className="text-lg font-semibold text-foreground">Затраты AI</h2>
+                <button onClick={() => setShowCostsModal(false)} className="p-1 hover:bg-muted rounded-lg transition-colors sm:hidden">
+                  <X size={20} className="text-muted-foreground" />
+                </button>
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-1 sm:flex-none">
                   {Object.entries(periodLabels).map(([key, label]) => (
                     <button
                       key={key}
                       onClick={() => setModalPeriod(key)}
-                      className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                      className={`flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg transition-colors ${
                         modalPeriod === key
                           ? 'bg-purple-500/20 text-purple-400 font-medium'
                           : 'text-muted-foreground hover:bg-muted'
@@ -302,7 +307,7 @@ export default function Dashboard() {
                     </button>
                   ))}
                 </div>
-                <button onClick={() => setShowCostsModal(false)} className="p-1 hover:bg-muted rounded-lg transition-colors">
+                <button onClick={() => setShowCostsModal(false)} className="hidden sm:block p-1 hover:bg-muted rounded-lg transition-colors">
                   <X size={20} className="text-muted-foreground" />
                 </button>
               </div>
@@ -321,8 +326,8 @@ export default function Dashboard() {
               {/* Breakdown by model table */}
               <h3 className="text-sm font-medium text-secondary-foreground mb-2">По моделям</h3>
               {modalUsage && modalUsage.stats.length > 0 ? (
-                <div className="overflow-hidden rounded-lg border border-border mb-6">
-                  <table className="w-full">
+                <div className="overflow-x-auto rounded-lg border border-border mb-6">
+                  <table className="w-full min-w-[600px]">
                     <thead>
                       <tr className="bg-muted border-b border-border">
                         <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Провайдер</th>
@@ -365,8 +370,8 @@ export default function Dashboard() {
                 <h3 className="text-sm font-medium text-secondary-foreground">По клиентам</h3>
               </div>
               {modalUsage && modalUsage.stats_by_client && modalUsage.stats_by_client.length > 0 ? (
-                <div className="overflow-hidden rounded-lg border border-border">
-                  <table className="w-full">
+                <div className="overflow-x-auto rounded-lg border border-border">
+                  <table className="w-full min-w-[500px]">
                     <thead>
                       <tr className="bg-muted border-b border-border">
                         <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Клиент</th>

@@ -194,35 +194,38 @@ export default function TelegramSettings() {
             {bots.map(bot => (
               <div
                 key={bot.id}
-                className={`flex items-center justify-between p-4 rounded-lg border ${bot.is_active ? 'border-blue-500/50 bg-blue-500/10' : 'border-border bg-card'}`}
+                className={`p-4 rounded-lg border ${bot.is_active ? 'border-blue-500/50 bg-blue-500/10' : 'border-border bg-card'}`}
               >
-                <div className="flex items-center gap-3">
-                  <Bot size={20} className={bot.is_active ? 'text-blue-600' : 'text-muted-foreground'} />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-foreground">{bot.name}</span>
-                      {bot.is_active && (
-                        <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">Активный</span>
-                      )}
+                <div className="flex items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Bot size={20} className={`shrink-0 ${bot.is_active ? 'text-blue-600' : 'text-muted-foreground'}`} />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-foreground truncate">{bot.name}</span>
+                        {bot.is_active && (
+                          <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">Активный</span>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground block truncate">{bot.masked_token}</span>
                     </div>
-                    <span className="text-xs text-muted-foreground">{bot.masked_token}</span>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {!bot.is_active && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!bot.is_active && (
+                      <button
+                        onClick={() => handleSwitch(bot.id)}
+                        className="px-2 sm:px-3 py-1.5 text-xs bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors"
+                      >
+                        <span className="hidden sm:inline">Активировать</span>
+                        <span className="sm:hidden">Вкл</span>
+                      </button>
+                    )}
                     <button
-                      onClick={() => handleSwitch(bot.id)}
-                      className="px-3 py-1.5 text-xs bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors"
+                      onClick={() => handleDelete(bot.id)}
+                      className="p-1.5 text-muted-foreground hover:text-red-600 transition-colors"
                     >
-                      Активировать
+                      <Trash2 size={16} />
                     </button>
-                  )}
-                  <button
-                    onClick={() => handleDelete(bot.id)}
-                    className="p-1.5 text-muted-foreground hover:text-red-600 transition-colors"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -235,7 +238,7 @@ export default function TelegramSettings() {
         <h2 className="text-lg font-semibold text-foreground mb-3">Уведомления</h2>
         <div>
           <label className="block text-sm font-medium text-secondary-foreground mb-1">Chat ID для уведомлений</label>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               value={notificationChatId}
@@ -246,7 +249,7 @@ export default function TelegramSettings() {
             <button
               onClick={handleSaveChatId}
               disabled={savingChat}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors shrink-0"
             >
               {savingChat ? '...' : 'Сохранить'}
             </button>

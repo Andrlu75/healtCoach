@@ -64,7 +64,7 @@ export default function Logs() {
       <h1 className="text-2xl font-bold text-foreground mb-6">Логи взаимодействий</h1>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-4 flex-wrap">
+      <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-3 mb-4">
         <select
           value={filterClient}
           onChange={(e) => { setFilterClient(e.target.value); setPage(1) }}
@@ -111,8 +111,8 @@ export default function Logs() {
         </div>
       ) : (
         <>
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <table className="w-full">
+          <div className="bg-card rounded-xl border border-border overflow-x-auto">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-border bg-muted">
                   <th className="w-8 px-3 py-3"></th>
@@ -162,8 +162,8 @@ export default function Logs() {
                     </tr>
                     {expandedId === log.id && (
                       <tr className="border-b border-border/50 bg-muted">
-                        <td colSpan={8} className="px-6 py-4">
-                          <div className="grid grid-cols-2 gap-4">
+                        <td colSpan={8} className="px-4 sm:px-6 py-4">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             <div>
                               <h4 className="text-xs font-medium text-muted-foreground mb-2">AI Request</h4>
                               <pre className="text-xs bg-card text-foreground border border-border rounded-lg p-3 overflow-auto max-h-64">
@@ -177,23 +177,23 @@ export default function Logs() {
                               </pre>
                             </div>
                           </div>
-                          <div className="mt-3 grid grid-cols-2 gap-4">
+                          <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-4">
                             <div>
                               <h4 className="text-xs font-medium text-muted-foreground mb-1">Полный ввод клиента</h4>
                               <div className="bg-card border border-border rounded-lg p-3">
-                                <p className="text-sm text-secondary-foreground">{log.client_input}</p>
+                                <p className="text-sm text-secondary-foreground break-words">{log.client_input}</p>
                                 {log.image_url && (
                                   <img
                                     src={log.image_url}
                                     alt="Фото от клиента"
-                                    className="mt-2 max-w-xs rounded-lg shadow-sm"
+                                    className="mt-2 max-w-full sm:max-w-xs rounded-lg shadow-sm"
                                   />
                                 )}
                               </div>
                             </div>
                             <div>
                               <h4 className="text-xs font-medium text-muted-foreground mb-1">Полный ответ клиенту</h4>
-                              <p className="text-sm text-secondary-foreground bg-card border border-border rounded-lg p-3 whitespace-pre-wrap">
+                              <p className="text-sm text-secondary-foreground bg-card border border-border rounded-lg p-3 whitespace-pre-wrap break-words">
                                 {log.client_output}
                               </p>
                             </div>

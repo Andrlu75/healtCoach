@@ -87,58 +87,61 @@ export default function OnboardingEditor() {
                   onCancel={() => setEditingId(null)}
                 />
               ) : (
-                <div className="bg-card rounded-xl border border-border p-4 flex items-start gap-3">
-                  <div className="flex flex-col gap-0.5 shrink-0">
-                    <button
-                      onClick={() => moveQuestion(idx, 'up')}
-                      disabled={idx === 0}
-                      className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20"
-                    >
-                      <ChevronUp size={14} />
-                    </button>
-                    <button
-                      onClick={() => moveQuestion(idx, 'down')}
-                      disabled={idx === questions.length - 1}
-                      className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20"
-                    >
-                      <ChevronDown size={14} />
-                    </button>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground font-mono">{idx + 1}.</span>
-                      <span className="text-sm font-medium text-foreground">{q.text}</span>
-                      {q.is_required && (
-                        <span className="text-xs text-red-400">*</span>
-                      )}
+                <div className="bg-card rounded-xl border border-border p-3 sm:p-4">
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <div className="flex flex-col gap-0.5 shrink-0">
+                      <button
+                        onClick={() => moveQuestion(idx, 'up')}
+                        disabled={idx === 0}
+                        className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20"
+                      >
+                        <ChevronUp size={14} />
+                      </button>
+                      <button
+                        onClick={() => moveQuestion(idx, 'down')}
+                        disabled={idx === questions.length - 1}
+                        className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20"
+                      >
+                        <ChevronDown size={14} />
+                      </button>
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs px-2 py-0.5 bg-secondary rounded text-secondary-foreground">
-                        {questionTypes[q.question_type]}
-                      </span>
-                      {q.field_key && (
-                        <span className="text-xs text-muted-foreground">→ {q.field_key}</span>
-                      )}
-                      {q.options.length > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          ({q.options.join(', ')})
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start sm:items-center gap-2 flex-wrap">
+                        <span className="text-xs text-muted-foreground font-mono">{idx + 1}.</span>
+                        <span className="text-sm font-medium text-foreground break-words">{q.text}</span>
+                        {q.is_required && (
+                          <span className="text-xs text-red-400">*</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-xs px-2 py-0.5 bg-secondary rounded text-secondary-foreground">
+                          {questionTypes[q.question_type]}
                         </span>
-                      )}
+                        {q.field_key && (
+                          <span className="text-xs text-muted-foreground">→ {q.field_key}</span>
+                        )}
+                        {q.options.length > 0 && (
+                          <span className="text-xs text-muted-foreground hidden sm:inline">
+                            ({q.options.join(', ')})
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setEditingId(q.id)}
-                      className="text-xs text-primary hover:text-primary/80 px-2 py-1"
-                    >
-                      Изменить
-                    </button>
-                    <button
-                      onClick={() => deleteQuestion(q.id)}
-                      className="p-1 text-muted-foreground hover:text-red-400"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => setEditingId(q.id)}
+                        className="text-xs text-primary hover:text-primary/80 px-2 py-1"
+                      >
+                        <span className="hidden sm:inline">Изменить</span>
+                        <span className="sm:hidden">Ред.</span>
+                      </button>
+                      <button
+                        onClick={() => deleteQuestion(q.id)}
+                        className="p-1 text-muted-foreground hover:text-red-400"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -193,7 +196,7 @@ function QuestionForm({
 
   return (
     <div className="bg-card rounded-xl border border-primary/30 p-4 mb-2">
-      <div className="grid grid-cols-2 gap-3 mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
           <label className="text-xs text-muted-foreground">Текст вопроса</label>
           <input

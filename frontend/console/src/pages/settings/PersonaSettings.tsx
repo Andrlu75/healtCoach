@@ -110,8 +110,8 @@ export default function PersonaSettings() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-border p-6 space-y-5">
-        <div className="grid grid-cols-3 gap-4">
+      <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-border p-4 sm:p-6 space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-secondary-foreground mb-1">Имя</label>
             <input
@@ -190,32 +190,34 @@ export default function PersonaSettings() {
           <p className="text-xs text-muted-foreground mt-1">Отправляется новому клиенту после онбординга</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {saving ? 'Сохранение...' : 'Сохранить'}
-          </button>
-          {selectedId && personas.find((p) => p.id === selectedId && !p.is_default) && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <button
-              type="button"
-              onClick={handleSetDefault}
-              className="px-3 py-2 text-sm text-blue-600 hover:text-blue-700"
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              Сделать по умолчанию
+              {saving ? 'Сохранение...' : 'Сохранить'}
             </button>
-          )}
-          {selectedId && personas.length > 1 && (
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="px-3 py-2 text-sm text-red-500 hover:text-red-700"
-            >
-              Удалить
-            </button>
-          )}
+            {selectedId && personas.find((p) => p.id === selectedId && !p.is_default) && (
+              <button
+                type="button"
+                onClick={handleSetDefault}
+                className="px-3 py-2 text-sm text-blue-600 hover:text-blue-700"
+              >
+                По умолч.
+              </button>
+            )}
+            {selectedId && personas.length > 1 && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="px-3 py-2 text-sm text-red-500 hover:text-red-700"
+              >
+                Удалить
+              </button>
+            )}
+          </div>
           {message && (
             <span className={`text-sm ${message.includes('Ошибка') ? 'text-red-600' : 'text-green-600'}`}>
               {message}
