@@ -52,8 +52,13 @@ export default function TelegramSettings() {
 
   const handleSwitch = async (botId: number) => {
     try {
-      await settingsApi.switchTelegramBot(botId)
+      const { data } = await settingsApi.switchTelegramBot(botId)
       setBots(prev => prev.map(b => ({ ...b, is_active: b.id === botId })))
+      if (data.webhook_error) {
+        setMessage(`Ошибка вебхука: ${data.webhook_error}`)
+      } else {
+        setMessage('Бот активирован, вебхук настроен')
+      }
     } catch {
       setMessage('Ошибка переключения')
     }

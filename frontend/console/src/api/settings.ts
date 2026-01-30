@@ -85,7 +85,7 @@ export const settingsApi = {
   addTelegramBot: (name: string, token: string) =>
     api.post<TelegramBot>('/persona/telegram/', { name, token }),
   switchTelegramBot: (bot_id: number) =>
-    api.put('/persona/telegram/', { bot_id }),
+    api.put<{ status: string; webhook_error?: string }>('/persona/telegram/', { bot_id }),
   updateNotificationChatId: (notification_chat_id: string) =>
     api.put('/persona/telegram/', { notification_chat_id }),
   deleteTelegramBot: (bot_id: number) =>

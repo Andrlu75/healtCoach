@@ -643,6 +643,7 @@ class TelegramSettingsView(APIView):
         bot_id = request.data.get('bot_id')
         notification_chat_id = request.data.get('notification_chat_id')
 
+        webhook_error = None
         if bot_id is not None:
             try:
                 bot = TelegramBot.objects.get(pk=bot_id, coach=coach)
@@ -667,23 +668,40 @@ class TelegramSettingsView(APIView):
 
             # Set webhook for new active bot
             base_url = getattr(django_settings, 'TELEGRAM_WEBHOOK_BASE_URL', '')
+            webhook_error = None
             if base_url:
                 webhook_url = f'{base_url}/api/bot/webhook/{bot.pk}/'
                 params = {'url': webhook_url}
                 webhook_secret = getattr(django_settings, 'TELEGRAM_WEBHOOK_SECRET', '')
                 if webhook_secret:
                     params['secret_token'] = webhook_secret
-                httpx.post(
-                    f'https://api.telegram.org/bot{bot.token}/setWebhook',
-                    json=params,
-                    timeout=10,
-                )
+                try:
+                    resp = httpx.post(
+                        f'https://api.telegram.org/bot{bot.token}/setWebhook',
+                        json=params,
+                        timeout=10,
+                    )
+                    result = resp.json()
+                    if not result.get('ok'):
+                        webhook_error = result.get('description', 'Unknown error')
+                        logger.error(f'Failed to set webhook for bot {bot.pk}: {webhook_error}')
+                    else:
+                        logger.info(f'Webhook set for bot {bot.pk}: {webhook_url}')
+                except Exception as e:
+                    webhook_error = str(e)
+                    logger.error(f'Exception setting webhook for bot {bot.pk}: {e}')
+            else:
+                webhook_error = 'TELEGRAM_WEBHOOK_BASE_URL не настроен'
+                logger.warning(webhook_error)
 
         if notification_chat_id is not None:
             coach.telegram_notification_chat_id = notification_chat_id
             coach.save(update_fields=['telegram_notification_chat_id'])
 
-        return Response({'status': 'updated'})
+        response_data = {'status': 'updated'}
+        if bot_id is not None and webhook_error:
+            response_data['webhook_error'] = webhook_error
+        return Response(response_data)
 
     def delete(self, request):
         """Delete a bot by id (passed as query param)."""
