@@ -52,6 +52,13 @@ class FitDBWorkoutSession(models.Model):
         on_delete=models.CASCADE,
         related_name='fitdb_sessions'
     )
+    client = models.ForeignKey(
+        'accounts.Client',
+        on_delete=models.CASCADE,
+        related_name='workout_sessions',
+        null=True,
+        blank=True
+    )
     started_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)

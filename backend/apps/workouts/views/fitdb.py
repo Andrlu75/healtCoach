@@ -454,11 +454,17 @@ class FitDBSessionSerializer(serializers.ModelSerializer):
         source='workout',
         queryset=WorkoutTemplate.objects.all()
     )
+    client_id = serializers.PrimaryKeyRelatedField(
+        source='client',
+        queryset=Client.objects.all(),
+        required=False,
+        allow_null=True
+    )
     workout_detail = serializers.SerializerMethodField()
 
     class Meta:
         model = FitDBWorkoutSession
-        fields = ['id', 'workout_id', 'started_at', 'completed_at', 'duration_seconds', 'workout_detail']
+        fields = ['id', 'workout_id', 'client_id', 'started_at', 'completed_at', 'duration_seconds', 'workout_detail']
         read_only_fields = ['started_at', 'workout_detail']
 
     def get_workout_detail(self, obj):
@@ -474,11 +480,62 @@ class FitDBSessionViewSet(viewsets.ModelViewSet):
     ordering = ['-started_at']
 
     def get_queryset(self):
-        queryset = FitDBWorkoutSession.objects.select_related('workout')
+        queryset = FitDBWorkoutSession.objects.select_related('workout', 'client')
         workout_id = self.request.query_params.get('workout_id')
         if workout_id:
             queryset = queryset.filter(workout_id=workout_id)
         return queryset
+
+    def create(self, request, *args, **kwargs):
+        """Create session and notify coach about workout start"""
+        # Try to get client from JWT token
+        client = get_client_from_token(request)
+
+        # Add client_id to request data if not provided
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if client and 'client_id' not in data:
+            data['client_id'] = client.pk
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        session = serializer.save()
+
+        # Send notification about workout start
+        if session.client:
+            from apps.workouts.notifications import notify_workout_started
+            notify_workout_started(session)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        """Update session and notify coach about workout completion"""
+        instance = self.get_object()
+        was_incomplete = instance.completed_at is None
+
+        response = super().update(request, *args, **kwargs)
+
+        # If workout just completed, send notification
+        instance.refresh_from_db()
+        if was_incomplete and instance.completed_at is not None and instance.client:
+            from apps.workouts.notifications import notify_workout_completed
+            notify_workout_completed(instance)
+
+        return response
+
+    def partial_update(self, request, *args, **kwargs):
+        """Partial update with completion notification"""
+        instance = self.get_object()
+        was_incomplete = instance.completed_at is None
+
+        response = super().partial_update(request, *args, **kwargs)
+
+        # If workout just completed, send notification
+        instance.refresh_from_db()
+        if was_incomplete and instance.completed_at is not None and instance.client:
+            from apps.workouts.notifications import notify_workout_completed
+            notify_workout_completed(instance)
+
+        return response
 
     @action(detail=False, methods=['get'])
     def report(self, request):
