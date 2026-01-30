@@ -544,9 +544,9 @@ class ClientReminderListView(APIView):
 
 
 async def _notify_coach_about_meal_miniapp(client: Client, meal: Meal):
-    """Send notification about meal to coach's report chat (from miniapp)."""
+    """Send notification about meal to coach's report chat (from miniapp, with photo)."""
     from asgiref.sync import sync_to_async
-    from apps.bot.telegram_api import send_notification
+    from apps.bot.telegram_api import send_notification, send_photo_notification
 
     try:
         # Get bot for client's coach
@@ -590,7 +590,7 @@ async def _notify_coach_about_meal_miniapp(client: Client, meal: Meal):
         daily_calories = consumed.get('calories', 0)
         daily_target = norms.get('calories', 0)
 
-        message = (
+        caption = (
             f'🍽 <b>{client_name}</b> (miniapp)\n\n'
             f'<b>{dish_name}</b>\n'
             f'{kbju_str}\n\n'
@@ -598,11 +598,27 @@ async def _notify_coach_about_meal_miniapp(client: Client, meal: Meal):
 
         if daily_target:
             progress_pct = int(daily_calories / daily_target * 100) if daily_target else 0
-            message += f'📊 За день: {int(daily_calories)} / {int(daily_target)} ккал ({progress_pct}%)'
+            caption += f'📊 За день: {int(daily_calories)} / {int(daily_target)} ккал ({progress_pct}%)'
         else:
-            message += f'📊 За день: {int(daily_calories)} ккал'
+            caption += f'📊 За день: {int(daily_calories)} ккал'
 
-        result, new_chat_id = await send_notification(bot.token, notification_chat_id, message, parse_mode='HTML')
+        # Try to send with photo
+        image_data = None
+        if meal.image:
+            try:
+                image_data = await sync_to_async(lambda: meal.image.read())()
+                await sync_to_async(lambda: meal.image.seek(0))()  # Reset file pointer
+            except Exception as img_err:
+                logger.warning('[NOTIFY] Could not read meal image: %s', img_err)
+
+        if image_data:
+            result, new_chat_id = await send_photo_notification(
+                bot.token, notification_chat_id, image_data, caption, parse_mode='HTML'
+            )
+        else:
+            result, new_chat_id = await send_notification(
+                bot.token, notification_chat_id, caption, parse_mode='HTML'
+            )
 
         # Обновляем chat_id если группа мигрировала в супергруппу
         if new_chat_id:

@@ -134,6 +134,72 @@ async def send_notification(token: str, chat_id: int | str, text: str, parse_mod
         return None, None
 
 
+async def send_photo_notification(
+    token: str,
+    chat_id: int | str,
+    photo: bytes | str,
+    caption: str = '',
+    parse_mode: str | None = 'HTML',
+) -> tuple[dict | None, int | str | None]:
+    """Send photo notification with migration handling.
+
+    Args:
+        photo: Either bytes (image data) or str (file_id or URL)
+        caption: Photo caption (max 1024 chars)
+
+    Returns: (result, new_chat_id or None)
+    """
+    url = f'{TELEGRAM_API}/bot{token}/sendPhoto'
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        if isinstance(photo, bytes):
+            # Upload photo as file
+            files = {'photo': ('photo.jpg', photo, 'image/jpeg')}
+            data = {'chat_id': chat_id, 'caption': caption[:1024]}
+            if parse_mode:
+                data['parse_mode'] = parse_mode
+            resp = await client.post(url, data=data, files=files)
+        else:
+            # Use file_id or URL
+            payload = {'chat_id': chat_id, 'photo': photo, 'caption': caption[:1024]}
+            if parse_mode:
+                payload['parse_mode'] = parse_mode
+            resp = await client.post(url, json=payload)
+
+        result = resp.json()
+
+        if result.get('ok'):
+            return result.get('result'), None
+
+        # Check for chat migration
+        error_code = result.get('error_code')
+        description = result.get('description', '')
+
+        if error_code == 400 and 'migrated' in description.lower():
+            new_chat_id = result.get('parameters', {}).get('migrate_to_chat_id')
+            if new_chat_id:
+                logger.info('[TELEGRAM] Chat %s migrated to %s, retrying photo...', chat_id, new_chat_id)
+                # Retry with new chat_id
+                if isinstance(photo, bytes):
+                    files = {'photo': ('photo.jpg', photo, 'image/jpeg')}
+                    data = {'chat_id': new_chat_id, 'caption': caption[:1024]}
+                    if parse_mode:
+                        data['parse_mode'] = parse_mode
+                    resp = await client.post(url, data=data, files=files)
+                else:
+                    payload = {'chat_id': new_chat_id, 'photo': photo, 'caption': caption[:1024]}
+                    if parse_mode:
+                        payload['parse_mode'] = parse_mode
+                    resp = await client.post(url, json=payload)
+
+                retry_result = resp.json()
+                if retry_result.get('ok'):
+                    return retry_result.get('result'), new_chat_id
+
+        logger.error('Failed to send photo to chat %s: %s', chat_id, result)
+        return None, None
+
+
 async def send_message_with_webapp(
     token: str,
     chat_id: int | str,

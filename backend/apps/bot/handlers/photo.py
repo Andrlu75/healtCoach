@@ -33,7 +33,7 @@ from apps.metrics.services import (
 )
 from apps.persona.models import TelegramBot
 
-from ..telegram_api import get_file, send_chat_action, send_message, send_notification
+from ..telegram_api import get_file, send_chat_action, send_message, send_notification, send_photo_notification
 from ..services import get_ai_vision_response, _get_persona, _get_api_key
 
 logger = logging.getLogger(__name__)
@@ -234,8 +234,8 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
         meal.ai_comment = response_text
         await sync_to_async(meal.save)(update_fields=['ai_comment'])
 
-    # Send notification to coach's report chat
-    await _notify_coach_about_meal(bot, client, analysis, summary)
+    # Send notification to coach's report chat (with photo)
+    await _notify_coach_about_meal(bot, client, analysis, summary, image_data)
 
     # Log interaction
     await sync_to_async(InteractionLog.objects.create)(
@@ -429,8 +429,8 @@ async def _handle_data_photo(bot: TelegramBot, client: Client, chat_id: int, ima
     await send_message(bot.token, chat_id, response_text)
 
 
-async def _notify_coach_about_meal(bot: TelegramBot, client: Client, analysis: dict, summary: dict):
-    """Send notification about meal to coach's report chat."""
+async def _notify_coach_about_meal(bot: TelegramBot, client: Client, analysis: dict, summary: dict, image_data: bytes | None = None):
+    """Send notification about meal to coach's report chat (with photo if available)."""
     try:
         # Get coach's notification chat ID
         coach = bot.coach
@@ -464,7 +464,7 @@ async def _notify_coach_about_meal(bot: TelegramBot, client: Client, analysis: d
         daily_calories = summary.get('total_calories', 0)
         daily_target = summary.get('daily_calories', 0)
 
-        message = (
+        caption = (
             f'🍽 <b>{client_name}</b>\n\n'
             f'<b>{dish_name}</b>\n'
             f'{kbju_str}\n\n'
@@ -472,11 +472,19 @@ async def _notify_coach_about_meal(bot: TelegramBot, client: Client, analysis: d
 
         if daily_target:
             progress_pct = int(daily_calories / daily_target * 100) if daily_target else 0
-            message += f'📊 За день: {int(daily_calories)} / {int(daily_target)} ккал ({progress_pct}%)'
+            caption += f'📊 За день: {int(daily_calories)} / {int(daily_target)} ккал ({progress_pct}%)'
         else:
-            message += f'📊 За день: {int(daily_calories)} ккал'
+            caption += f'📊 За день: {int(daily_calories)} ккал'
 
-        result, new_chat_id = await send_notification(bot.token, notification_chat_id, message, parse_mode='HTML')
+        # Send photo with caption if image available, otherwise just text
+        if image_data:
+            result, new_chat_id = await send_photo_notification(
+                bot.token, notification_chat_id, image_data, caption, parse_mode='HTML'
+            )
+        else:
+            result, new_chat_id = await send_notification(
+                bot.token, notification_chat_id, caption, parse_mode='HTML'
+            )
 
         # Обновляем chat_id если группа мигрировала в супергруппу
         if new_chat_id:
