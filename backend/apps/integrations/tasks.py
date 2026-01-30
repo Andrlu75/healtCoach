@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 
 from celery import shared_task
 from django.conf import settings
@@ -160,7 +160,7 @@ def _sync_steps(service, client: Client, start_time: datetime, end_time: datetim
     count = 0
     for point in dataset.get('point', []):
         timestamp_nanos = int(point['startTimeNanos'])
-        recorded_at = datetime.fromtimestamp(timestamp_nanos / 1e9, tz=timezone.utc)
+        recorded_at = datetime.fromtimestamp(timestamp_nanos / 1e9, tz=dt_timezone.utc)
         value = point['value'][0].get('intVal', 0)
 
         if value > 0:
@@ -195,7 +195,7 @@ def _sync_heart_rate(service, client: Client, start_time: datetime, end_time: da
     count = 0
     for point in dataset.get('point', []):
         timestamp_nanos = int(point['startTimeNanos'])
-        recorded_at = datetime.fromtimestamp(timestamp_nanos / 1e9, tz=timezone.utc)
+        recorded_at = datetime.fromtimestamp(timestamp_nanos / 1e9, tz=dt_timezone.utc)
         value = point['value'][0].get('fpVal', 0)
 
         if value > 0:
@@ -230,7 +230,7 @@ def _sync_calories(service, client: Client, start_time: datetime, end_time: date
     count = 0
     for point in dataset.get('point', []):
         timestamp_nanos = int(point['startTimeNanos'])
-        recorded_at = datetime.fromtimestamp(timestamp_nanos / 1e9, tz=timezone.utc)
+        recorded_at = datetime.fromtimestamp(timestamp_nanos / 1e9, tz=dt_timezone.utc)
         value = point['value'][0].get('fpVal', 0)
 
         if value > 0:
@@ -265,7 +265,7 @@ def _sync_sleep(service, client: Client, start_time: datetime, end_time: datetim
         start_millis = int(session['startTimeMillis'])
         end_millis = int(session['endTimeMillis'])
 
-        recorded_at = datetime.fromtimestamp(start_millis / 1000, tz=timezone.utc)
+        recorded_at = datetime.fromtimestamp(start_millis / 1000, tz=dt_timezone.utc)
         duration_hours = (end_millis - start_millis) / 1000 / 3600
 
         if duration_hours > 0:
