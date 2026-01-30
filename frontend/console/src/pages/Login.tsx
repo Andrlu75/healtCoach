@@ -25,8 +25,8 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-sm bg-card rounded-xl shadow-sm border border-border p-8">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-sm bg-card rounded-xl shadow-sm border border-border p-6 sm:p-8">
         <h1 className="text-2xl font-bold text-foreground mb-2">Health Coach</h1>
         <p className="text-sm text-muted-foreground mb-6">Войдите в консоль управления</p>
         <form onSubmit={handleSubmit} className="space-y-4">

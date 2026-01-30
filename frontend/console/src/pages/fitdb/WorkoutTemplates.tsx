@@ -94,20 +94,20 @@ const WorkoutTemplates = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/fitdb')}>
+        <div className="container mx-auto px-4 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/fitdb')} className="shrink-0">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-              <div>
-                <h1 className="text-xl font-bold text-foreground">Шаблоны тренировок</h1>
-                <p className="text-sm text-muted-foreground">{templates.length} шаблонов</p>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">Шаблоны тренировок</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground">{templates.length} шаблонов</p>
               </div>
             </div>
-            <Button onClick={() => navigate('/fitdb/templates/new')} className="shadow-glow">
-              <Plus className="w-5 h-5 mr-2" />
-              Создать шаблон
+            <Button size="sm" onClick={() => navigate('/fitdb/templates/new')} className="shadow-glow shrink-0">
+              <Plus className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Создать шаблон</span>
             </Button>
           </div>
         </div>
@@ -121,32 +121,32 @@ const WorkoutTemplates = () => {
                 key={template.id}
                 className="gradient-card border-border/50 shadow-card hover:border-primary/30 transition-all animate-fade-in"
               >
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-lg text-foreground">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className="font-semibold text-base sm:text-lg text-foreground truncate">
                           {template.name}
                         </h3>
-                        <Badge variant="secondary" className="bg-primary/10 text-primary">
+                        <Badge variant="secondary" className="bg-primary/10 text-primary text-xs">
                           <FileText className="w-3 h-3 mr-1" />
                           Шаблон
                         </Badge>
                       </div>
                       {template.description && (
-                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                        <p className="text-sm text-muted-foreground mb-2 sm:mb-3 line-clamp-2">
                           {template.description}
                         </p>
                       )}
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-4 text-xs sm:text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <ListChecks className="w-4 h-4" />
-                          {template.exerciseCount} упражнений
+                          {template.exerciseCount} упр.
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 pt-2 sm:pt-0 border-t sm:border-0 border-border/50">
                       <Button
                         variant="secondary"
                         size="icon"
