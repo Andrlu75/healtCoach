@@ -12,6 +12,7 @@ import Logs from './pages/Logs'
 import AISettings from './pages/settings/AISettings'
 import TelegramSettings from './pages/settings/TelegramSettings'
 import PersonaSettings from './pages/settings/PersonaSettings'
+import AccountSettings from './pages/settings/AccountSettings'
 // FitDB (тренировки)
 import FitdbIndex from './pages/fitdb/Index'
 import FitdbDashboard from './pages/fitdb/Dashboard'
@@ -56,6 +57,7 @@ function App() {
           <Route path="settings/ai" element={<AISettings />} />
           <Route path="settings/telegram" element={<TelegramSettings />} />
           <Route path="settings/persona" element={<PersonaSettings />} />
+          <Route path="settings/account" element={<AccountSettings />} />
           {/* Тренировки (FitDB) */}
           <Route path="fitdb" element={<FitdbIndex />} />
           <Route path="fitdb/dashboard" element={<FitdbDashboard />} />

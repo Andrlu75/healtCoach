@@ -359,3 +359,35 @@ class FitDBClientViewSet(viewsets.ReadOnlyModelViewSet):
         return Client.objects.filter(
             coach=self.request.user.coach_profile
         ).exclude(status='archived')
+
+
+class ChangePasswordView(APIView):
+    """Change password for authenticated user."""
+
+    def post(self, request):
+        current_password = request.data.get('current_password', '')
+        new_password = request.data.get('new_password', '')
+
+        if not current_password or not new_password:
+            return Response(
+                {'error': 'Необходимо указать текущий и новый пароли'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = request.user
+        if not user.check_password(current_password):
+            return Response(
+                {'error': 'Неверный текущий пароль'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(new_password) < 6:
+            return Response(
+                {'error': 'Новый пароль должен содержать минимум 6 символов'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+
+        return Response({'status': 'ok', 'message': 'Пароль успешно изменён'})

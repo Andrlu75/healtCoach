@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import CoachProfileView
+from .views import CoachProfileView, ChangePasswordView
 
 coach_profile = CoachProfileView.as_view({
     'get': 'list',
@@ -8,4 +8,5 @@ coach_profile = CoachProfileView.as_view({
 
 urlpatterns = [
     path('profile/', coach_profile, name='coach_profile'),
+    path('change-password/', ChangePasswordView.as_view(), name='change_password'),
 ]

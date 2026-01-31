@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, Outlet } from 'react-router-dom'
-import { LayoutDashboard, Users, Bot, Brain, Send, LogOut, FileText, ClipboardList, LinkIcon, ScrollText, Dumbbell, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Users, Bot, Brain, Send, LogOut, FileText, ClipboardList, LinkIcon, ScrollText, Dumbbell, Menu, X, UserCog } from 'lucide-react'
 import { useAuthStore } from '../../stores/auth'
 
 const nav: { to: string; icon: React.ComponentType<{ size?: number }>; label: string; highlight?: boolean }[] = [
@@ -14,6 +14,7 @@ const nav: { to: string; icon: React.ComponentType<{ size?: number }>; label: st
   { to: '/settings/persona', icon: Bot, label: 'Персона бота' },
   { to: '/settings/ai', icon: Brain, label: 'AI настройки' },
   { to: '/settings/telegram', icon: Send, label: 'Telegram' },
+  { to: '/settings/account', icon: UserCog, label: 'Аккаунт' },
 ]
 
 export default function Layout() {
