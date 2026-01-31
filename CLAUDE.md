@@ -5,6 +5,16 @@
 - Не давать советы — самостоятельно решать проблемы и вносить изменения.
 - Локальная разработка: SQLite, virtualenv — `backend/.venv/bin/python`.
 
+## Git-коммиты
+- Все сообщения коммитов на русском языке.
+- Описание должно быть подробным и понятным — что сделано и зачем.
+- Формат: краткий заголовок (до 72 символов), затем пустая строка и детальное описание изменений.
+- В конце коммита указывать какие сервисы нужно задеплоить: `Deploy: api, miniapp` или `Deploy: none` если деплой не требуется.
+- Примеры:
+  - `feat: добавлена возможность копирования программ питания`
+  - `fix: исправлен анализ фото в программе питания (упрощён промпт)`
+  - `refactor: удалён код загрузки фото из страницы программы питания`
+
 ## Railway: как работать
 - Требования: установлен `railway` CLI, доступен интернет. Все ID проектов и сервисов зашиты в `ops/railway/config.sh`.
 - Токены: скопировать `ops/railway/.env.example` в `ops/railway/.env` и вписать любой из токенов `RAILWAY_API_TOKEN` / `RAILWAY_TOKEN` / `RAILWAY_PROJECT_TOKEN`.
@@ -15,6 +25,7 @@
 - SSH в контейнер: `ops/railway/ssh.sh <service>` (service: `api`, `celery`, `beat`, `console`, `miniapp`, `redis`).
 - Команда внутри сервиса: `ops/railway/run.sh <service> <cmd>` (пример: `ops/railway/run.sh api python manage.py migrate`).
 - Настройки и пути логов менять в `ops/railway/common.sh` (переменная `RAILWAY_LOG_LINES`) при необходимости.
+- Веб-дашборд статусов: `/ops/railway/status/` на бекенде (требует токен Railway в переменных окружения, уже добавлен как `RAILWAY_MONITOR_TOKEN`).
 
 ### Где взять токены Railway
 - Account/Team токен (`RAILWAY_API_TOKEN`): веб‑интерфейс railway.com → Account Settings → Tokens → Create token. Если не выбираешь Team — создаётся личный токен; если выбираешь Team — командный токен. Скопировать сразу — повторно не покажут. citeturn0search2turn0search5

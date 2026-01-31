@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Camera, X, Image, Loader2, ChevronLeft, RefreshCw } from 'lucide-react'
-import { addMealWithPhoto, analyzeMealPhoto, recalculateMeal, type MealAnalysisResult } from '../../api/endpoints'
+import { addMealWithPhoto, analyzeMealPhoto, recalculateMeal, createMealReport, type MealAnalysisResult } from '../../api/endpoints'
 import { useTelegram, useHaptic } from '../../shared/hooks'
 import { Button, Input, Card } from '../../shared/components/ui'
 import { cn } from '../../shared/lib/cn'
@@ -26,10 +26,20 @@ const dishTypes = [
   { value: 'snack', label: 'Перекус', icon: '🍎' },
 ] as const
 
+const PROGRAM_MEAL_LABELS: Record<string, string> = {
+  breakfast: 'Завтрак',
+  snack1: 'Перекус 1',
+  lunch: 'Обед',
+  snack2: 'Перекус 2',
+  dinner: 'Ужин',
+}
+
 type Step = 'photo' | 'analyzing' | 'result' | 'recalculating'
 
 function AddMeal() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const programMealType = searchParams.get('programMealType')
   const queryClient = useQueryClient()
   const { showBackButton, hideBackButton } = useTelegram()
   const { impact, notification } = useHaptic()
@@ -136,11 +146,46 @@ function AddMeal() {
 
   // Сохранение
   const saveMutation = useMutation({
-    mutationFn: addMealWithPhoto,
+    mutationFn: async (formData: FormData) => {
+      // Сохраняем еду в дневник
+      const mealResponse = await addMealWithPhoto(formData)
+
+      // Если есть programMealType, также создаём отчёт в программу
+      if (programMealType && photoFile) {
+        try {
+          // Конвертируем файл в base64
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onloadend = () => {
+              const result = reader.result as string
+              const base64Data = result.split(',')[1]
+              resolve(base64Data)
+            }
+            reader.onerror = reject
+            reader.readAsDataURL(photoFile)
+          })
+
+          // Создаём отчёт в программу питания
+          await createMealReport({
+            meal_type: programMealType,
+            photo_base64: base64,
+          })
+        } catch (error) {
+          console.error('Failed to create meal report:', error)
+          // Не прерываем флоу, еда уже сохранена
+        }
+      }
+
+      return mealResponse
+    },
     onSuccess: () => {
       notification('success')
       queryClient.invalidateQueries({ queryKey: ['meals'] })
       queryClient.invalidateQueries({ queryKey: ['dailySummary'] })
+      if (programMealType) {
+        queryClient.invalidateQueries({ queryKey: ['nutritionProgramMealReports'] })
+        queryClient.invalidateQueries({ queryKey: ['nutritionProgramToday'] })
+      }
       navigate(-1)
     },
     onError: () => {
@@ -249,9 +294,15 @@ function AddMeal() {
   if (step === 'photo') {
     return (
       <div className="p-4 pb-8">
-        <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
+        <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
           Добавить приём пищи
         </h1>
+        {programMealType && (
+          <p className="text-sm text-blue-600 dark:text-blue-400 mb-4">
+            Программа питания: {PROGRAM_MEAL_LABELS[programMealType] || programMealType}
+          </p>
+        )}
+        {!programMealType && <div className="mb-4" />}
 
         <div className="space-y-4">
           <Card variant="elevated" className="p-4">

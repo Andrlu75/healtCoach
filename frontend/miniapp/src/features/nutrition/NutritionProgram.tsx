@@ -1,18 +1,14 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Camera, Image, X } from 'lucide-react'
 import {
   getNutritionProgramToday,
   getNutritionProgramMealReports,
-  createMealReport,
   getMealReportPhoto,
 } from '../../api/endpoints'
 import { Card, CardContent } from '../../shared/components/ui'
 import { Skeleton } from '../../shared/components/feedback'
-import { CameraCapture } from '../meals/components/CameraCapture'
-import { useHaptic } from '../../shared/hooks'
 
 interface Meal {
   type: string
@@ -91,13 +87,9 @@ function MealReportImage({ report }: { report: MealReport }) {
 function MealCard({
   meal,
   reports,
-  isUploading,
-  onPhotoClick,
 }: {
   meal: Meal
   reports: MealReport[]
-  isUploading?: boolean
-  onPhotoClick: (mealType: string) => void
 }) {
   const colors = MEAL_COLORS[meal.type] || MEAL_COLORS.lunch
   const icon = MEAL_ICONS[meal.type] || '🍽️'
@@ -143,44 +135,21 @@ function MealCard({
           {meal.description}
         </p>
 
-        {/* Photo section */}
-        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-          {isUploading && (
-            <div className="w-full py-4 flex flex-col items-center justify-center gap-2 mb-3">
-              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                Анализируем фото...
-              </span>
-            </div>
-          )}
-
-          {/* Показываем все загруженные фото */}
-          {reports.length > 0 && (
-            <div className="space-y-3 mb-3">
-              {reports.map((report) => (
-                <div key={report.id} className="relative">
-                  <MealReportImage report={report} />
-                  {report.ai_analysis && (
-                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
-                      {report.ai_analysis}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Кнопка добавления фото (всегда видна) */}
-          {!isUploading && (
-            <button
-              onClick={() => onPhotoClick(meal.type)}
-              className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 transition-colors flex items-center justify-center gap-2"
-            >
-              <span className="text-lg">📷</span>
-              {reports.length > 0 ? 'Добавить ещё фото' : 'Добавить фото'}
-            </button>
-          )}
-        </div>
+        {/* Показываем загруженные фото (если есть) */}
+        {reports.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
+            {reports.map((report) => (
+              <div key={report.id} className="relative">
+                <MealReportImage report={report} />
+                {report.ai_analysis && (
+                  <p className="mt-1 text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                    {report.ai_analysis}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </motion.div>
   )
@@ -188,14 +157,7 @@ function MealCard({
 
 function NutritionProgram() {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const { impact } = useHaptic()
   const [showNotes, setShowNotes] = useState(false)
-  const [uploadingMealType, setUploadingMealType] = useState<string | null>(null)
-  const [showPhotoModal, setShowPhotoModal] = useState(false)
-  const [isCameraOpen, setIsCameraOpen] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const currentMealTypeRef = useRef<string>('')
 
   const { data: todayData, isLoading, isError, refetch } = useQuery({
     queryKey: ['nutritionProgramToday'],
@@ -205,7 +167,7 @@ function NutritionProgram() {
     },
   })
 
-  const { data: reportsData, refetch: refetchReports } = useQuery({
+  const { data: reportsData } = useQuery({
     queryKey: ['nutritionProgramMealReports'],
     queryFn: async () => {
       const { data } = await getNutritionProgramMealReports()
@@ -213,74 +175,6 @@ function NutritionProgram() {
     },
     enabled: !!todayData?.has_program,
   })
-
-  const uploadMutation = useMutation({
-    mutationFn: createMealReport,
-    onSuccess: () => {
-      refetchReports()
-      queryClient.invalidateQueries({ queryKey: ['nutritionProgramMealReports'] })
-    },
-    onSettled: () => {
-      setUploadingMealType(null)
-    },
-  })
-
-  const handlePhotoClick = (mealType: string) => {
-    impact('light')
-    currentMealTypeRef.current = mealType
-    setShowPhotoModal(true)
-  }
-
-  const handleCameraClick = () => {
-    impact('light')
-    setShowPhotoModal(false)
-    setIsCameraOpen(true)
-  }
-
-  const handleGalleryClick = () => {
-    impact('light')
-    setShowPhotoModal(false)
-    fileInputRef.current?.click()
-  }
-
-  const handleCameraCapture = (file: File) => {
-    processPhotoFile(file)
-  }
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      processPhotoFile(file)
-    }
-    // Reset input
-    e.target.value = ''
-  }
-
-  const processPhotoFile = async (file: File) => {
-    const mealType = currentMealTypeRef.current
-    setUploadingMealType(mealType)
-
-    // Convert file to base64
-    const reader = new FileReader()
-    reader.onloadend = async () => {
-      try {
-        const base64 = (reader.result as string).split(',')[1]
-
-        await uploadMutation.mutateAsync({
-          meal_type: mealType,
-          photo_base64: base64,
-        })
-      } catch (error) {
-        console.error('Failed to upload photo:', error)
-        setUploadingMealType(null)
-      }
-    }
-    reader.onerror = () => {
-      console.error('Failed to read file')
-      setUploadingMealType(null)
-    }
-    reader.readAsDataURL(file)
-  }
 
   if (isError) {
     return (
@@ -351,75 +245,6 @@ function NutritionProgram() {
 
   return (
     <div className="p-4 space-y-4 pb-20">
-      {/* Hidden file input for gallery */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleFileChange}
-      />
-
-      {/* Camera capture component */}
-      <CameraCapture
-        isOpen={isCameraOpen}
-        onClose={() => setIsCameraOpen(false)}
-        onCapture={handleCameraCapture}
-      />
-
-      {/* Photo source selection modal */}
-      <AnimatePresence>
-        {showPhotoModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center p-4"
-            onClick={() => setShowPhotoModal(false)}
-          >
-            <motion.div
-              initial={{ y: 100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 100, opacity: 0 }}
-              className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl p-4 space-y-3"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  Добавить фото
-                </h3>
-                <button
-                  onClick={() => setShowPhotoModal(false)}
-                  className="p-1 text-gray-400 hover:text-gray-600"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleCameraClick}
-                  className="h-24 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400 active:bg-gray-50 dark:active:bg-gray-800"
-                >
-                  <Camera size={28} />
-                  <span className="text-sm">Камера</span>
-                </motion.button>
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleGalleryClick}
-                  className="h-24 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400 active:bg-gray-50 dark:active:bg-gray-800"
-                >
-                  <Image size={28} />
-                  <span className="text-sm">Галерея</span>
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
@@ -480,8 +305,6 @@ function NutritionProgram() {
               key={`${meal.type}-${index}`}
               meal={meal}
               reports={reportsByType[meal.type] || []}
-              isUploading={uploadingMealType === meal.type}
-              onPhotoClick={handlePhotoClick}
             />
           ))
         ) : (

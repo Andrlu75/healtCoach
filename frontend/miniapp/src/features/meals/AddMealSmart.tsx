@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -13,6 +13,7 @@ import {
   removeIngredientFromDraft,
   updateMealDraft,
   updateIngredientInDraft,
+  createMealReport,
   type MealDraft,
   type DraftIngredient,
 } from '../../api/endpoints'
@@ -28,10 +29,20 @@ const dishTypes = [
   { value: 'snack', label: 'Перекус', icon: '🍎' },
 ] as const
 
+const PROGRAM_MEAL_LABELS: Record<string, string> = {
+  breakfast: 'Завтрак',
+  snack1: 'Перекус 1',
+  lunch: 'Обед',
+  snack2: 'Перекус 2',
+  dinner: 'Ужин',
+}
+
 type Step = 'photo' | 'analyzing' | 'confirm' | 'adding-ingredient' | 'saving' | 'result'
 
 function AddMealSmart() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const programMealType = searchParams.get('programMealType')
   const queryClient = useQueryClient()
   const { showBackButton, hideBackButton } = useTelegram()
   const { impact, notification } = useHaptic()
@@ -179,12 +190,43 @@ function AddMealSmart() {
   const confirmMutation = useMutation({
     mutationFn: async (draftId: string) => {
       const response = await confirmMealDraft(draftId)
+
+      // Если есть programMealType, также создаём отчёт в программу
+      if (programMealType && photoFile) {
+        try {
+          // Конвертируем файл в base64
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onloadend = () => {
+              const result = reader.result as string
+              const base64Data = result.split(',')[1]
+              resolve(base64Data)
+            }
+            reader.onerror = reject
+            reader.readAsDataURL(photoFile)
+          })
+
+          // Создаём отчёт в программу питания
+          await createMealReport({
+            meal_type: programMealType,
+            photo_base64: base64,
+          })
+        } catch (error) {
+          console.error('Failed to create meal report:', error)
+          // Не прерываем флоу, еда уже сохранена
+        }
+      }
+
       return response.data
     },
     onSuccess: (data) => {
       notification('success')
       queryClient.invalidateQueries({ queryKey: ['meals'] })
       queryClient.invalidateQueries({ queryKey: ['dailySummary'] })
+      if (programMealType) {
+        queryClient.invalidateQueries({ queryKey: ['nutritionProgramMealReports'] })
+        queryClient.invalidateQueries({ queryKey: ['nutritionProgramToday'] })
+      }
       // Показываем экран с AI комментарием
       if (data.ai_response) {
         setAiResponse(data.ai_response)
@@ -402,9 +444,15 @@ function AddMealSmart() {
         <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
           Умный режим
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Детальный анализ с возможностью редактирования
-        </p>
+        {programMealType ? (
+          <p className="text-sm text-blue-600 dark:text-blue-400 mb-4">
+            Программа питания: {PROGRAM_MEAL_LABELS[programMealType] || programMealType}
+          </p>
+        ) : (
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Детальный анализ с возможностью редактирования
+          </p>
+        )}
 
         <div className="space-y-4">
           <Card variant="elevated" className="p-4">

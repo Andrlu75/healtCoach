@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Droplets, Plus, Zap, Sparkles, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
-import { getDailySummary, getMeals, getNutritionProgramSummary } from '../../api/endpoints'
+import { getDailySummary, getMeals, getNutritionProgramSummary, getNutritionProgramToday } from '../../api/endpoints'
 import { useAuthStore } from '../auth'
 import { useHaptic } from '../../shared/hooks'
 import { Card } from '../../shared/components/ui'
@@ -14,11 +14,29 @@ import { WaterProgress } from './components/WaterProgress'
 import { MealPhotoCard } from '../meals/components/MealPhotoCard'
 import type { Meal } from '../../types'
 
+const MEAL_TYPE_LABELS: Record<string, string> = {
+  breakfast: 'Завтрак',
+  snack1: 'Перекус 1',
+  lunch: 'Обед',
+  snack2: 'Перекус 2',
+  dinner: 'Ужин',
+}
+
+const MEAL_TYPE_ICONS: Record<string, string> = {
+  breakfast: '🌅',
+  snack1: '🍎',
+  lunch: '🍽️',
+  snack2: '🥜',
+  dinner: '🌙',
+}
+
 function Dashboard() {
   const navigate = useNavigate()
   const client = useAuthStore((s) => s.client)
   const { impact } = useHaptic()
   const [showModeMenu, setShowModeMenu] = useState(false)
+  const [showMealTypeMenu, setShowMealTypeMenu] = useState(false)
+  const [selectedMealType, setSelectedMealType] = useState<string | null>(null)
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ['dailySummary'],
@@ -37,28 +55,59 @@ function Dashboard() {
     queryFn: () => getNutritionProgramSummary().then((r) => r.data),
   })
 
+  // Загружаем данные программы на сегодня для получения списка приёмов пищи
+  const { data: nutritionProgramToday } = useQuery({
+    queryKey: ['nutritionProgramToday'],
+    queryFn: () => getNutritionProgramToday().then((r) => r.data),
+    enabled: !!nutritionProgram?.has_program && nutritionProgram?.status === 'active',
+  })
+
+  // Получаем список типов приёмов пищи из программы
+  const programMealTypes = nutritionProgramToday?.meals?.map((m: { type: string }) => m.type) || []
+  const hasActiveProgram = nutritionProgram?.has_program && nutritionProgram?.status === 'active'
+
   const totals = summary?.totals || { calories: 0, proteins: 0, fats: 0, carbs: 0 }
   const meals = mealsData?.results || []
 
   const handleAddMeal = () => {
     impact('light')
+    // Если есть активная программа — сначала выбираем тип приёма пищи
+    if (hasActiveProgram && programMealTypes.length > 0) {
+      setShowMealTypeMenu(true)
+      return
+    }
+    // Иначе стандартный флоу выбора режима
+    proceedWithModeSelection()
+  }
+
+  const proceedWithModeSelection = (mealType?: string) => {
+    const params = mealType ? `?programMealType=${mealType}` : ''
     // Если режим выбран в настройках - сразу переходим
     if (client?.meal_analysis_mode === 'fast') {
-      navigate('/diary/add')
+      navigate(`/diary/add${params}`)
       return
     }
     if (client?.meal_analysis_mode === 'smart') {
-      navigate('/diary/add-smart')
+      navigate(`/diary/add-smart${params}`)
       return
     }
-    // Иначе показываем меню выбора
+    // Иначе показываем меню выбора режима
+    setSelectedMealType(mealType || null)
     setShowModeMenu(true)
+  }
+
+  const handleSelectMealType = (mealType: string) => {
+    impact('light')
+    setShowMealTypeMenu(false)
+    proceedWithModeSelection(mealType)
   }
 
   const handleSelectMode = (mode: 'fast' | 'smart') => {
     impact('light')
     setShowModeMenu(false)
-    navigate(mode === 'smart' ? '/diary/add-smart' : '/diary/add')
+    const params = selectedMealType ? `?programMealType=${selectedMealType}` : ''
+    navigate(mode === 'smart' ? `/diary/add-smart${params}` : `/diary/add${params}`)
+    setSelectedMealType(null)
   }
 
   return (
@@ -218,16 +267,16 @@ function Dashboard() {
         <Plus size={24} />
       </motion.button>
 
-      {/* Mode selection overlay */}
+      {/* Meal type selection overlay (for nutrition program) */}
       <AnimatePresence>
-        {showModeMenu && (
+        {showMealTypeMenu && (
           <>
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowModeMenu(false)}
+              onClick={() => setShowMealTypeMenu(false)}
               className="fixed inset-0 bg-black/50 z-50"
             />
 
@@ -240,10 +289,65 @@ function Dashboard() {
             >
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  Добавить приём пищи
+                  Выберите приём пищи
                 </h3>
                 <button
-                  onClick={() => setShowModeMenu(false)}
+                  onClick={() => setShowMealTypeMenu(false)}
+                  className="p-2 text-gray-400"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {programMealTypes.map((mealType: string) => (
+                  <motion.button
+                    key={mealType}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleSelectMealType(mealType)}
+                    className="w-full flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-left"
+                  >
+                    <span className="text-2xl">{MEAL_TYPE_ICONS[mealType] || '🍽️'}</span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                      {MEAL_TYPE_LABELS[mealType] || mealType}
+                    </span>
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Mode selection overlay */}
+      <AnimatePresence>
+        {showModeMenu && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setShowModeMenu(false); setSelectedMealType(null) }}
+              className="fixed inset-0 bg-black/50 z-50"
+            />
+
+            {/* Menu */}
+            <motion.div
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-3xl p-4 pb-8 z-50"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  {selectedMealType
+                    ? `${MEAL_TYPE_LABELS[selectedMealType] || selectedMealType} — выберите режим`
+                    : 'Добавить приём пищи'
+                  }
+                </h3>
+                <button
+                  onClick={() => { setShowModeMenu(false); setSelectedMealType(null) }}
                   className="p-2 text-gray-400"
                 >
                   <X size={20} />
