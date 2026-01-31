@@ -959,8 +959,9 @@ function MetricsTab({ metrics, meals, clientId }: { metrics: HealthMetric[]; mea
                 <div className="text-2xl font-bold">
                   {calorieBalance > 0 ? '+' : ''}{calorieBalance}
                 </div>
-                <div className="text-xs opacity-70">
-                  {Math.round(todayConsumed)} - {Math.round(todayBurned)} ккал
+                <div className="text-xs opacity-70 space-y-0.5">
+                  <div>потр. {Math.round(todayConsumed)}</div>
+                  <div>сожж. {Math.round(todayBurned)}</div>
                 </div>
               </div>
             </div>
