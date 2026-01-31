@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { ChevronRight, Save, Play, X, Copy, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
+import { ChevronRight, Save, Play, X, Copy, ChevronDown, ChevronUp, Plus } from 'lucide-react'
 import { nutritionProgramsApi } from '../api/nutritionPrograms'
 import { clientsApi } from '../api/clients'
 import type {
   NutritionProgram,
-  NutritionProgramDay,
   NutritionProgramCreatePayload,
   Ingredient,
   Client,
