@@ -745,8 +745,24 @@ function MealModal({ meal, onClose }: { meal: Meal; onClose: () => void }) {
   )
 }
 
+// Metric type config
+const metricConfig: Record<string, { label: string; icon: string; color: string; format: (v: number) => string }> = {
+  steps: { label: 'Шаги', icon: '👟', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', format: (v) => v.toLocaleString() },
+  active_calories: { label: 'Активные калории', icon: '🔥', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', format: (v) => `${Math.round(v)} ккал` },
+  heart_rate: { label: 'Пульс', icon: '❤️', color: 'bg-red-500/20 text-red-400 border-red-500/30', format: (v) => `${Math.round(v)} уд/мин` },
+  sleep: { label: 'Сон', icon: '😴', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30', format: (v) => `${Math.floor(v / 60)}ч ${Math.round(v % 60)}м` },
+  sleep_minutes: { label: 'Сон', icon: '😴', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30', format: (v) => `${Math.floor(v / 60)}ч ${Math.round(v % 60)}м` },
+  weight: { label: 'Вес', icon: '⚖️', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', format: (v) => `${v} кг` },
+  distance: { label: 'Дистанция', icon: '📍', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30', format: (v) => v >= 1000 ? `${(v / 1000).toFixed(1)} км` : `${Math.round(v)} м` },
+  water: { label: 'Вода', icon: '💧', color: 'bg-sky-500/20 text-sky-400 border-sky-500/30', format: (v) => `${v} мл` },
+}
+
+const defaultMetricConfig = { label: '', icon: '📊', color: 'bg-gray-500/20 text-gray-400 border-gray-500/30', format: (v: number) => String(v) }
+
 // Metrics tab
 function MetricsTab({ metrics }: { metrics: HealthMetric[] }) {
+  const [selectedType, setSelectedType] = useState<string | null>(null)
+
   if (!metrics.length) {
     return (
       <div className="text-center py-12">
@@ -759,28 +775,109 @@ function MetricsTab({ metrics }: { metrics: HealthMetric[] }) {
     )
   }
 
+  // Group metrics by type and calculate today's totals
+  const today = dayjs().format('YYYY-MM-DD')
+  const metricsByType: Record<string, { today: number; total: number; count: number; unit: string; latest: HealthMetric }> = {}
+
+  metrics.forEach((m) => {
+    const type = m.metric_type
+    if (!metricsByType[type]) {
+      metricsByType[type] = { today: 0, total: 0, count: 0, unit: m.unit, latest: m }
+    }
+    metricsByType[type].total += m.value
+    metricsByType[type].count += 1
+    if (dayjs(m.recorded_at).format('YYYY-MM-DD') === today) {
+      metricsByType[type].today += m.value
+    }
+    if (dayjs(m.recorded_at).isAfter(dayjs(metricsByType[type].latest.recorded_at))) {
+      metricsByType[type].latest = m
+    }
+  })
+
+  const types = Object.keys(metricsByType)
+
+  // Get metrics for selected type
+  const selectedMetrics = selectedType
+    ? metrics.filter((m) => m.metric_type === selectedType).slice(0, 20)
+    : []
+
   return (
-    <div className="overflow-x-auto -mx-5 px-5">
-      <table className="w-full min-w-[500px]">
-        <thead>
-          <tr className="border-b border-border">
-            <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Дата</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Тип</th>
-            <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Значение</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Источник</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border/50">
-          {metrics.map((m) => (
-            <tr key={m.id} className="hover:bg-muted transition-colors">
-              <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">{dayjs(m.recorded_at).format('D MMM YYYY, HH:mm')}</td>
-              <td className="px-4 py-3 text-sm font-medium text-foreground">{m.metric_type}</td>
-              <td className="px-4 py-3 text-sm text-right font-medium text-foreground whitespace-nowrap">{m.value} <span className="text-muted-foreground font-normal">{m.unit}</span></td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{m.source}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-6">
+      {/* Metric cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {types.map((type) => {
+          const data = metricsByType[type]
+          const config = metricConfig[type] || { ...defaultMetricConfig, label: type }
+          const isSelected = selectedType === type
+
+          return (
+            <button
+              key={type}
+              onClick={() => setSelectedType(isSelected ? null : type)}
+              className={`p-4 rounded-xl border text-left transition-all ${config.color} ${
+                isSelected ? 'ring-2 ring-primary scale-[1.02]' : 'hover:scale-[1.01]'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl">{config.icon}</span>
+                <span className="text-sm font-medium opacity-90">{config.label || type}</span>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-2xl font-bold">
+                  {config.format(data.today)}
+                </div>
+                <div className="text-xs opacity-70">
+                  сегодня
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Detail view for selected metric */}
+      {selectedType && selectedMetrics.length > 0 && (
+        <div className="bg-muted rounded-xl p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-medium text-foreground">
+              {(metricConfig[selectedType] || defaultMetricConfig).label || selectedType} — последние записи
+            </h3>
+            <button
+              onClick={() => setSelectedType(null)}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Закрыть
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {selectedMetrics.map((m) => {
+              const config = metricConfig[m.metric_type] || defaultMetricConfig
+              return (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between py-2 px-3 bg-card rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground">
+                      {dayjs(m.recorded_at).format('D MMM, HH:mm')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-foreground">
+                      {config.format(m.value)}
+                    </span>
+                    <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded">
+                      {m.source}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
