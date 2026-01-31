@@ -1,11 +1,7 @@
 /**
  * FitDB API client - direct calls to Django API
  */
-import axios from 'axios';
-
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
-});
+import api from './client';
 
 // Types
 export interface Exercise {
