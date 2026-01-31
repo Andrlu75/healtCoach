@@ -534,34 +534,20 @@ async def analyze_meal_report(
 
     provider = get_ai_provider(provider_name, config.api_key)
 
-    # Формируем промпт для анализа
-    allowed_str = ', '.join(program_day.allowed_ingredients_list[:15]) or 'не указаны'
-    forbidden_str = ', '.join(program_day.forbidden_ingredients_list[:15]) or 'не указаны'
+    # Используем простой промпт для распознавания еды (как в meals)
+    analysis_prompt = """Проанализируй фото еды и верни JSON (без markdown-обёртки, только чистый JSON):
+{
+  "dish_name": "название блюда",
+  "dish_type": "тип (завтрак/обед/ужин/перекус)",
+  "calories": число_ккал,
+  "proteins": граммы_белка,
+  "fats": граммы_жиров,
+  "carbohydrates": граммы_углеводов,
+  "ingredients": ["ингредиент1", "ингредиент2"],
+  "confidence": число_от_1_до_100
+}
 
-    analysis_prompt = f"""Проанализируй фото еды и сравни с запланированным меню.
-
-ЗАПЛАНИРОВАННОЕ БЛЮДО: {planned_description or 'не указано'}
-
-РАЗРЕШЁННЫЕ ИНГРЕДИЕНТЫ НА СЕГОДНЯ: {allowed_str}
-ЗАПРЕЩЁННЫЕ ИНГРЕДИЕНТЫ: {forbidden_str}
-
-Верни JSON (без markdown):
-{{
-    "recognized_dish": "название блюда на фото",
-    "recognized_ingredients": ["ингредиент1", "ингредиент2", ...],
-    "matches_planned": true/false,
-    "compliance_score": число от 0 до 100,
-    "found_forbidden": ["запрещённый1", ...],
-    "found_allowed": ["разрешённый1", ...],
-    "analysis": "Краткий анализ: что совпадает с планом, что отличается, рекомендации"
-}}
-
-Критерии оценки compliance_score:
-- 90-100: Полное соответствие запланированному блюду
-- 70-89: Основа совпадает, небольшие отличия
-- 50-69: Частичное соответствие
-- 30-49: Значительные отличия
-- 0-29: Блюдо не соответствует плану или содержит запрещённые ингредиенты
+Оценивай порцию по визуальному размеру. Если не уверен — дай приблизительные значения.
 """
 
     logger.info(
@@ -610,46 +596,69 @@ async def analyze_meal_report(
     except json.JSONDecodeError:
         logger.error('[MEAL_REPORT] Failed to parse JSON: %s', content[:500])
         data = {
-            'recognized_dish': 'Неизвестное блюдо',
-            'recognized_ingredients': [],
-            'matches_planned': False,
-            'compliance_score': 0,
-            'found_forbidden': [],
-            'found_allowed': [],
-            'analysis': 'Не удалось проанализировать фото',
+            'dish_name': 'Неизвестное блюдо',
+            'calories': 0,
+            'proteins': 0,
+            'fats': 0,
+            'carbohydrates': 0,
+            'ingredients': [],
+            'confidence': 0,
         }
 
-    # Дополнительная проверка через fuzzy matching
-    recognized = data.get('recognized_ingredients', [])
-    found_forbidden_fuzzy = []
-    found_allowed_fuzzy = []
+    # Извлекаем распознанные ингредиенты
+    recognized = data.get('ingredients', [])
+    recognized_dish = data.get('dish_name', 'Неизвестное блюдо')
+
+    # Проверяем ингредиенты через fuzzy matching с программой
+    found_forbidden = []
+    found_allowed = []
 
     for ingredient in recognized:
         if isinstance(ingredient, dict):
             ingredient = ingredient.get('name', '')
+        if not ingredient:
+            continue
+
+        # Проверяем на запрещённые
         forbidden_match = find_ingredient_match(
             ingredient, program_day.forbidden_ingredients_list, threshold=75
         )
         if forbidden_match:
-            found_forbidden_fuzzy.append(ingredient)
+            found_forbidden.append(ingredient)
             continue
 
+        # Проверяем на разрешённые
         allowed_match = find_ingredient_match(
             ingredient, program_day.allowed_ingredients_list, threshold=75
         )
         if allowed_match:
-            found_allowed_fuzzy.append(ingredient)
+            found_allowed.append(ingredient)
 
-    # Объединяем результаты AI и fuzzy matching
-    all_forbidden = list(set(data.get('found_forbidden', []) + found_forbidden_fuzzy))
-    all_allowed = list(set(data.get('found_allowed', []) + found_allowed_fuzzy))
+    # Вычисляем compliance_score
+    # Базовый score зависит от соотношения разрешённых/запрещённых
+    if found_forbidden:
+        compliance_score = max(0, 30 - len(found_forbidden) * 10)
+    elif found_allowed:
+        compliance_score = min(100, 70 + len(found_allowed) * 5)
+    else:
+        compliance_score = 50  # Нейтральный, если ничего не найдено
 
-    # Пересчитываем compliance если нашли запрещённые
-    compliance_score = data.get('compliance_score', 50)
-    if all_forbidden:
-        compliance_score = min(compliance_score, 30)
+    is_compliant = compliance_score >= 70 and len(found_forbidden) == 0
 
-    is_compliant = compliance_score >= 70 and len(all_forbidden) == 0
+    # Формируем анализ
+    analysis_parts = []
+    if recognized_dish and recognized_dish != 'Неизвестное блюдо':
+        analysis_parts.append(f'Распознано: {recognized_dish}')
+    if data.get('calories'):
+        analysis_parts.append(f"~{data.get('calories')} ккал")
+    if found_forbidden:
+        analysis_parts.append(f"Запрещённые: {', '.join(found_forbidden)}")
+    if found_allowed:
+        analysis_parts.append(f"Разрешённые: {', '.join(found_allowed[:5])}")
+    if not analysis_parts:
+        analysis_parts.append('Анализ завершён')
+
+    ai_analysis = '. '.join(analysis_parts)
 
     result = {
         'recognized_ingredients': [
@@ -658,10 +667,14 @@ async def analyze_meal_report(
         ],
         'is_compliant': is_compliant,
         'compliance_score': compliance_score,
-        'ai_analysis': data.get('analysis', ''),
-        'found_forbidden': all_forbidden,
-        'found_allowed': all_allowed,
-        'recognized_dish': data.get('recognized_dish', ''),
+        'ai_analysis': ai_analysis,
+        'found_forbidden': found_forbidden,
+        'found_allowed': found_allowed,
+        'recognized_dish': recognized_dish,
+        'calories': data.get('calories', 0),
+        'proteins': data.get('proteins', 0),
+        'fats': data.get('fats', 0),
+        'carbohydrates': data.get('carbohydrates', 0),
     }
 
     # Обновляем MealReport
