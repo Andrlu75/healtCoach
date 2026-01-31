@@ -62,8 +62,8 @@ function Dashboard() {
     enabled: !!nutritionProgram?.has_program && nutritionProgram?.status === 'active',
   })
 
-  // Получаем список типов приёмов пищи из программы
-  const programMealTypes = nutritionProgramToday?.meals?.map((m: { type: string }) => m.type) || []
+  // Получаем список приёмов пищи из программы (с описаниями)
+  const programMeals = nutritionProgramToday?.meals || []
   const hasActiveProgram = nutritionProgram?.has_program && nutritionProgram?.status === 'active'
 
   const totals = summary?.totals || { calories: 0, proteins: 0, fats: 0, carbs: 0 }
@@ -72,7 +72,7 @@ function Dashboard() {
   const handleAddMeal = () => {
     impact('light')
     // Если есть активная программа — сначала выбираем тип приёма пищи
-    if (hasActiveProgram && programMealTypes.length > 0) {
+    if (hasActiveProgram && programMeals.length > 0) {
       setShowMealTypeMenu(true)
       return
     }
@@ -285,7 +285,7 @@ function Dashboard() {
               initial={{ opacity: 0, y: 100 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 100 }}
-              className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-3xl p-4 pb-8 z-50"
+              className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-3xl p-4 pb-8 z-50 max-h-[80vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -299,18 +299,30 @@ function Dashboard() {
                 </button>
               </div>
 
-              <div className="space-y-2">
-                {programMealTypes.map((mealType: string) => (
+              <div className="space-y-3">
+                {programMeals.map((meal: { type: string; time: string; name: string; description: string }) => (
                   <motion.button
-                    key={mealType}
+                    key={meal.type}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => handleSelectMealType(mealType)}
-                    className="w-full flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-left"
+                    onClick={() => handleSelectMealType(meal.type)}
+                    className="w-full flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-left"
                   >
-                    <span className="text-2xl">{MEAL_TYPE_ICONS[mealType] || '🍽️'}</span>
-                    <span className="font-medium text-gray-900 dark:text-gray-100">
-                      {MEAL_TYPE_LABELS[mealType] || mealType}
-                    </span>
+                    <span className="text-2xl mt-0.5">{MEAL_TYPE_ICONS[meal.type] || '🍽️'}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                          {meal.name || MEAL_TYPE_LABELS[meal.type] || meal.type}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">
+                          {meal.time}
+                        </span>
+                      </div>
+                      {meal.description && (
+                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                          {meal.description}
+                        </p>
+                      )}
+                    </div>
                   </motion.button>
                 ))}
               </div>

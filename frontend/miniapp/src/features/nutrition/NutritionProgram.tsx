@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { X, CheckCircle, AlertCircle } from 'lucide-react'
 import {
   getNutritionProgramToday,
   getNutritionProgramMealReports,
@@ -20,11 +21,15 @@ interface Meal {
 interface MealReport {
   id: number
   meal_type: string
+  meal_type_display?: string
   is_compliant: boolean
   compliance_score: number
   photo_url?: string
   photo_file_id?: string
   ai_analysis?: string
+  planned_description?: string
+  recognized_ingredients?: Array<{ name: string }>
+  created_at?: string
 }
 
 const MEAL_ICONS: Record<string, string> = {
@@ -43,8 +48,8 @@ const MEAL_COLORS: Record<string, { bg: string; border: string }> = {
   dinner: { bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-200 dark:border-indigo-800' },
 }
 
-function MealReportImage({ report }: { report: MealReport }) {
-  const { data: photoUrl, isLoading } = useQuery({
+function useMealReportPhoto(report: MealReport) {
+  return useQuery({
     queryKey: ['mealReportPhoto', report.id],
     queryFn: async () => {
       // Если есть photo_url, используем его напрямую
@@ -58,6 +63,10 @@ function MealReportImage({ report }: { report: MealReport }) {
     enabled: !!(report.photo_url || report.photo_file_id),
     staleTime: 5 * 60 * 1000, // 5 минут кэша
   })
+}
+
+function MealReportImage({ report, onClick }: { report: MealReport; onClick?: () => void }) {
+  const { data: photoUrl, isLoading } = useMealReportPhoto(report)
 
   if (isLoading) {
     return (
@@ -72,7 +81,8 @@ function MealReportImage({ report }: { report: MealReport }) {
       <img
         src={photoUrl}
         alt="Фото еды"
-        className="w-full h-24 object-cover rounded-lg"
+        className="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+        onClick={onClick}
       />
     )
   }
@@ -84,12 +94,138 @@ function MealReportImage({ report }: { report: MealReport }) {
   )
 }
 
+function ReportDetailModal({
+  report,
+  meal,
+  onClose,
+}: {
+  report: MealReport
+  meal: Meal
+  onClose: () => void
+}) {
+  const { data: photoUrl } = useMealReportPhoto(report)
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-t-3xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Фото */}
+        {photoUrl && (
+          <div className="relative">
+            <img
+              src={photoUrl}
+              alt="Фото еды"
+              className="w-full h-64 object-cover"
+            />
+            <button
+              onClick={onClose}
+              className="absolute top-3 right-3 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center"
+            >
+              <X size={18} className="text-white" />
+            </button>
+          </div>
+        )}
+
+        <div className="p-4 space-y-4">
+          {/* Статус соответствия */}
+          <div className={`flex items-center gap-3 p-3 rounded-xl ${
+            report.is_compliant
+              ? 'bg-green-50 dark:bg-green-900/20'
+              : 'bg-amber-50 dark:bg-amber-900/20'
+          }`}>
+            {report.is_compliant ? (
+              <CheckCircle size={24} className="text-green-600" />
+            ) : (
+              <AlertCircle size={24} className="text-amber-600" />
+            )}
+            <div className="flex-1">
+              <p className={`font-medium ${
+                report.is_compliant
+                  ? 'text-green-700 dark:text-green-300'
+                  : 'text-amber-700 dark:text-amber-300'
+              }`}>
+                {report.is_compliant ? 'Соответствует программе' : 'Есть отклонения'}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Оценка: {report.compliance_score}%
+              </p>
+            </div>
+          </div>
+
+          {/* Что по плану */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+              По плану ({meal.name})
+            </h3>
+            <p className="text-sm text-gray-900 dark:text-gray-100">
+              {meal.description}
+            </p>
+          </div>
+
+          {/* Распознанные ингредиенты */}
+          {report.recognized_ingredients && report.recognized_ingredients.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                Распознано на фото
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {report.recognized_ingredients.map((ing, idx) => (
+                  <span
+                    key={idx}
+                    className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-full text-xs text-gray-700 dark:text-gray-300"
+                  >
+                    {ing.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* AI анализ */}
+          {report.ai_analysis && (
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                Анализ
+              </h3>
+              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                {report.ai_analysis}
+              </p>
+            </div>
+          )}
+
+          {/* Кнопка закрытия */}
+          <button
+            onClick={onClose}
+            className="w-full py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-medium"
+          >
+            Закрыть
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 function MealCard({
   meal,
   reports,
+  onReportClick,
 }: {
   meal: Meal
   reports: MealReport[]
+  onReportClick: (report: MealReport) => void
 }) {
   const colors = MEAL_COLORS[meal.type] || MEAL_COLORS.lunch
   const icon = MEAL_ICONS[meal.type] || '🍽️'
@@ -137,17 +273,32 @@ function MealCard({
 
         {/* Показываем загруженные фото (если есть) */}
         {reports.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
-            {reports.map((report) => (
-              <div key={report.id} className="relative">
-                <MealReportImage report={report} />
-                {report.ai_analysis && (
-                  <p className="mt-1 text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
-                    {report.ai_analysis}
-                  </p>
-                )}
-              </div>
-            ))}
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+              Фото отчёты (нажмите для деталей)
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {reports.map((report) => (
+                <div key={report.id} className="relative">
+                  <MealReportImage
+                    report={report}
+                    onClick={() => onReportClick(report)}
+                  />
+                  {/* Индикатор соответствия */}
+                  <div className={`absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center ${
+                    report.is_compliant
+                      ? 'bg-green-500'
+                      : 'bg-amber-500'
+                  }`}>
+                    {report.is_compliant ? (
+                      <CheckCircle size={12} className="text-white" />
+                    ) : (
+                      <AlertCircle size={12} className="text-white" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -158,6 +309,7 @@ function MealCard({
 function NutritionProgram() {
   const navigate = useNavigate()
   const [showNotes, setShowNotes] = useState(false)
+  const [selectedReport, setSelectedReport] = useState<{ report: MealReport; meal: Meal } | null>(null)
 
   const { data: todayData, isLoading, isError, refetch } = useQuery({
     queryKey: ['nutritionProgramToday'],
@@ -305,6 +457,7 @@ function NutritionProgram() {
               key={`${meal.type}-${index}`}
               meal={meal}
               reports={reportsByType[meal.type] || []}
+              onReportClick={(report) => setSelectedReport({ report, meal })}
             />
           ))
         ) : (
@@ -373,6 +526,17 @@ function NutritionProgram() {
       >
         История программы <span>→</span>
       </button>
+
+      {/* Модальное окно деталей отчёта */}
+      <AnimatePresence>
+        {selectedReport && (
+          <ReportDetailModal
+            report={selectedReport.report}
+            meal={selectedReport.meal}
+            onClose={() => setSelectedReport(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }
