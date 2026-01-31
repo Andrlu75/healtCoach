@@ -6,7 +6,8 @@ from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = config('DJANGO_SECRET_KEY', default='insecure-dev-key-change-in-production')
+# SECURITY: SECRET_KEY должен быть установлен в env, дефолт только для локальной разработки
+SECRET_KEY = config('DJANGO_SECRET_KEY', default='dev-only-insecure-key-DO-NOT-USE-IN-PRODUCTION')
 DEBUG = config('DJANGO_DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 
@@ -71,9 +72,10 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
+# SECURITY: DATABASE_URL должен быть установлен в env для production
 DATABASES = {
     'default': dj_database_url.config(
-        default=config('DATABASE_URL', default='postgres://healthcoach:password@localhost:5432/healthcoach')
+        default=config('DATABASE_URL', default='sqlite:///db.sqlite3')
     )
 }
 
@@ -118,6 +120,15 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    # Rate limiting (anti-spam protection)
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',
+        'user': '1000/hour',
+    },
 }
 
 # JWT
@@ -181,6 +192,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'integrations.sync_all_google_fit',
         'schedule': 3600.0,  # каждый час
     },
+    'sync-huawei-health-hourly': {
+        'task': 'integrations.sync_all_huawei_health',
+        'schedule': 3600.0,  # каждый час
+    },
 }
 
 # S3 Storage
@@ -217,5 +232,15 @@ GOOGLE_FIT_CLIENT_ID = config('GOOGLE_FIT_CLIENT_ID', default='')
 GOOGLE_FIT_CLIENT_SECRET = config('GOOGLE_FIT_CLIENT_SECRET', default='')
 GOOGLE_FIT_REDIRECT_URI = config('GOOGLE_FIT_REDIRECT_URI', default='http://localhost:8000/api/integrations/google-fit/callback/')
 
+# Huawei Health Kit Integration
+HUAWEI_HEALTH_CLIENT_ID = config('HUAWEI_HEALTH_CLIENT_ID', default='')
+HUAWEI_HEALTH_CLIENT_SECRET = config('HUAWEI_HEALTH_CLIENT_SECRET', default='')
+HUAWEI_HEALTH_REDIRECT_URI = config('HUAWEI_HEALTH_REDIRECT_URI', default='http://localhost:8000/api/integrations/huawei-health/callback/')
+
 # Encryption key for tokens (Fernet) - generate with: from cryptography.fernet import Fernet; Fernet.generate_key()
-ENCRYPTION_KEY = config('ENCRYPTION_KEY', default='JlVHjJ8gY-w8BXBmLcLJTd5_6u3qJgBfLZhVNxlPvXk=')
+# SECURITY: ENCRYPTION_KEY ОБЯЗАТЕЛЬНО должен быть уникальным в production!
+# Дефолт - валидный Fernet ключ ТОЛЬКО для локальной разработки
+ENCRYPTION_KEY = config('ENCRYPTION_KEY', default='zV6OM0v6JUcS7pGN_-oP8XxWJZxVlH5Kv7N8fDl3yxo=')
+
+# File upload limits
+MAX_IMAGE_UPLOAD_SIZE = config('MAX_IMAGE_UPLOAD_SIZE', default=10 * 1024 * 1024, cast=int)  # 10 MB

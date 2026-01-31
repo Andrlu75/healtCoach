@@ -22,9 +22,11 @@ DATA_SOURCES = {
 }
 
 
-@shared_task(name='integrations.sync_google_fit_for_client')
-def sync_google_fit_for_client(client_id: int, hours_back: int = 24):
+@shared_task(name='integrations.sync_google_fit_for_client', bind=True, max_retries=3)
+def sync_google_fit_for_client(self, client_id: int, hours_back: int = 24):
     """Синхронизирует данные Google Fit для конкретного клиента."""
+    from django.db import transaction
+
     try:
         client = Client.objects.get(pk=client_id)
         connection = client.google_fit_connection
@@ -121,6 +123,8 @@ def sync_google_fit_for_client(client_id: int, hours_back: int = 24):
 
 def _get_credentials(connection: GoogleFitConnection) -> Credentials:
     """Получает и обновляет OAuth credentials."""
+    from django.db import transaction
+
     credentials = Credentials(
         token=connection.get_access_token(),
         refresh_token=connection.get_refresh_token(),
@@ -131,17 +135,38 @@ def _get_credentials(connection: GoogleFitConnection) -> Credentials:
     )
 
     if connection.is_token_expired():
-        credentials.refresh(Request())
-        connection.set_tokens(
-            credentials.token,
-            credentials.refresh_token or connection.get_refresh_token()
-        )
-        connection.token_expires_at = credentials.expiry or timezone.now() + timedelta(hours=1)
-        connection.save(update_fields=[
-            'access_token_encrypted',
-            'refresh_token_encrypted',
-            'token_expires_at'
-        ])
+        # Блокировка для защиты от race condition при параллельном обновлении токенов
+        with transaction.atomic():
+            # Перечитываем с блокировкой
+            locked_connection = GoogleFitConnection.objects.select_for_update().get(pk=connection.pk)
+
+            # Проверяем ещё раз - токен мог быть обновлён другим процессом
+            if locked_connection.is_token_expired():
+                credentials.refresh(Request())
+                locked_connection.set_tokens(
+                    credentials.token,
+                    credentials.refresh_token or locked_connection.get_refresh_token()
+                )
+                locked_connection.token_expires_at = credentials.expiry or timezone.now() + timedelta(hours=1)
+                locked_connection.save(update_fields=[
+                    'access_token_encrypted',
+                    'refresh_token_encrypted',
+                    'token_expires_at'
+                ])
+                # Обновляем оригинальный объект
+                connection.access_token_encrypted = locked_connection.access_token_encrypted
+                connection.refresh_token_encrypted = locked_connection.refresh_token_encrypted
+                connection.token_expires_at = locked_connection.token_expires_at
+            else:
+                # Токен уже обновлён - используем новый
+                credentials = Credentials(
+                    token=locked_connection.get_access_token(),
+                    refresh_token=locked_connection.get_refresh_token(),
+                    token_uri='https://oauth2.googleapis.com/token',
+                    client_id=settings.GOOGLE_FIT_CLIENT_ID,
+                    client_secret=settings.GOOGLE_FIT_CLIENT_SECRET,
+                    scopes=locked_connection.scopes,
+                )
 
     return credentials
 
@@ -253,9 +278,11 @@ def _sync_calories(service, client: Client, start_time: datetime, end_time: date
 
 def _sync_sleep(service, client: Client, start_time: datetime, end_time: datetime) -> int:
     """Синхронизирует сон."""
-    # Google Fit API требует формат RFC3339 без микросекунд
-    start_str = start_time.replace(microsecond=0).strftime('%Y-%m-%dT%H:%M:%SZ')
-    end_str = end_time.replace(microsecond=0).strftime('%Y-%m-%dT%H:%M:%SZ')
+    # Google Fit API требует формат RFC3339 в UTC
+    start_utc = start_time.astimezone(dt_timezone.utc).replace(microsecond=0)
+    end_utc = end_time.astimezone(dt_timezone.utc).replace(microsecond=0)
+    start_str = start_utc.strftime('%Y-%m-%dT%H:%M:%SZ')
+    end_str = end_utc.strftime('%Y-%m-%dT%H:%M:%SZ')
 
     sessions = service.users().sessions().list(
         userId='me',

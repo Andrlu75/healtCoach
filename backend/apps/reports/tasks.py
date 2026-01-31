@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 TELEGRAM_API = 'https://api.telegram.org'
 
 
-@shared_task(name='reports.generate_daily_reports')
-def generate_daily_reports():
+@shared_task(name='reports.generate_daily_reports', bind=True, max_retries=2)
+def generate_daily_reports(self):
     """Generate daily reports for all active clients (yesterday's data)."""
     yesterday = date.today() - timedelta(days=1)
     clients = Client.objects.filter(status='active').select_related('coach')
@@ -39,8 +39,8 @@ def generate_daily_reports():
     logger.info('Generated %d daily reports', count)
 
 
-@shared_task(name='reports.generate_weekly_reports')
-def generate_weekly_reports():
+@shared_task(name='reports.generate_weekly_reports', bind=True, max_retries=2)
+def generate_weekly_reports(self):
     """Generate weekly reports for all active clients (last week)."""
     last_monday = date.today() - timedelta(days=7)
     clients = Client.objects.filter(status='active').select_related('coach')
@@ -62,8 +62,8 @@ def generate_weekly_reports():
     logger.info('Generated %d weekly reports', count)
 
 
-@shared_task(name='reports.send_report')
-def send_report(report_id: int):
+@shared_task(name='reports.send_report', bind=True, max_retries=3, default_retry_delay=60)
+def send_report(self, report_id: int):
     """Send report PDF to client and coach via Telegram."""
     try:
         report = Report.objects.select_related('client', 'coach').get(pk=report_id)

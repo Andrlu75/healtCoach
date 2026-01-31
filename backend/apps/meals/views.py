@@ -74,19 +74,28 @@ class DailySummaryView(APIView):
         else:
             target_date = timezone.localdate()
 
-        # Calculate summary
-        meals = Meal.objects.filter(
+        # Calculate summary using aggregate (один запрос к БД вместо итерации)
+        from django.db.models import Sum, Count
+        from django.db.models.functions import Coalesce
+
+        aggregated = Meal.objects.filter(
             client=client,
             image_type='food',
             meal_time__date=target_date,
+        ).aggregate(
+            calories=Coalesce(Sum('calories'), 0.0),
+            proteins=Coalesce(Sum('proteins'), 0.0),
+            fats=Coalesce(Sum('fats'), 0.0),
+            carbohydrates=Coalesce(Sum('carbohydrates'), 0.0),
+            meals_count=Count('id'),
         )
 
         consumed = {
-            'calories': sum(m.calories or 0 for m in meals),
-            'proteins': sum(m.proteins or 0 for m in meals),
-            'fats': sum(m.fats or 0 for m in meals),
-            'carbohydrates': sum(m.carbohydrates or 0 for m in meals),
-            'meals_count': meals.count(),
+            'calories': aggregated['calories'],
+            'proteins': aggregated['proteins'],
+            'fats': aggregated['fats'],
+            'carbohydrates': aggregated['carbohydrates'],
+            'meals_count': aggregated['meals_count'],
         }
 
         norms = {
@@ -115,20 +124,28 @@ class TodayMealsDashboardView(APIView):
     """Get today's meals for all clients - for dashboard display."""
 
     def get(self, request):
+        from django.db.models import Prefetch
+
         coach = request.user.coach_profile
         target_date = timezone.localdate()
 
-        # Get all active clients
-        clients = Client.objects.filter(coach=coach, status='active').order_by('first_name')
+        # Один запрос с prefetch для избежания N+1
+        today_meals_prefetch = Prefetch(
+            'meals',
+            queryset=Meal.objects.filter(
+                image_type='food',
+                meal_time__date=target_date
+            ).order_by('-meal_time'),
+            to_attr='today_meals'
+        )
+
+        clients = Client.objects.filter(
+            coach=coach, status='active'
+        ).prefetch_related(today_meals_prefetch).order_by('first_name')
 
         result = []
         for client in clients:
-            # Get meals for this client today
-            meals = Meal.objects.filter(
-                client=client,
-                image_type='food',
-                meal_time__date=target_date,
-            ).order_by('-meal_time')  # Новые сверху
+            meals = client.today_meals
 
             meals_data = []
             for meal in meals:
@@ -184,8 +201,10 @@ class MealDraftDetailView(APIView):
 
     def get(self, request, draft_id):
         """Получить черновик по ID."""
+        coach = request.user.coach_profile
         try:
-            draft = MealDraft.objects.get(pk=draft_id)
+            # Проверяем что черновик принадлежит клиенту этого коуча
+            draft = MealDraft.objects.get(pk=draft_id, client__coach=coach)
         except MealDraft.DoesNotExist:
             return Response({'error': 'Черновик не найден'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -194,8 +213,10 @@ class MealDraftDetailView(APIView):
 
     def patch(self, request, draft_id):
         """Обновить черновик (название, тип, вес)."""
+        coach = request.user.coach_profile
         try:
-            draft = MealDraft.objects.get(pk=draft_id, status='pending')
+            # Проверяем что черновик принадлежит клиенту этого коуча
+            draft = MealDraft.objects.get(pk=draft_id, status='pending', client__coach=coach)
         except MealDraft.DoesNotExist:
             return Response({'error': 'Черновик не найден или уже подтверждён'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -212,8 +233,10 @@ class MealDraftDetailView(APIView):
 
     def delete(self, request, draft_id):
         """Отменить черновик."""
+        coach = request.user.coach_profile
         try:
-            draft = MealDraft.objects.get(pk=draft_id, status='pending')
+            # Проверяем что черновик принадлежит клиенту этого коуча
+            draft = MealDraft.objects.get(pk=draft_id, status='pending', client__coach=coach)
         except MealDraft.DoesNotExist:
             return Response({'error': 'Черновик не найден или уже подтверждён'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -226,8 +249,10 @@ class MealDraftConfirmView(APIView):
     """Подтвердить черновик и создать Meal."""
 
     def post(self, request, draft_id):
+        coach = request.user.coach_profile
         try:
-            draft = MealDraft.objects.get(pk=draft_id, status='pending')
+            # Проверяем что черновик принадлежит клиенту этого коуча
+            draft = MealDraft.objects.get(pk=draft_id, status='pending', client__coach=coach)
         except MealDraft.DoesNotExist:
             return Response({'error': 'Черновик не найден или уже подтверждён'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -246,8 +271,10 @@ class MealDraftAddIngredientView(APIView):
     """Добавить ингредиент в черновик."""
 
     def post(self, request, draft_id):
+        coach = request.user.coach_profile
         try:
-            draft = MealDraft.objects.get(pk=draft_id, status='pending')
+            # Проверяем что черновик принадлежит клиенту этого коуча
+            draft = MealDraft.objects.get(pk=draft_id, status='pending', client__coach=coach)
         except MealDraft.DoesNotExist:
             return Response({'error': 'Черновик не найден или уже подтверждён'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -274,8 +301,10 @@ class MealDraftRemoveIngredientView(APIView):
     """Удалить ингредиент из черновика."""
 
     def delete(self, request, draft_id, index):
+        coach = request.user.coach_profile
         try:
-            draft = MealDraft.objects.get(pk=draft_id, status='pending')
+            # Проверяем что черновик принадлежит клиенту этого коуча
+            draft = MealDraft.objects.get(pk=draft_id, status='pending', client__coach=coach)
         except MealDraft.DoesNotExist:
             return Response({'error': 'Черновик не найден или уже подтверждён'}, status=status.HTTP_404_NOT_FOUND)
 

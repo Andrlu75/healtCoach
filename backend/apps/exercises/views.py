@@ -1,3 +1,4 @@
+from django.db.models import Prefetch
 from rest_framework import viewsets, status, serializers, pagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -85,8 +86,8 @@ class FitDBExercisePagination(pagination.PageNumberPagination):
 
 
 class FitDBExerciseViewSet(viewsets.ModelViewSet):
-    """Public FitDB API for exercises"""
-    permission_classes = [AllowAny]
+    """FitDB API for exercises - requires authentication"""
+    permission_classes = [IsAuthenticated]
     serializer_class = FitDBExerciseSerializer
     pagination_class = FitDBExercisePagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -95,7 +96,11 @@ class FitDBExerciseViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        queryset = Exercise.objects.filter(is_active=True).only(
+        # Показываем только упражнения текущего коуча
+        queryset = Exercise.objects.filter(
+            is_active=True,
+            coach=self.request.user.coach_profile
+        ).only(
             'id', 'name', 'description', 'muscle_groups', 'difficulty', 'equipment', 'image'
         )
 
@@ -133,11 +138,8 @@ class FitDBExerciseViewSet(viewsets.ModelViewSet):
         if equipment:
             data['equipment'] = [equipment] if isinstance(equipment, str) else equipment
 
-        # Get first coach for now
-        from apps.accounts.models import Coach
-        coach = Coach.objects.first()
-        if not coach:
-            return Response({'error': 'No coach found'}, status=400)
+        # Используем коуча из текущей сессии
+        coach = request.user.coach_profile
 
         exercise = Exercise.objects.create(
             coach=coach,
@@ -276,17 +278,23 @@ class ExerciseViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def by_category(self, request):
         """Упражнения сгруппированные по категориям"""
+        # Используем Prefetch с фильтрацией для избежания N+1
+        active_exercises = Prefetch(
+            'exercises',
+            queryset=Exercise.objects.filter(is_active=True),
+            to_attr='active_exercises'
+        )
         categories = ExerciseCategory.objects.filter(
             coach=request.user.coach_profile,
             is_active=True
-        ).prefetch_related('exercises')
+        ).prefetch_related(active_exercises)
 
         result = []
         for category in categories:
-            exercises = category.exercises.filter(is_active=True)
+            # Используем уже загруженные active_exercises вместо нового запроса
             result.append({
                 'category': ExerciseCategorySerializer(category).data,
-                'exercises': ExerciseListSerializer(exercises, many=True).data
+                'exercises': ExerciseListSerializer(category.active_exercises, many=True).data
             })
 
         # Упражнения без категории

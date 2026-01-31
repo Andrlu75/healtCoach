@@ -55,8 +55,12 @@ class InteractionLogListView(APIView):
         if date_to:
             qs = qs.filter(created_at__date__lte=date_to)
 
-        page = int(request.query_params.get('page', 1))
-        page_size = int(request.query_params.get('page_size', 50))
+        try:
+            page = max(1, int(request.query_params.get('page', 1)))
+            page_size = min(100, max(1, int(request.query_params.get('page_size', 50))))
+        except (ValueError, TypeError):
+            page = 1
+            page_size = 50
         offset = (page - 1) * page_size
 
         total = qs.count()

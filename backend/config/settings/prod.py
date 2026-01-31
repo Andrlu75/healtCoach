@@ -1,8 +1,18 @@
+import sys
 from decouple import config  # noqa: E402
 
 from .base import *  # noqa: F401, F403
 
 DEBUG = False
+
+# SECURITY: Проверяем что критические ключи установлены
+if 'dev-only' in SECRET_KEY or 'insecure' in SECRET_KEY:
+    print("CRITICAL ERROR: SECRET_KEY не настроен для production!", file=sys.stderr)
+    sys.exit(1)
+
+if 'dev-only' in ENCRYPTION_KEY or ENCRYPTION_KEY == '':
+    print("CRITICAL ERROR: ENCRYPTION_KEY не настроен для production!", file=sys.stderr)
+    sys.exit(1)
 
 # Database connection pooling - reuse connections instead of creating new ones
 DATABASES['default']['CONN_MAX_AGE'] = 60  # Keep connections alive for 60 seconds

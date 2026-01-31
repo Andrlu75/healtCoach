@@ -9,8 +9,8 @@ from .services import compute_next_fire, send_reminder_message
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name='reminders.check_reminders')
-def check_reminders():
+@shared_task(name='reminders.check_reminders', bind=True, max_retries=3)
+def check_reminders(self):
     """
     Periodic task (every minute): find due reminders, send them, update next_fire_at.
     """

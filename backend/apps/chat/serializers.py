@@ -31,7 +31,11 @@ class InteractionLogSerializer(serializers.ModelSerializer):
         return name or str(obj.client)
 
     def get_image_url(self, obj):
-        """Get image URL for vision interactions by finding related Meal."""
+        """Get image URL for vision interactions by finding related Meal.
+
+        NOTE: Этот метод делает отдельный запрос для каждого объекта.
+        Для больших списков рассмотрите prefetch через context.
+        """
         if obj.interaction_type != 'vision':
             return None
 
@@ -41,10 +45,10 @@ class InteractionLogSerializer(serializers.ModelSerializer):
         # Find meal created within 2 minutes of this interaction
         time_window = timedelta(minutes=2)
         meal = Meal.objects.filter(
-            client=obj.client,
+            client_id=obj.client_id,  # Используем client_id вместо obj.client
             created_at__gte=obj.created_at - time_window,
             created_at__lte=obj.created_at + time_window,
-        ).first()
+        ).only('image').first()  # Загружаем только поле image
 
         if meal and meal.image:
             return meal.image.url

@@ -53,9 +53,15 @@ class ClientDetailSerializer(ClientSerializer):
         fields = ClientSerializer.Meta.fields + ['meals_count', 'last_activity']
 
     def get_meals_count(self, obj):
+        # Используем annotated поле если доступно (оптимизация N+1)
+        if hasattr(obj, '_meals_count'):
+            return obj._meals_count
         return obj.meals.count()
 
     def get_last_activity(self, obj):
+        # Используем annotated поле если доступно (оптимизация N+1)
+        if hasattr(obj, '_last_activity'):
+            return obj._last_activity
         last_msg = obj.messages.first()
         return last_msg.created_at if last_msg else None
 

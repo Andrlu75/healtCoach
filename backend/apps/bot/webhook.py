@@ -25,12 +25,17 @@ async def telegram_webhook(request, bot_id: int):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
-    # Validate secret token
+    # Validate secret token - REQUIRED in production
     secret = getattr(settings, 'TELEGRAM_WEBHOOK_SECRET', '')
-    if secret:
-        token = request.headers.get('X-Telegram-Bot-Api-Secret-Token', '')
-        if not hmac.compare_digest(token, secret):
-            return JsonResponse({'error': 'Unauthorized'}, status=403)
+    if not secret:
+        logger.error('TELEGRAM_WEBHOOK_SECRET is not configured! Webhook is vulnerable.')
+        # In production, reject requests without configured secret
+        if not settings.DEBUG:
+            return JsonResponse({'error': 'Server misconfigured'}, status=500)
+
+    token = request.headers.get('X-Telegram-Bot-Api-Secret-Token', '')
+    if secret and not hmac.compare_digest(token, secret):
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
 
     # Parse body
     try:
@@ -54,18 +59,16 @@ async def _dispatch(bot_id: int, data: dict):
     if not message:
         return
 
-    # Log incoming message
+    # Log incoming message (without sensitive telegram_user_id)
     from_user = message.get('from', {})
-    user_name = from_user.get('first_name', '') or from_user.get('username', '')
-    user_id = from_user.get('id', '?')
+    user_name = from_user.get('first_name', '') or from_user.get('username', '') or 'unknown'
 
     if message.get('photo'):
-        logger.info('[BOT %s] 📷 Фото от %s (id=%s)', bot_id, user_name, user_id)
+        logger.info('[BOT %s] Фото от %s', bot_id, user_name)
     elif message.get('voice') or message.get('audio'):
-        logger.info('[BOT %s] 🎤 Голосовое от %s (id=%s)', bot_id, user_name, user_id)
+        logger.info('[BOT %s] Голосовое от %s', bot_id, user_name)
     elif message.get('text'):
-        text_preview = message['text'][:50] + '...' if len(message.get('text', '')) > 50 else message.get('text', '')
-        logger.info('[BOT %s] 💬 Сообщение от %s (id=%s): %s', bot_id, user_name, user_id, text_preview)
+        logger.info('[BOT %s] Сообщение от %s', bot_id, user_name)
 
     # Load bot
     bot = await sync_to_async(
@@ -146,6 +149,6 @@ async def _get_or_create_client(bot: TelegramBot, from_user: dict) -> Client:
     )
 
     if created:
-        logger.info('New client created: %s (tg_id=%s)', client, telegram_user_id)
+        logger.info('New client created: %s', client)
 
     return client

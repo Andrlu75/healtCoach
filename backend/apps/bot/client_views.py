@@ -1,6 +1,7 @@
 import logging
 from datetime import date
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -14,18 +15,33 @@ from apps.meals.services import analyze_food_for_client, get_daily_summary
 from apps.persona.models import TelegramBot
 from apps.reminders.models import Reminder
 from apps.reminders.serializers import ReminderSerializer
+from core.validators import validate_uploaded_image
 
 logger = logging.getLogger(__name__)
 
 
 def get_client_from_token(request):
     """Extract client from JWT token claims."""
-    client_id = getattr(request.auth, 'payload', {}).get('client_id') if request.auth else None
+    if not request.auth:
+        logger.debug('get_client_from_token: no request.auth')
+        return None
+
+    # simplejwt tokens support dict-like access to claims
+    try:
+        client_id = request.auth.get('client_id')
+        if not client_id:
+            client_id = getattr(request.auth, 'payload', {}).get('client_id')
+    except (AttributeError, KeyError) as e:
+        logger.warning('get_client_from_token: error accessing claims: %s', e)
+        client_id = None
+
     if not client_id:
+        logger.debug('get_client_from_token: no client_id in token')
         return None
     try:
         return Client.objects.get(pk=client_id)
     except Client.DoesNotExist:
+        logger.warning('get_client_from_token: client %s not found', client_id)
         return None
 
 
@@ -138,23 +154,33 @@ class ClientDailySummaryView(APIView):
         else:
             target_date = timezone.localdate()
 
-        meals = Meal.objects.filter(
+        # Используем aggregate для одного запроса к БД
+        from django.db.models import Sum, Count
+        from django.db.models.functions import Coalesce
+
+        aggregated = Meal.objects.filter(
             client=client,
             image_type='food',
             meal_time__date=target_date,
+        ).aggregate(
+            calories=Coalesce(Sum('calories'), 0.0),
+            proteins=Coalesce(Sum('proteins'), 0.0),
+            fats=Coalesce(Sum('fats'), 0.0),
+            carbs=Coalesce(Sum('carbohydrates'), 0.0),
+            meals_count=Count('id'),
         )
 
         totals = {
-            'calories': round(sum(m.calories or 0 for m in meals)),
-            'proteins': round(sum(m.proteins or 0 for m in meals)),
-            'fats': round(sum(m.fats or 0 for m in meals)),
-            'carbs': round(sum(m.carbohydrates or 0 for m in meals)),
+            'calories': round(aggregated['calories']),
+            'proteins': round(aggregated['proteins']),
+            'fats': round(aggregated['fats']),
+            'carbs': round(aggregated['carbs']),
         }
 
         return Response({
             'date': target_date.isoformat(),
             'totals': totals,
-            'meals_count': meals.count(),
+            'meals_count': aggregated['meals_count'],
         })
 
 
@@ -182,6 +208,16 @@ class ClientMealAnalyzeView(APIView):
             logger.warning('[MEAL ANALYZE] No image in request: client=%s', client.pk)
             return Response(
                 {'error': 'Image is required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Валидация изображения перед чтением
+        try:
+            validate_uploaded_image(image)
+        except DjangoValidationError as e:
+            logger.warning('[MEAL ANALYZE] Invalid image: client=%s error=%s', client.pk, e.message)
+            return Response(
+                {'error': e.message},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -293,6 +329,16 @@ class ClientMealAnalyzeSmartView(APIView):
         if not image:
             return Response(
                 {'error': 'Image is required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Валидация изображения перед чтением
+        try:
+            validate_uploaded_image(image)
+        except DjangoValidationError as e:
+            logger.warning('[SMART ANALYZE] Invalid image: client=%s error=%s', client.pk, e.message)
+            return Response(
+                {'error': e.message},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

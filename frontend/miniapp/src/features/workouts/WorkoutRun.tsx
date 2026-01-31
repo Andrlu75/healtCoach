@@ -72,12 +72,16 @@ export default function WorkoutRun() {
   const startTimeRef = useRef<Date>(new Date())
   const exerciseListRef = useRef<HTMLDivElement>(null)
 
+  const isMountedRef = useRef(true)
+
   useEffect(() => {
+    isMountedRef.current = true
     if (workoutId) {
       fetchExercises()
       createSession()
     }
     return () => {
+      isMountedRef.current = false
       if (timerRef.current) clearInterval(timerRef.current)
     }
   }, [workoutId])
@@ -85,6 +89,7 @@ export default function WorkoutRun() {
   const createSession = async () => {
     try {
       const { data } = await api.post('/workouts/sessions/', { workout_id: workoutId })
+      if (!isMountedRef.current) return
       const newSessionId = String(data.id)
       setSessionId(newSessionId)
       // Log workout started
@@ -120,6 +125,8 @@ export default function WorkoutRun() {
       const { data: exercisesData } = await api.get('/workouts/fitdb/workout-exercises/', {
         params: { workout_id: workoutId }
       })
+      if (!isMountedRef.current) return
+
       const exercisesList = Array.isArray(exercisesData) ? exercisesData : (exercisesData.results || [])
 
       // Exercise details are now included in the response - no extra API calls needed
@@ -164,7 +171,7 @@ export default function WorkoutRun() {
     } catch (error) {
       console.error('Error fetching exercises:', error)
     } finally {
-      setLoading(false)
+      if (isMountedRef.current) setLoading(false)
     }
   }
 

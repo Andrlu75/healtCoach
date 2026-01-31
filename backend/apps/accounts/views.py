@@ -2,8 +2,10 @@ import hashlib
 import hmac
 import json
 import logging
+import time
 from urllib.parse import parse_qs, unquote
 
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -74,6 +76,22 @@ class TelegramAuthView(APIView):
                 {'error': 'Invalid initData signature'},
                 status=status.HTTP_403_FORBIDDEN,
             )
+
+        # Validate auth_date freshness (prevent replay attacks)
+        auth_date_str = parsed.get('auth_date', [''])[0]
+        if auth_date_str:
+            try:
+                auth_date = int(auth_date_str)
+                # Allow tokens up to 24 hours old (configurable)
+                max_age = getattr(settings, 'TELEGRAM_AUTH_MAX_AGE', 86400)
+                if time.time() - auth_date > max_age:
+                    logger.warning('Expired initData: auth_date=%s, age=%ds', auth_date, time.time() - auth_date)
+                    return Response(
+                        {'error': 'Auth data expired'},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+            except (ValueError, TypeError):
+                pass  # Invalid auth_date format, continue anyway
 
         # Extract user info
         user_data_str = parsed.get('user', [''])[0]
@@ -271,7 +289,18 @@ class ClientViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        return Client.objects.filter(coach=self.request.user.coach_profile)
+        qs = Client.objects.filter(coach=self.request.user.coach_profile)
+        # Для списка - prefetch persona для избежания N+1
+        if self.action == 'list':
+            qs = qs.select_related('persona')
+        # Для детального просмотра - prefetch meals и messages для счётчиков
+        elif self.action == 'retrieve':
+            from django.db.models import Count, Max
+            qs = qs.select_related('persona').annotate(
+                _meals_count=Count('meals'),
+                _last_activity=Max('messages__created_at')
+            )
+        return qs
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -318,8 +347,7 @@ class ClientViewSet(viewsets.ModelViewSet):
 
 
 class FitDBClientViewSet(viewsets.ReadOnlyModelViewSet):
-    """Public FitDB API for clients (read-only)"""
-    permission_classes = [AllowAny]
+    """FitDB API for clients - requires authentication, shows only coach's clients"""
     serializer_class = FitDBClientSerializer
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['first_name', 'last_name', 'telegram_username']
@@ -327,5 +355,7 @@ class FitDBClientViewSet(viewsets.ReadOnlyModelViewSet):
     ordering = ['first_name']
 
     def get_queryset(self):
-        # Показываем всех клиентов кроме архивных
-        return Client.objects.exclude(status='archived')
+        # Показываем только клиентов текущего коуча
+        return Client.objects.filter(
+            coach=self.request.user.coach_profile
+        ).exclude(status='archived')

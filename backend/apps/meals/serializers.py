@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from core.validators import validate_uploaded_image
 from .models import Meal, MealDraft
 
 
@@ -68,3 +69,9 @@ class MealCreateSerializer(serializers.ModelSerializer):
             'ingredients': {'required': False},
             'ai_confidence': {'required': False},
         }
+
+    def validate_image(self, value):
+        """Валидация загружаемого изображения."""
+        if value:
+            validate_uploaded_image(value)
+        return value

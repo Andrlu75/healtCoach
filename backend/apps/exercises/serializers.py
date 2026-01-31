@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from core.validators import validate_uploaded_image
 from .models import ExerciseCategory, ExerciseType, Exercise
 
 
@@ -14,6 +16,10 @@ class ExerciseCategorySerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'exercises_count']
 
     def get_exercises_count(self, obj):
+        # Если есть предзагруженные active_exercises, используем их
+        if hasattr(obj, 'active_exercises'):
+            return len(obj.active_exercises)
+        # Иначе делаем запрос (может быть N+1 в списках без prefetch)
         return obj.exercises.filter(is_active=True).count()
 
 
@@ -103,4 +109,10 @@ class ExerciseCreateUpdateSerializer(serializers.ModelSerializer):
         """Проверяем, что тип принадлежит коучу"""
         if value and value.coach != self.context['request'].user.coach_profile:
             raise serializers.ValidationError("Тип упражнения не найден")
+        return value
+
+    def validate_image(self, value):
+        """Валидация загружаемого изображения."""
+        if value:
+            validate_uploaded_image(value)
         return value
