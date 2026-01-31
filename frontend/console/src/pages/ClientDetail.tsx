@@ -11,8 +11,12 @@ import { settingsApi } from '../api/settings'
 import { mealsApi, metricsApi, chatApi } from '../api/data'
 import type { Client, Meal, HealthMetric, ChatMessage, BotPersona } from '../types'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
 import 'dayjs/locale/ru'
 
+dayjs.extend(utc)
+dayjs.extend(timezone)
 dayjs.locale('ru')
 
 const timezoneOptions = [
@@ -416,7 +420,7 @@ export default function ClientDetail() {
           ) : tab === 'meals' ? (
             <MealsTab meals={meals} />
           ) : tab === 'metrics' ? (
-            <MetricsTab metrics={metrics} meals={meals} clientId={clientId} />
+            <MetricsTab metrics={metrics} meals={meals} clientId={clientId} clientTimezone={client?.timezone} />
           ) : tab === 'chat' ? (
             <ChatTab
               messages={messages}
@@ -766,7 +770,7 @@ const metricConfig: Record<string, { label: string; icon: string; color: string;
 const defaultMetricConfig = { label: '', icon: '📊', color: 'bg-gray-500/20 text-gray-400 border-gray-500/30', format: (v: number) => String(v) }
 
 // Metrics tab
-function MetricsTab({ metrics, meals, clientId }: { metrics: HealthMetric[]; meals: Meal[]; clientId: number }) {
+function MetricsTab({ metrics, meals, clientId, clientTimezone }: { metrics: HealthMetric[]; meals: Meal[]; clientId: number; clientTimezone?: string }) {
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [integrations, setIntegrations] = useState<Array<{
     type: string
@@ -822,7 +826,9 @@ function MetricsTab({ metrics, meals, clientId }: { metrics: HealthMetric[]; mea
   const hasConnectedIntegrations = integrations.some(i => i.connected)
 
   // Group metrics by type and calculate today's totals
-  const today = dayjs().format('YYYY-MM-DD')
+  // Use client timezone for "today" calculation to match Google Fit
+  const tz = clientTimezone || 'Europe/Moscow'
+  const today = dayjs().tz(tz).format('YYYY-MM-DD')
   const metricsByType: Record<string, { today: number; total: number; count: number; unit: string; latest: HealthMetric }> = {}
 
   metrics.forEach((m) => {
@@ -832,7 +838,8 @@ function MetricsTab({ metrics, meals, clientId }: { metrics: HealthMetric[]; mea
     }
     metricsByType[type].total += m.value
     metricsByType[type].count += 1
-    if (dayjs(m.recorded_at).format('YYYY-MM-DD') === today) {
+    // Convert metric time to client timezone for comparison
+    if (dayjs(m.recorded_at).tz(tz).format('YYYY-MM-DD') === today) {
       metricsByType[type].today += m.value
     }
     if (dayjs(m.recorded_at).isAfter(dayjs(metricsByType[type].latest.recorded_at))) {
@@ -844,7 +851,7 @@ function MetricsTab({ metrics, meals, clientId }: { metrics: HealthMetric[]; mea
 
   // Calculate calorie balance: consumed (from meals) - burned (active_calories)
   const todayConsumed = meals
-    .filter((m) => dayjs(m.meal_time).format('YYYY-MM-DD') === today)
+    .filter((m) => dayjs(m.meal_time).tz(tz).format('YYYY-MM-DD') === today)
     .reduce((sum, m) => sum + (m.calories || 0), 0)
   const todayBurned = metricsByType['active_calories']?.today || 0
   const calorieBalance = Math.round(todayConsumed - todayBurned)
