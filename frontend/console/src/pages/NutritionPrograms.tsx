@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Plus } from 'lucide-react'
+import { Search, Plus, Copy, X } from 'lucide-react'
 import { nutritionProgramsApi } from '../api/nutritionPrograms'
 import { clientsApi } from '../api/clients'
 import type { NutritionProgramListItem, Client } from '../types'
+
+interface CopyModalState {
+  isOpen: boolean
+  program: NutritionProgramListItem | null
+}
 
 const statusLabels: Record<string, { label: string; class: string }> = {
   draft: { label: 'Черновик', class: 'bg-secondary text-secondary-foreground' },
@@ -20,6 +25,9 @@ export default function NutritionPrograms() {
   const [statusFilter, setStatusFilter] = useState('')
   const [clientFilter, setClientFilter] = useState('')
   const [search, setSearch] = useState('')
+  const [copyModal, setCopyModal] = useState<CopyModalState>({ isOpen: false, program: null })
+  const [copyData, setCopyData] = useState({ client: '', start_date: '', name: '' })
+  const [copying, setCopying] = useState(false)
 
   useEffect(() => {
     clientsApi.list({ status: 'active' }).then(({ data }) => {
@@ -56,6 +64,34 @@ export default function NutritionPrograms() {
     e.stopPropagation()
     await nutritionProgramsApi[action](id)
     loadPrograms()
+  }
+
+  const openCopyModal = (e: React.MouseEvent, program: NutritionProgramListItem) => {
+    e.stopPropagation()
+    setCopyData({
+      client: String(program.client),
+      start_date: new Date().toISOString().split('T')[0],
+      name: '',
+    })
+    setCopyModal({ isOpen: true, program })
+  }
+
+  const handleCopy = async () => {
+    if (!copyModal.program || !copyData.start_date) return
+    setCopying(true)
+    try {
+      const { data } = await nutritionProgramsApi.copy(copyModal.program.id, {
+        client: copyData.client ? Number(copyData.client) : undefined,
+        start_date: copyData.start_date,
+        name: copyData.name || undefined,
+      })
+      setCopyModal({ isOpen: false, program: null })
+      navigate(`/nutrition-programs/${data.id}`)
+    } catch (err) {
+      console.error('Failed to copy program:', err)
+    } finally {
+      setCopying(false)
+    }
   }
 
   const formatDate = (dateStr: string) => {
@@ -168,6 +204,13 @@ export default function NutritionPrograms() {
                   </div>
                 )}
                 <div className="flex gap-2 pt-2 border-t border-border">
+                  <button
+                    onClick={(e) => openCopyModal(e, program)}
+                    className="text-xs px-3 py-1.5 bg-secondary rounded-lg text-secondary-foreground flex items-center gap-1"
+                  >
+                    <Copy size={12} />
+                    Копировать
+                  </button>
                   {program.status === 'draft' && (
                     <button
                       onClick={(e) => handleAction(e, program.id, 'activate')}
@@ -277,6 +320,13 @@ export default function NutritionPrograms() {
                         className="flex justify-end gap-2"
                         onClick={(e) => e.stopPropagation()}
                       >
+                        <button
+                          onClick={(e) => openCopyModal(e, program)}
+                          className="text-xs px-2 py-1 bg-secondary rounded text-secondary-foreground hover:bg-secondary/80 flex items-center gap-1"
+                          title="Копировать программу"
+                        >
+                          <Copy size={12} />
+                        </button>
                         {program.status === 'draft' && (
                           <button
                             onClick={(e) => handleAction(e, program.id, 'activate')}
@@ -309,6 +359,80 @@ export default function NutritionPrograms() {
             </table>
           </div>
         </>
+      )}
+
+      {/* Copy Modal */}
+      {copyModal.isOpen && copyModal.program && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-xl border border-border p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Копировать программу</h2>
+              <button
+                onClick={() => setCopyModal({ isOpen: false, program: null })}
+                className="p-1 text-muted-foreground hover:text-foreground"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Копирование: <span className="text-foreground">{copyModal.program.name}</span>
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Клиент</label>
+                <select
+                  value={copyData.client}
+                  onChange={(e) => setCopyData({ ...copyData, client: e.target.value })}
+                  className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none"
+                >
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.full_name || c.telegram_username}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Дата начала *
+                </label>
+                <input
+                  type="date"
+                  value={copyData.start_date}
+                  onChange={(e) => setCopyData({ ...copyData, start_date: e.target.value })}
+                  className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Название (опционально)
+                </label>
+                <input
+                  type="text"
+                  value={copyData.name}
+                  onChange={(e) => setCopyData({ ...copyData, name: e.target.value })}
+                  placeholder={`Копия: ${copyModal.program.name}`}
+                  className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none placeholder:text-muted-foreground"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setCopyModal({ isOpen: false, program: null })}
+                className="flex-1 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-muted"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleCopy}
+                disabled={copying || !copyData.start_date}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {copying ? 'Копирование...' : 'Копировать'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

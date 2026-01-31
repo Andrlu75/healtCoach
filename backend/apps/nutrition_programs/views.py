@@ -23,6 +23,7 @@ from .models import MealComplianceCheck, NutritionProgram, NutritionProgramDay
 from .serializers import (
     ComplianceStatsSerializer,
     MealComplianceCheckSerializer,
+    NutritionProgramCopySerializer,
     NutritionProgramCreateSerializer,
     NutritionProgramDaySerializer,
     NutritionProgramDayUpdateSerializer,
@@ -122,6 +123,67 @@ class NutritionProgramViewSet(viewsets.ModelViewSet):
         program.save(update_fields=['status', 'updated_at'])
 
         return Response({'status': 'completed'})
+
+    @action(detail=True, methods=['post'])
+    def copy(self, request, pk=None):
+        """Копировать программу для другого клиента/периода."""
+        from datetime import timedelta
+
+        from apps.accounts.models import Client
+
+        program = self.get_object()
+        serializer = NutritionProgramCopySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+        start_date = data['start_date']
+        client_id = data.get('client')
+        new_name = data.get('name')
+
+        # Определяем клиента
+        if client_id:
+            try:
+                client = Client.objects.get(
+                    id=client_id,
+                    coach=request.user.coach_profile,
+                )
+            except Client.DoesNotExist:
+                return Response(
+                    {'error': 'Клиент не найден'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        else:
+            client = program.client
+
+        # Создаём новую программу
+        new_program = NutritionProgram.objects.create(
+            coach=request.user.coach_profile,
+            client=client,
+            name=new_name or f'Копия: {program.name}',
+            description=program.description,
+            general_notes=program.general_notes,
+            start_date=start_date,
+            duration_days=program.duration_days,
+            status='draft',
+        )
+
+        # Копируем дни программы
+        for day in program.days.all().order_by('day_number'):
+            NutritionProgramDay.objects.create(
+                program=new_program,
+                day_number=day.day_number,
+                date=start_date + timedelta(days=day.day_number - 1),
+                meals=day.meals,
+                activity=day.activity,
+                allowed_ingredients=day.allowed_ingredients,
+                forbidden_ingredients=day.forbidden_ingredients,
+                notes=day.notes,
+            )
+
+        return Response(
+            NutritionProgramDetailSerializer(new_program, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class NutritionProgramDayViewSet(viewsets.ModelViewSet):

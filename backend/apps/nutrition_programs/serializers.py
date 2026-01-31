@@ -310,6 +310,24 @@ class MealReportSerializer(serializers.ModelSerializer):
         ]
 
 
+class NutritionProgramCopySerializer(serializers.Serializer):
+    """Serializer для копирования программы."""
+
+    client = serializers.IntegerField(
+        required=False,
+        help_text='ID клиента для новой программы (опционально, по умолчанию тот же)',
+    )
+    start_date = serializers.DateField(
+        required=True,
+        help_text='Дата начала новой программы',
+    )
+    name = serializers.CharField(
+        required=False,
+        max_length=200,
+        help_text='Название новой программы (опционально, по умолчанию "Копия: {название}")',
+    )
+
+
 class MealReportCreateSerializer(serializers.Serializer):
     """Serializer для создания фото-отчёта."""
 

@@ -35,6 +35,8 @@ export const nutritionProgramsApi = {
   activate: (id: number) => api.post(`/nutrition/programs/${id}/activate/`),
   cancel: (id: number) => api.post(`/nutrition/programs/${id}/cancel/`),
   complete: (id: number) => api.post(`/nutrition/programs/${id}/complete/`),
+  copy: (id: number, data: { client?: number; start_date: string; name?: string }) =>
+    api.post<NutritionProgram>(`/nutrition/programs/${id}/copy/`, data),
 
   // Days
   getDays: (programId: number) =>

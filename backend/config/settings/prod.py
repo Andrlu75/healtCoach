@@ -55,10 +55,17 @@ CSRF_COOKIE_SECURE = True
 SECURE_SSL_REDIRECT = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# CSRF trusted origins for Render
+# CSRF trusted origins for Railway
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS',
-    default='https://*.onrender.com',
+    default='https://*.up.railway.app',
+    cast=Csv()
+)
+
+# CORS for Railway - add production domains
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS',
+    default='https://healthcoach-console-production.up.railway.app,https://healthcoach-miniapp-production.up.railway.app',
     cast=Csv()
 )
 
