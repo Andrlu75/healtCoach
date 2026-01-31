@@ -6,7 +6,7 @@ import { useThemeStore } from '../../shared/stores/theme'
 import { useTelegram, useHaptic } from '../../shared/hooks'
 import { Card } from '../../shared/components/ui'
 import { updateProfile } from '../../api/endpoints'
-import { GoogleFitConnect, HuaweiHealthConnect } from '../integrations'
+// import { GoogleFitConnect, HuaweiHealthConnect } from '../integrations'
 
 type MealAnalysisMode = 'ask' | 'fast' | 'smart'
 
@@ -307,14 +307,20 @@ function Profile() {
         </Card>
       )}
 
-      {/* Integrations */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 px-1">
-          Интеграции
-        </h3>
-        <GoogleFitConnect />
-        <HuaweiHealthConnect />
-      </div>
+      {/* Integrations - Coming Soon */}
+      <Card variant="elevated" className="p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Интеграции
+          </h3>
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+            Скоро
+          </span>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+          Google Fit, Huawei Health и другие сервисы
+        </p>
+      </Card>
 
       <Card variant="elevated" className="overflow-hidden">
         <motion.button
