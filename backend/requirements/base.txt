@@ -1,4 +1,4 @@
-# Django
+# Django - HealthCoach Backend
 Django==5.1.4
 djangorestframework==3.15.2
 drf-nested-routers==0.94.1
