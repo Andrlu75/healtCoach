@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Camera, Image, X } from 'lucide-react'
 import {
   getNutritionProgramToday,
   getNutritionProgramMealReports,
@@ -10,6 +11,8 @@ import {
 } from '../../api/endpoints'
 import { Card, CardContent } from '../../shared/components/ui'
 import { Skeleton } from '../../shared/components/feedback'
+import { CameraCapture } from '../meals/components/CameraCapture'
+import { useHaptic } from '../../shared/hooks'
 
 interface Meal {
   type: string
@@ -186,8 +189,11 @@ function MealCard({
 function NutritionProgram() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { impact } = useHaptic()
   const [showNotes, setShowNotes] = useState(false)
   const [uploadingMealType, setUploadingMealType] = useState<string | null>(null)
+  const [showPhotoModal, setShowPhotoModal] = useState(false)
+  const [isCameraOpen, setIsCameraOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const currentMealTypeRef = useRef<string>('')
 
@@ -220,14 +226,37 @@ function NutritionProgram() {
   })
 
   const handlePhotoClick = (mealType: string) => {
+    impact('light')
     currentMealTypeRef.current = mealType
+    setShowPhotoModal(true)
+  }
+
+  const handleCameraClick = () => {
+    impact('light')
+    setShowPhotoModal(false)
+    setIsCameraOpen(true)
+  }
+
+  const handleGalleryClick = () => {
+    impact('light')
+    setShowPhotoModal(false)
     fileInputRef.current?.click()
+  }
+
+  const handleCameraCapture = (file: File) => {
+    processPhotoFile(file)
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (file) {
+      processPhotoFile(file)
+    }
+    // Reset input
+    e.target.value = ''
+  }
 
+  const processPhotoFile = async (file: File) => {
     const mealType = currentMealTypeRef.current
     setUploadingMealType(mealType)
 
@@ -251,9 +280,6 @@ function NutritionProgram() {
       setUploadingMealType(null)
     }
     reader.readAsDataURL(file)
-
-    // Reset input
-    e.target.value = ''
   }
 
   if (isError) {
@@ -325,7 +351,7 @@ function NutritionProgram() {
 
   return (
     <div className="p-4 space-y-4 pb-20">
-      {/* Hidden file input - без capture чтобы показать выбор: камера или галерея */}
+      {/* Hidden file input for gallery */}
       <input
         ref={fileInputRef}
         type="file"
@@ -333,6 +359,66 @@ function NutritionProgram() {
         className="hidden"
         onChange={handleFileChange}
       />
+
+      {/* Camera capture component */}
+      <CameraCapture
+        isOpen={isCameraOpen}
+        onClose={() => setIsCameraOpen(false)}
+        onCapture={handleCameraCapture}
+      />
+
+      {/* Photo source selection modal */}
+      <AnimatePresence>
+        {showPhotoModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center p-4"
+            onClick={() => setShowPhotoModal(false)}
+          >
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl p-4 space-y-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Добавить фото
+                </h3>
+                <button
+                  onClick={() => setShowPhotoModal(false)}
+                  className="p-1 text-gray-400 hover:text-gray-600"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleCameraClick}
+                  className="h-24 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400 active:bg-gray-50 dark:active:bg-gray-800"
+                >
+                  <Camera size={28} />
+                  <span className="text-sm">Камера</span>
+                </motion.button>
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleGalleryClick}
+                  className="h-24 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400 active:bg-gray-50 dark:active:bg-gray-800"
+                >
+                  <Image size={28} />
+                  <span className="text-sm">Галерея</span>
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Header */}
       <div>
