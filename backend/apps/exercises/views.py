@@ -96,10 +96,9 @@ class FitDBExerciseViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        # Показываем только упражнения текущего коуча
+        # Общая база упражнений для всех коучей
         queryset = Exercise.objects.filter(
-            is_active=True,
-            coach=self.request.user.coach_profile
+            is_active=True
         ).only(
             'id', 'name', 'description', 'muscle_groups', 'difficulty', 'equipment', 'image'
         )
