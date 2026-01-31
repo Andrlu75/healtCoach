@@ -80,11 +80,18 @@ export const metricsApi = {
     api.get<HealthMetric[]>('/metrics/', { params }),
 }
 
+export interface UnreadMessagesResponse {
+  by_client: Record<number, number>
+  total: number
+}
+
 export const chatApi = {
   messages: (client_id: number) =>
     api.get<{ results: ChatMessage[] }>('/chat/messages/', { params: { client_id } }),
   send: (client_id: number, text: string) =>
     api.post<ChatMessage>('/chat/send/', { client_id, text }),
+  unread: () =>
+    api.get<UnreadMessagesResponse>('/chat/unread/'),
 }
 
 export const reportsApi = {

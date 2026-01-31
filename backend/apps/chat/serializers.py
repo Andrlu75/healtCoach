@@ -8,7 +8,7 @@ class ChatMessageSerializer(serializers.ModelSerializer):
         model = ChatMessage
         fields = [
             'id', 'client', 'role', 'message_type',
-            'content', 'created_at',
+            'content', 'read_by_coach', 'created_at',
         ]
         read_only_fields = fields
 

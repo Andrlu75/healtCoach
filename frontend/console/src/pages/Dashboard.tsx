@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Utensils, Dumbbell, X, Check, Clock, Play, MessageSquare } from 'lucide-react'
-import { mealsApi, workoutsApi, type MealsDashboardResponse, type WorkoutsDashboardResponse, type MealDashboardItem } from '../api/data'
+import { mealsApi, workoutsApi, chatApi, type MealsDashboardResponse, type WorkoutsDashboardResponse, type MealDashboardItem } from '../api/data'
 
 export default function Dashboard() {
   const [mealsDashboard, setMealsDashboard] = useState<MealsDashboardResponse | null>(null)
   const [workoutsDashboard, setWorkoutsDashboard] = useState<WorkoutsDashboardResponse | null>(null)
+  const [unreadByClient, setUnreadByClient] = useState<Record<number, number>>({})
   const [loading, setLoading] = useState(true)
 
   // Модальное окно с деталями блюда
@@ -15,10 +17,12 @@ export default function Dashboard() {
     Promise.all([
       mealsApi.dashboard(),
       workoutsApi.dashboard(),
+      chatApi.unread(),
     ])
-      .then(([mealsRes, workoutsRes]) => {
+      .then(([mealsRes, workoutsRes, unreadRes]) => {
         setMealsDashboard(mealsRes.data)
         setWorkoutsDashboard(workoutsRes.data)
+        setUnreadByClient(unreadRes.data.by_client)
       })
       .finally(() => setLoading(false))
   }, [])
@@ -36,9 +40,22 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 mb-6">
           {mealsDashboard.clients.map(client => {
             const caloriesPercent = Math.round((client.totals.calories / client.norms.calories) * 100)
+            const unreadCount = unreadByClient[client.client_id] || 0
             return (
-              <div key={client.client_id} className="bg-card rounded-lg border border-border p-3">
-                <div className="text-sm font-medium text-foreground truncate mb-2">{client.client_name}</div>
+              <Link
+                key={client.client_id}
+                to={`/clients/${client.client_id}`}
+                className="bg-card rounded-lg border border-border p-3 hover:border-primary/50 transition-colors"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-foreground truncate">{client.client_name}</span>
+                  {unreadCount > 0 && (
+                    <span className="flex items-center gap-1 text-xs font-medium text-blue-400 bg-blue-500/20 px-1.5 py-0.5 rounded-full">
+                      <MessageSquare size={10} />
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-baseline gap-1 mb-2">
                   <span className="text-lg font-bold text-foreground">{client.meals.length}</span>
                   <span className="text-xs text-muted-foreground">приёмов</span>
@@ -51,7 +68,7 @@ export default function Dashboard() {
                     {caloriesPercent}%
                   </span>
                 </div>
-              </div>
+              </Link>
             )
           })}
         </div>

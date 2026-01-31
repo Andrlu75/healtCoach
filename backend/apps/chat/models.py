@@ -23,6 +23,7 @@ class ChatMessage(models.Model):
     ai_provider = models.CharField(max_length=20, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
     telegram_message_id = models.BigIntegerField(null=True, blank=True)
+    read_by_coach = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

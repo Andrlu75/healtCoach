@@ -28,8 +28,44 @@ class ChatMessageListView(APIView):
             visible_to_user=True,
         ).order_by('created_at')[:100]
 
+        # Mark user messages as read when coach views them
+        ChatMessage.objects.filter(
+            client_id=client_id,
+            client__coach=coach,
+            role='user',
+            read_by_coach=False,
+        ).update(read_by_coach=True)
+
         serializer = ChatMessageSerializer(messages, many=True)
         return Response({'results': serializer.data})
+
+
+class UnreadMessagesCountView(APIView):
+    """Get unread messages count per client for the coach."""
+
+    def get(self, request):
+        from django.db.models import Count
+
+        coach = request.user.coach_profile
+
+        # Count unread user messages grouped by client
+        unread = ChatMessage.objects.filter(
+            client__coach=coach,
+            role='user',
+            read_by_coach=False,
+            visible_to_user=True,
+        ).values('client_id').annotate(
+            count=Count('id')
+        )
+
+        # Convert to dict {client_id: count}
+        result = {item['client_id']: item['count'] for item in unread}
+        total = sum(result.values())
+
+        return Response({
+            'by_client': result,
+            'total': total,
+        })
 
 
 class InteractionLogListView(APIView):
