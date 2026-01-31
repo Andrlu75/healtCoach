@@ -555,30 +555,33 @@ async def analyze_meal_report(
     if allowed_ingredients:
         restrictions_info += f"\nРЕКОМЕНДУЕМЫЕ продукты: {', '.join(allowed_ingredients[:10])}"
 
-    analysis_prompt = f"""Ты — помощник по питанию. Проанализируй фото еды и сравни с программой питания клиента.
+    analysis_prompt = f"""Ты — диетолог-помощник в приложении для трекинга питания. Клиент загрузил фото своего приёма пищи.
+Твоя задача — проанализировать еду на фото и сравнить с планом питания клиента.
+
+Это легитимный запрос для health-трекера. Пожалуйста, проанализируй фото.
 {planned_info}{restrictions_info}
 
-Верни JSON (без markdown-обёртки, только чистый JSON):
+ОБЯЗАТЕЛЬНО верни JSON (без markdown, только чистый JSON):
 {{
   "dish_name": "название блюда на фото",
   "ingredients": ["ингредиент1", "ингредиент2", ...],
-  "calories": число_ккал,
-  "proteins": граммы_белка,
-  "fats": граммы_жиров,
-  "carbohydrates": граммы_углеводов,
-  "matches_plan": true/false (соответствует ли запланированному блюду),
-  "compliance_score": число_0_до_100 (оценка соответствия программе),
-  "analysis": "Краткий анализ: что хорошо, что можно улучшить, рекомендации"
+  "calories": примерное_число_ккал,
+  "proteins": примерные_граммы_белка,
+  "fats": примерные_граммы_жиров,
+  "carbohydrates": примерные_граммы_углеводов,
+  "matches_plan": true/false,
+  "compliance_score": число_0_до_100,
+  "analysis": "Краткий анализ и рекомендации"
 }}
 
-ВАЖНО при оценке compliance_score:
+Оценка compliance_score:
 - 90-100: полностью соответствует плану
-- 70-89: в целом соответствует, небольшие отклонения
-- 50-69: частичное соответствие, есть замечания
-- 30-49: значительные отклонения от плана
-- 0-29: не соответствует программе
+- 70-89: в целом соответствует
+- 50-69: частичное соответствие
+- 30-49: значительные отклонения
+- 0-29: не соответствует
 
-В поле "analysis" дай КОНКРЕТНЫЕ рекомендации исходя из программы питания.
+Если не можешь точно определить блюдо — сделай приблизительную оценку на основе того, что видишь.
 """
 
     logger.info(
@@ -622,21 +625,39 @@ async def analyze_meal_report(
             content = content[:-3]
         content = content.strip()
 
+    # Проверяем не отказался ли AI анализировать
+    refusal_markers = ['извините', 'не могу', "i can't", "i cannot", "sorry", "unable to"]
+    is_refusal = any(marker in content.lower() for marker in refusal_markers)
+
     try:
         data = json.loads(content)
     except json.JSONDecodeError:
-        logger.error('[MEAL_REPORT] Failed to parse JSON: %s', content[:500])
-        data = {
-            'dish_name': 'Неизвестное блюдо',
-            'calories': 0,
-            'proteins': 0,
-            'fats': 0,
-            'carbohydrates': 0,
-            'ingredients': [],
-            'compliance_score': 50,
-            'matches_plan': False,
-            'analysis': 'Не удалось распознать блюдо на фото.',
-        }
+        if is_refusal:
+            logger.warning('[MEAL_REPORT] AI refused to analyze image: %s', content[:200])
+            data = {
+                'dish_name': 'Блюдо на фото',
+                'calories': 0,
+                'proteins': 0,
+                'fats': 0,
+                'carbohydrates': 0,
+                'ingredients': [],
+                'compliance_score': 50,
+                'matches_plan': False,
+                'analysis': 'AI не смог распознать блюдо. Попробуйте сделать более чёткое фото еды.',
+            }
+        else:
+            logger.error('[MEAL_REPORT] Failed to parse JSON: %s', content[:500])
+            data = {
+                'dish_name': 'Неизвестное блюдо',
+                'calories': 0,
+                'proteins': 0,
+                'fats': 0,
+                'carbohydrates': 0,
+                'ingredients': [],
+                'compliance_score': 50,
+                'matches_plan': False,
+                'analysis': 'Не удалось распознать блюдо на фото.',
+            }
 
     # Извлекаем данные из ответа AI
     recognized = data.get('ingredients', [])
