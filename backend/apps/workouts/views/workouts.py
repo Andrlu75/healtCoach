@@ -1,3 +1,5 @@
+import zoneinfo
+
 from django.db import models
 from django.utils import timezone
 from rest_framework import viewsets, status
@@ -7,6 +9,14 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+
+
+def get_client_timezone(client):
+    """Get timezone object for client."""
+    try:
+        return zoneinfo.ZoneInfo(client.timezone or 'Europe/Moscow')
+    except Exception:
+        return zoneinfo.ZoneInfo('Europe/Moscow')
 
 from apps.workouts.models import (
     ClientWorkout, WorkoutBlock, WorkoutExercise, WorkoutSuperset,
@@ -301,13 +311,17 @@ class TodayWorkoutsDashboardView(APIView):
         from apps.workouts.models import WorkoutTemplateExercise
 
         coach = request.user.coach_profile
-        today = timezone.localdate()
 
         # Get all active clients
         clients = Client.objects.filter(coach=coach, status='active').order_by('first_name')
 
         result = []
         for client in clients:
+            # Get today's date in client's timezone
+            client_tz = get_client_timezone(client)
+            client_now = timezone.now().astimezone(client_tz)
+            client_today = client_now.date()
+
             workouts_data = []
 
             # 1. Get FitDB assignments: today's due_date OR pending without completed status
@@ -315,7 +329,7 @@ class TodayWorkoutsDashboardView(APIView):
                 client=client,
             ).filter(
                 # Show: today's assignments OR pending ones (not yet completed)
-                models.Q(due_date=today) | models.Q(due_date__isnull=True, status='pending')
+                models.Q(due_date=client_today) | models.Q(due_date__isnull=True, status='pending')
             ).exclude(
                 status='completed'
             ).select_related('workout')
@@ -359,16 +373,24 @@ class TodayWorkoutsDashboardView(APIView):
             # 2. Also check old ClientWorkout system for backwards compatibility
             old_workouts = ClientWorkout.objects.filter(
                 client=client,
-                scheduled_date=today,
+                scheduled_date=client_today,
             ).select_related('template').prefetch_related('sessions')
 
             for workout in old_workouts:
                 latest_session = workout.sessions.order_by('-started_at').first()
 
+                # Convert scheduled_time to client's timezone
+                scheduled_time_str = None
+                if workout.scheduled_time:
+                    from datetime import datetime
+                    # Combine date and time, localize to client timezone
+                    scheduled_dt = datetime.combine(workout.scheduled_date, workout.scheduled_time)
+                    scheduled_time_str = scheduled_dt.strftime('%H:%M')
+
                 workouts_data.append({
                     'id': workout.id,
                     'name': workout.name,
-                    'scheduled_time': workout.scheduled_time.strftime('%H:%M') if workout.scheduled_time else None,
+                    'scheduled_time': scheduled_time_str,
                     'status': workout.status,
                     'difficulty': workout.difficulty,
                     'estimated_duration': workout.estimated_duration,

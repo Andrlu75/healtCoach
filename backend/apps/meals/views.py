@@ -1,4 +1,5 @@
 from datetime import date
+import zoneinfo
 
 from asgiref.sync import async_to_sync
 from django.utils import timezone
@@ -9,6 +10,14 @@ from rest_framework.views import APIView
 from .models import Meal, MealDraft
 from .serializers import MealSerializer, MealDraftSerializer
 from apps.accounts.models import Client
+
+
+def get_client_timezone(client):
+    """Get timezone object for client."""
+    try:
+        return zoneinfo.ZoneInfo(client.timezone or 'Europe/Moscow')
+    except Exception:
+        return zoneinfo.ZoneInfo('Europe/Moscow')
 
 
 class MealListView(APIView):
@@ -124,31 +133,33 @@ class TodayMealsDashboardView(APIView):
     """Get today's meals for all clients - for dashboard display."""
 
     def get(self, request):
-        from django.db.models import Prefetch
+        from datetime import datetime
 
         coach = request.user.coach_profile
-        target_date = timezone.localdate()
 
-        # Один запрос с prefetch для избежания N+1
-        today_meals_prefetch = Prefetch(
-            'meals',
-            queryset=Meal.objects.filter(
-                image_type='food',
-                meal_time__date=target_date
-            ).order_by('-meal_time'),
-            to_attr='today_meals'
-        )
-
+        # Get all active clients first
         clients = Client.objects.filter(
             coach=coach, status='active'
-        ).prefetch_related(today_meals_prefetch).order_by('first_name')
+        ).order_by('first_name')
 
         result = []
         for client in clients:
-            meals = client.today_meals
+            # Get today's date in client's timezone
+            client_tz = get_client_timezone(client)
+            client_now = timezone.now().astimezone(client_tz)
+            client_today = client_now.date()
+
+            # Filter meals for client's today
+            meals = Meal.objects.filter(
+                client=client,
+                image_type='food',
+                meal_time__date=client_today
+            ).order_by('-meal_time')
 
             meals_data = []
             for meal in meals:
+                # Convert meal_time to client's timezone
+                meal_time_local = meal.meal_time.astimezone(client_tz) if meal.meal_time else None
                 meals_data.append({
                     'id': meal.id,
                     'dish_name': meal.dish_name or 'Без названия',
@@ -157,7 +168,7 @@ class TodayMealsDashboardView(APIView):
                     'proteins': meal.proteins or 0,
                     'fats': meal.fats or 0,
                     'carbs': meal.carbohydrates or 0,
-                    'meal_time': meal.meal_time.strftime('%H:%M') if meal.meal_time else '',
+                    'meal_time': meal_time_local.strftime('%H:%M') if meal_time_local else '',
                     'thumbnail': meal.thumbnail.url if meal.thumbnail else (meal.image.url if meal.image else None),
                     'image': meal.image.url if meal.image else None,
                     'ai_comment': meal.ai_comment or '',
@@ -189,7 +200,7 @@ class TodayMealsDashboardView(APIView):
             })
 
         return Response({
-            'date': target_date.isoformat(),
+            'date': timezone.localdate().isoformat(),
             'clients': result,
         })
 
