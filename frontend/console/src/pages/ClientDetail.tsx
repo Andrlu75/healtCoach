@@ -973,7 +973,7 @@ function MetricsTab({ metrics, meals, clientId }: { metrics: HealthMetric[]; mea
       )}
 
       {/* Metric cards */}
-      {types.length > 0 ? (
+      {types.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {types.map((type) => {
             const data = metricsByType[type]
@@ -1005,6 +1005,7 @@ function MetricsTab({ metrics, meals, clientId }: { metrics: HealthMetric[]; mea
           )
         })}
       </div>
+      )}
 
       {/* Detail view for selected metric */}
       {selectedType && selectedMetrics.length > 0 && (
