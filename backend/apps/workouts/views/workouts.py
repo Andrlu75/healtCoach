@@ -421,6 +421,6 @@ class TodayWorkoutsDashboardView(APIView):
             })
 
         return Response({
-            'date': today.isoformat(),
+            'date': timezone.localdate().isoformat(),
             'clients': result,
         })
