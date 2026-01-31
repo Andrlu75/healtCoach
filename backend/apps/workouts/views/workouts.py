@@ -346,19 +346,19 @@ class TodayWorkoutsDashboardView(APIView):
                     block__template=assignment.workout
                 ).count()
 
-                # Determine status
-                status = assignment.status
+                # Determine workout status
+                workout_status = assignment.status
                 if latest_session:
                     if latest_session.completed_at:
-                        status = 'completed'
+                        workout_status = 'completed'
                     else:
-                        status = 'in_progress'
+                        workout_status = 'in_progress'
 
                 workouts_data.append({
                     'id': assignment.id,
                     'name': assignment.workout.name,
                     'scheduled_time': None,
-                    'status': status,
+                    'status': workout_status,
                     'difficulty': 'intermediate',
                     'estimated_duration': None,
                     'exercises_count': exercises_count,
