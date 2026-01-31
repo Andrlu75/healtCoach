@@ -387,3 +387,207 @@ class TestClientIsolation:
         # Другой клиент не видит нарушение
         response2 = another_client_api.get(url)
         assert len(response2.data['violations']) == 0
+
+
+@pytest.mark.django_db
+class TestMealReportCreateView:
+    """Тесты POST /api/miniapp/nutrition-program/meal-report/."""
+
+    def test_create_report_with_base64(self, client_api, active_program):
+        """Успешная загрузка фото отчёта с base64."""
+        import base64
+
+        # Минимальное валидное PNG изображение
+        png_data = base64.b64encode(
+            b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01'
+            b'\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00'
+            b'\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82'
+        ).decode()
+
+        url = '/api/miniapp/nutrition-program/meal-report/'
+        response = client_api.post(url, {
+            'meal_type': 'breakfast',
+            'photo_base64': png_data,
+        })
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['meal_type'] == 'breakfast'
+        assert response.data['program_day'] is not None
+
+    def test_create_report_with_file_id(self, client_api, active_program):
+        """Создание отчёта с Telegram file_id."""
+        url = '/api/miniapp/nutrition-program/meal-report/'
+        response = client_api.post(url, {
+            'meal_type': 'lunch',
+            'photo_file_id': 'AgACAgIAAxkBAAI...',
+        })
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['meal_type'] == 'lunch'
+        assert response.data['photo_file_id'] == 'AgACAgIAAxkBAAI...'
+
+    def test_create_report_with_url(self, client_api, active_program):
+        """Создание отчёта с URL фото."""
+        url = '/api/miniapp/nutrition-program/meal-report/'
+        response = client_api.post(url, {
+            'meal_type': 'dinner',
+            'photo_url': 'https://example.com/photo.jpg',
+        })
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['meal_type'] == 'dinner'
+        assert response.data['photo_url'] == 'https://example.com/photo.jpg'
+
+    def test_update_existing_report(self, client_api, active_program):
+        """Обновление существующего отчёта."""
+        url = '/api/miniapp/nutrition-program/meal-report/'
+
+        # Первый отчёт
+        response1 = client_api.post(url, {
+            'meal_type': 'breakfast',
+            'photo_file_id': 'old_file_id',
+        })
+        assert response1.status_code == status.HTTP_201_CREATED
+        report_id = response1.data['id']
+
+        # Обновляем отчёт
+        response2 = client_api.post(url, {
+            'meal_type': 'breakfast',
+            'photo_file_id': 'new_file_id',
+        })
+        assert response2.status_code == status.HTTP_201_CREATED
+        assert response2.data['id'] == report_id  # Тот же ID
+        assert response2.data['photo_file_id'] == 'new_file_id'
+
+    def test_no_active_program(self, client_api):
+        """Ошибка если нет активной программы."""
+        url = '/api/miniapp/nutrition-program/meal-report/'
+        response = client_api.post(url, {
+            'meal_type': 'breakfast',
+            'photo_file_id': 'some_id',
+        })
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert 'error' in response.data
+
+    def test_invalid_meal_type(self, client_api, active_program):
+        """Ошибка при некорректном meal_type."""
+        url = '/api/miniapp/nutrition-program/meal-report/'
+        response = client_api.post(url, {
+            'meal_type': 'invalid_type',
+            'photo_file_id': 'some_id',
+        })
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_no_photo_provided(self, client_api, active_program):
+        """Ошибка если не передано фото."""
+        url = '/api/miniapp/nutrition-program/meal-report/'
+        response = client_api.post(url, {
+            'meal_type': 'breakfast',
+        })
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_report_for_specific_date(self, client_api, active_program):
+        """Загрузка отчёта за конкретную дату."""
+        url = '/api/miniapp/nutrition-program/meal-report/'
+        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+
+        response = client_api.post(url, {
+            'meal_type': 'breakfast',
+            'photo_file_id': 'some_id',
+            'date': tomorrow,
+        })
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_unauthorized(self, api_client):
+        """Неавторизованный запрос возвращает 401."""
+        url = '/api/miniapp/nutrition-program/meal-report/'
+        response = api_client.post(url, {
+            'meal_type': 'breakfast',
+            'photo_file_id': 'some_id',
+        })
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestMealReportsListView:
+    """Тесты GET /api/miniapp/nutrition-program/meal-reports/."""
+
+    def test_empty_list(self, client_api, active_program):
+        """Пустой список если нет отчётов."""
+        url = '/api/miniapp/nutrition-program/meal-reports/'
+        response = client_api.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['reports'] == []
+
+    def test_list_reports_today(self, client_api, active_program):
+        """Получение отчётов за сегодня."""
+        # Создаём отчёт
+        create_url = '/api/miniapp/nutrition-program/meal-report/'
+        client_api.post(create_url, {
+            'meal_type': 'breakfast',
+            'photo_file_id': 'file_id_1',
+        })
+        client_api.post(create_url, {
+            'meal_type': 'lunch',
+            'photo_file_id': 'file_id_2',
+        })
+
+        # Получаем список
+        url = '/api/miniapp/nutrition-program/meal-reports/'
+        response = client_api.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data['reports']) == 2
+        assert response.data['day_number'] == 1
+
+    def test_list_reports_by_date(self, client_api, active_program):
+        """Получение отчётов за конкретную дату."""
+        # Создаём отчёт на завтра
+        create_url = '/api/miniapp/nutrition-program/meal-report/'
+        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+        client_api.post(create_url, {
+            'meal_type': 'breakfast',
+            'photo_file_id': 'file_id',
+            'date': tomorrow,
+        })
+
+        # Получаем список за завтра
+        url = f'/api/miniapp/nutrition-program/meal-reports/?date={tomorrow}'
+        response = client_api.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data['reports']) == 1
+        assert response.data['date'] == tomorrow
+
+        # За сегодня - пусто
+        url_today = '/api/miniapp/nutrition-program/meal-reports/'
+        response_today = client_api.get(url_today)
+        assert len(response_today.data['reports']) == 0
+
+    def test_invalid_date_format(self, client_api, active_program):
+        """Ошибка при некорректном формате даты."""
+        url = '/api/miniapp/nutrition-program/meal-reports/?date=invalid'
+        response = client_api.get(url)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_no_program(self, client_api):
+        """Пустой список если нет программы."""
+        url = '/api/miniapp/nutrition-program/meal-reports/'
+        response = client_api.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['reports'] == []
+
+    def test_unauthorized(self, api_client):
+        """Неавторизованный запрос возвращает 401."""
+        url = '/api/miniapp/nutrition-program/meal-reports/'
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

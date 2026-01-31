@@ -224,3 +224,41 @@ export const getNutritionProgramViolations = (params?: { limit?: number }) =>
 
 export const getNutritionProgramSummary = () =>
   api.get<NutritionProgramSummary & { has_program: boolean }>('/miniapp/nutrition-program/summary/')
+
+// Meal Reports
+export interface MealReport {
+  id: number
+  program_day: number
+  meal_type: string
+  meal_type_display: string
+  meal_time: string
+  photo_file_id?: string
+  photo_url?: string
+  planned_description: string
+  recognized_ingredients: Array<{ name: string }>
+  is_compliant: boolean
+  compliance_score: number
+  ai_analysis: string
+  program_name: string
+  day_number: number
+  created_at: string
+}
+
+export const getNutritionProgramMealReports = (params?: { date?: string }) =>
+  api.get<{ date: string; day_number: number; reports: MealReport[] }>(
+    '/miniapp/nutrition-program/meal-reports/',
+    { params }
+  )
+
+export const createMealReport = (data: {
+  meal_type: string
+  photo_file_id?: string
+  photo_url?: string
+  photo_base64?: string
+}) =>
+  api.post<MealReport>('/miniapp/nutrition-program/meal-report/', data)
+
+export const getMealReportPhoto = (reportId: number) =>
+  api.get<Blob>(`/miniapp/nutrition-program/meal-report/${reportId}/photo/`, {
+    responseType: 'blob',
+  })

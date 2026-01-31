@@ -1,15 +1,181 @@
-import { useQuery } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   getNutritionProgramToday,
-  getNutritionProgramViolations,
+  getNutritionProgramMealReports,
+  createMealReport,
+  getMealReportPhoto,
 } from '../../api/endpoints'
-import { Card, CardContent, CardHeader, CardTitle } from '../../shared/components/ui'
+import { Card, CardContent } from '../../shared/components/ui'
 import { Skeleton } from '../../shared/components/feedback'
+
+interface Meal {
+  type: string
+  time: string
+  name: string
+  description: string
+}
+
+interface MealReport {
+  id: number
+  meal_type: string
+  is_compliant: boolean
+  compliance_score: number
+  photo_url?: string
+  photo_file_id?: string
+  ai_analysis?: string
+}
+
+const MEAL_ICONS: Record<string, string> = {
+  breakfast: '🌅',
+  snack1: '🍎',
+  lunch: '🍽️',
+  snack2: '🥜',
+  dinner: '🌙',
+}
+
+const MEAL_COLORS: Record<string, { bg: string; border: string }> = {
+  breakfast: { bg: 'bg-amber-50 dark:bg-amber-900/10', border: 'border-amber-200 dark:border-amber-800' },
+  snack1: { bg: 'bg-green-50 dark:bg-green-900/10', border: 'border-green-200 dark:border-green-800' },
+  lunch: { bg: 'bg-blue-50 dark:bg-blue-900/10', border: 'border-blue-200 dark:border-blue-800' },
+  snack2: { bg: 'bg-purple-50 dark:bg-purple-900/10', border: 'border-purple-200 dark:border-purple-800' },
+  dinner: { bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-200 dark:border-indigo-800' },
+}
+
+function MealReportImage({ report }: { report: MealReport }) {
+  const { data: photoUrl, isLoading } = useQuery({
+    queryKey: ['mealReportPhoto', report.id],
+    queryFn: async () => {
+      // Если есть photo_url, используем его напрямую
+      if (report.photo_url) {
+        return report.photo_url
+      }
+      // Иначе загружаем через API
+      const response = await getMealReportPhoto(report.id)
+      return URL.createObjectURL(response.data)
+    },
+    enabled: !!(report.photo_url || report.photo_file_id),
+    staleTime: 5 * 60 * 1000, // 5 минут кэша
+  })
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (photoUrl) {
+    return (
+      <img
+        src={photoUrl}
+        alt="Фото еды"
+        className="w-full h-24 object-cover rounded-lg"
+      />
+    )
+  }
+
+  return (
+    <div className="w-full h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+      <span className="text-gray-400">Фото недоступно</span>
+    </div>
+  )
+}
+
+function MealCard({
+  meal,
+  report,
+  isUploading,
+  onPhotoClick,
+}: {
+  meal: Meal
+  report?: MealReport
+  isUploading?: boolean
+  onPhotoClick: (mealType: string) => void
+}) {
+  const colors = MEAL_COLORS[meal.type] || MEAL_COLORS.lunch
+  const icon = MEAL_ICONS[meal.type] || '🍽️'
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`rounded-xl border ${colors.border} ${colors.bg} overflow-hidden`}
+    >
+      <div className="p-4">
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{icon}</span>
+            <div>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                {meal.name}
+              </h3>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {meal.time}
+              </span>
+            </div>
+          </div>
+          {report && (
+            <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+              report.is_compliant
+                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+            }`}>
+              {report.is_compliant ? '✓' : '!'} {report.compliance_score}%
+            </div>
+          )}
+        </div>
+
+        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+          {meal.description}
+        </p>
+
+        {/* Photo section */}
+        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+          {isUploading ? (
+            <div className="w-full py-6 flex flex-col items-center justify-center gap-2">
+              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Анализируем фото...
+              </span>
+            </div>
+          ) : report?.photo_url || report?.photo_file_id ? (
+            <div
+              className="relative cursor-pointer"
+              onClick={() => onPhotoClick(meal.type)}
+            >
+              <MealReportImage report={report} />
+              {report.ai_analysis && (
+                <p className="mt-2 text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                  {report.ai_analysis}
+                </p>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => onPhotoClick(meal.type)}
+              className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 transition-colors flex items-center justify-center gap-2"
+            >
+              <span className="text-lg">📷</span>
+              Добавить фото
+            </button>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  )
+}
 
 function NutritionProgram() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [showNotes, setShowNotes] = useState(false)
+  const [uploadingMealType, setUploadingMealType] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const currentMealTypeRef = useRef<string>('')
 
   const { data: todayData, isLoading, isError, refetch } = useQuery({
     queryKey: ['nutritionProgramToday'],
@@ -19,14 +185,62 @@ function NutritionProgram() {
     },
   })
 
-  const { data: violationsData } = useQuery({
-    queryKey: ['nutritionProgramViolations'],
+  const { data: reportsData, refetch: refetchReports } = useQuery({
+    queryKey: ['nutritionProgramMealReports'],
     queryFn: async () => {
-      const { data } = await getNutritionProgramViolations({ limit: 5 })
+      const { data } = await getNutritionProgramMealReports()
       return data
     },
     enabled: !!todayData?.has_program,
   })
+
+  const uploadMutation = useMutation({
+    mutationFn: createMealReport,
+    onSuccess: () => {
+      refetchReports()
+      queryClient.invalidateQueries({ queryKey: ['nutritionProgramMealReports'] })
+    },
+    onSettled: () => {
+      setUploadingMealType(null)
+    },
+  })
+
+  const handlePhotoClick = (mealType: string) => {
+    currentMealTypeRef.current = mealType
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const mealType = currentMealTypeRef.current
+    setUploadingMealType(mealType)
+
+    // Convert file to base64
+    const reader = new FileReader()
+    reader.onloadend = async () => {
+      try {
+        const base64 = (reader.result as string).split(',')[1]
+
+        await uploadMutation.mutateAsync({
+          meal_type: mealType,
+          photo_base64: base64,
+        })
+      } catch (error) {
+        console.error('Failed to upload photo:', error)
+        setUploadingMealType(null)
+      }
+    }
+    reader.onerror = () => {
+      console.error('Failed to read file')
+      setUploadingMealType(null)
+    }
+    reader.readAsDataURL(file)
+
+    // Reset input
+    e.target.value = ''
+  }
 
   if (isError) {
     return (
@@ -56,8 +270,10 @@ function NutritionProgram() {
     return (
       <div className="p-4 space-y-4">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-40 w-full" />
       </div>
     )
   }
@@ -81,177 +297,157 @@ function NutritionProgram() {
   }
 
   const progress = Math.round((todayData.day_number / todayData.total_days) * 100)
-  const stats = todayData.today_stats
+  const meals: Meal[] = todayData.meals || []
+  const reports: MealReport[] = reportsData?.reports || []
+
+  // Create a map of reports by meal type
+  const reportsByType: Record<string, MealReport> = {}
+  reports.forEach((r) => {
+    reportsByType[r.meal_type] = r
+  })
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 pb-20">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
+      {/* Header */}
       <div>
-        <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-          {todayData.program_name}
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          Программа питания
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          День {todayData.day_number} из {todayData.total_days}
+          День {todayData.day_number} из {todayData.total_days} • {todayData.program_name}
         </p>
       </div>
 
-      {/* Progress card */}
+      {/* Progress bar */}
       <Card variant="elevated">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400">Прогресс</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">Прогресс программы</span>
             <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
               {progress}%
             </span>
           </div>
-          <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div className="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              className="h-full bg-green-500 rounded-full"
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full"
             />
           </div>
         </CardContent>
       </Card>
 
-      {/* Today stats */}
-      <Card variant="elevated">
-        <CardHeader>
-          <CardTitle>Сегодня</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                <span className="text-xl">🍽</span>
-              </div>
-              <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                {stats.meals_count}
-              </span>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Приёмов</p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                <span className="text-xl">✓</span>
-              </div>
-              <span className="text-lg font-bold text-green-600 dark:text-green-400">
-                {stats.compliant_meals}
-              </span>
-              <p className="text-xs text-gray-500 dark:text-gray-400">В норме</p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                <span className="text-xl">!</span>
-              </div>
-              <span className="text-lg font-bold text-red-600 dark:text-red-400">
-                {stats.violations_count}
-              </span>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Нарушений</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Ingredients */}
-      <Card variant="elevated">
-        <CardHeader>
-          <CardTitle>Рекомендации на сегодня</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {todayData.allowed_ingredients.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-2 flex items-center gap-1">
-                <span>✓</span> Разрешённые продукты
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {todayData.allowed_ingredients.map((ing, i) => (
-                  <span
-                    key={i}
-                    className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full"
-                  >
-                    {ing}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {todayData.forbidden_ingredients.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-2 flex items-center gap-1">
-                <span>✕</span> Запрещённые продукты
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {todayData.forbidden_ingredients.map((ing, i) => (
-                  <span
-                    key={i}
-                    className="px-2 py-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full"
-                  >
-                    {ing}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {todayData.notes && (
-            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Заметки</p>
-              <p className="text-sm text-gray-700 dark:text-gray-300">{todayData.notes}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Recent violations */}
-      {violationsData?.violations && violationsData.violations.length > 0 && (
+      {/* Activity recommendation */}
+      {todayData.activity && (
         <Card variant="elevated">
-          <CardHeader>
-            <CardTitle>Последние нарушения</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {violationsData.violations.slice(0, 3).map((v) => (
-              <div
-                key={v.id}
-                className="p-3 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-100 dark:border-red-900/20"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {v.meal_name}
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {new Date(v.meal_time).toLocaleDateString('ru-RU', {
-                      day: 'numeric',
-                      month: 'short',
-                    })}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {v.found_forbidden.map((ing, i) => (
-                    <span
-                      key={i}
-                      className="px-1.5 py-0.5 text-xs bg-red-200 dark:bg-red-800/30 text-red-700 dark:text-red-300 rounded"
-                    >
-                      {ing}
-                    </span>
-                  ))}
-                </div>
-                {v.ai_comment && (
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
-                    {v.ai_comment}
-                  </p>
-                )}
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
+                <span className="text-lg">🏃</span>
               </div>
-            ))}
-
-            <button
-              onClick={() => navigate('/nutrition/history')}
-              className="w-full py-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700"
-            >
-              Смотреть всю историю →
-            </button>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Активность на сегодня</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {todayData.activity}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Meals */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 px-1">
+          Меню на сегодня
+        </h2>
+        {meals.length > 0 ? (
+          meals.map((meal, index) => (
+            <MealCard
+              key={`${meal.type}-${index}`}
+              meal={meal}
+              report={reportsByType[meal.type]}
+              isUploading={uploadingMealType === meal.type}
+              onPhotoClick={handlePhotoClick}
+            />
+          ))
+        ) : (
+          <Card variant="elevated">
+            <CardContent className="p-6 text-center">
+              <p className="text-gray-500 dark:text-gray-400">
+                Меню на сегодня пока не заполнено
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* General notes */}
+      {todayData.general_notes && (
+        <Card variant="elevated">
+          <CardContent className="p-4">
+            <button
+              onClick={() => setShowNotes(!showNotes)}
+              className="w-full flex items-center justify-between"
+            >
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <span>📋</span> Общие рекомендации
+              </span>
+              <motion.span
+                animate={{ rotate: showNotes ? 180 : 0 }}
+                className="text-gray-400"
+              >
+                ▼
+              </motion.span>
+            </button>
+            <AnimatePresence>
+              {showNotes && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <p className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                    {todayData.general_notes}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Day notes */}
+      {todayData.notes && (
+        <Card variant="elevated">
+          <CardContent className="p-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
+              <span>💡</span> Заметка на день
+            </p>
+            <p className="text-sm text-gray-700 dark:text-gray-300">{todayData.notes}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* History link */}
+      <button
+        onClick={() => navigate('/nutrition/history')}
+        className="w-full py-3 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 flex items-center justify-center gap-1"
+      >
+        История программы <span>→</span>
+      </button>
     </div>
   )
 }

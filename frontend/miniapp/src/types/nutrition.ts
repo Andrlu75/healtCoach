@@ -4,12 +4,22 @@ export interface TodayNutritionStats {
   violations_count: number
 }
 
+export interface ProgramMeal {
+  type: string
+  time: string
+  name: string
+  description: string
+}
+
 export interface TodayNutritionProgram {
   program_id: number
   program_name: string
+  general_notes: string
   day_number: number
   total_days: number
   date: string
+  meals: ProgramMeal[]
+  activity: string
   allowed_ingredients: string[]
   forbidden_ingredients: string[]
   notes: string

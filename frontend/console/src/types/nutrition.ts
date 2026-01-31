@@ -4,10 +4,22 @@ export interface Ingredient {
   name: string
 }
 
+export type MealType = 'breakfast' | 'snack1' | 'lunch' | 'snack2' | 'dinner'
+
+export interface ProgramMeal {
+  id?: string
+  type: MealType
+  time: string
+  name: string
+  description: string
+}
+
 export interface NutritionProgramDay {
   id: number
   day_number: number
   date: string
+  meals: ProgramMeal[]
+  activity: string
   allowed_ingredients: Ingredient[]
   forbidden_ingredients: Ingredient[]
   notes: string
@@ -20,6 +32,7 @@ export interface NutritionProgram {
   coach: number
   name: string
   description: string
+  general_notes: string
   start_date: string
   end_date: string
   duration_days: number
@@ -76,6 +89,7 @@ export interface NutritionProgramCreatePayload {
   client: number
   name: string
   description?: string
+  general_notes?: string
   start_date: string
   duration_days: number
   days: NutritionProgramDayPayload[]
@@ -83,6 +97,8 @@ export interface NutritionProgramCreatePayload {
 
 export interface NutritionProgramDayPayload {
   day_number: number
+  meals?: ProgramMeal[]
+  activity?: string
   allowed_ingredients: Ingredient[]
   forbidden_ingredients: Ingredient[]
   notes?: string
@@ -91,6 +107,7 @@ export interface NutritionProgramDayPayload {
 export interface NutritionProgramUpdatePayload {
   name?: string
   description?: string
+  general_notes?: string
   status?: NutritionProgramStatus
   days?: NutritionProgramDayPayload[]
 }

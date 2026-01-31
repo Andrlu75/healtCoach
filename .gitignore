@@ -44,6 +44,7 @@ frontend/console/dist/
 *.swo
 *~
 .DS_Store
+ops/railway/.env
 
 # Docker
 docker-compose.override.yml

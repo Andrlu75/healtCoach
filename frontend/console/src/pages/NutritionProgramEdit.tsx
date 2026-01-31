@@ -8,14 +8,26 @@ import type {
   NutritionProgramCreatePayload,
   Ingredient,
   Client,
+  ProgramMeal,
+  MealType,
 } from '../types'
 
 interface DayFormData {
   day_number: number
+  meals: ProgramMeal[]
+  activity: string
   allowed_ingredients: Ingredient[]
   forbidden_ingredients: Ingredient[]
   notes: string
 }
+
+const MEAL_TYPES: { type: MealType; label: string; defaultTime: string }[] = [
+  { type: 'breakfast', label: 'Завтрак', defaultTime: '08:00' },
+  { type: 'snack1', label: 'Перекус 1', defaultTime: '11:00' },
+  { type: 'lunch', label: 'Обед', defaultTime: '13:00' },
+  { type: 'snack2', label: 'Перекус 2', defaultTime: '16:00' },
+  { type: 'dinner', label: 'Ужин', defaultTime: '19:00' },
+]
 
 export default function NutritionProgramEdit() {
   const { id } = useParams()
@@ -31,6 +43,7 @@ export default function NutritionProgramEdit() {
     client: '',
     name: '',
     description: '',
+    general_notes: '',
     start_date: new Date().toISOString().split('T')[0],
     duration_days: 7,
   })
@@ -50,6 +63,7 @@ export default function NutritionProgramEdit() {
           client: String(data.client),
           name: data.name,
           description: data.description,
+          general_notes: data.general_notes || '',
           start_date: data.start_date,
           duration_days: data.duration_days,
         })
@@ -57,6 +71,8 @@ export default function NutritionProgramEdit() {
           setDays(
             data.days.map((d) => ({
               day_number: d.day_number,
+              meals: d.meals || [],
+              activity: d.activity || '',
               allowed_ingredients: d.allowed_ingredients,
               forbidden_ingredients: d.forbidden_ingredients,
               notes: d.notes,
@@ -76,6 +92,8 @@ export default function NutritionProgramEdit() {
         newDays.push(
           existing || {
             day_number: i,
+            meals: [],
+            activity: '',
             allowed_ingredients: [],
             forbidden_ingredients: [],
             notes: '',
@@ -100,10 +118,13 @@ export default function NutritionProgramEdit() {
           client: Number(formData.client),
           name: formData.name,
           description: formData.description,
+          general_notes: formData.general_notes,
           start_date: formData.start_date,
           duration_days: formData.duration_days,
           days: days.map((d) => ({
             day_number: d.day_number,
+            meals: d.meals,
+            activity: d.activity,
             allowed_ingredients: d.allowed_ingredients,
             forbidden_ingredients: d.forbidden_ingredients,
             notes: d.notes,
@@ -118,8 +139,11 @@ export default function NutritionProgramEdit() {
         await nutritionProgramsApi.update(Number(id), {
           name: formData.name,
           description: formData.description,
+          general_notes: formData.general_notes,
           days: days.map((d) => ({
             day_number: d.day_number,
+            meals: d.meals,
+            activity: d.activity,
             allowed_ingredients: d.allowed_ingredients,
             forbidden_ingredients: d.forbidden_ingredients,
             notes: d.notes,
@@ -130,8 +154,27 @@ export default function NutritionProgramEdit() {
         }
         navigate('/nutrition-programs')
       }
-    } catch (err) {
-      alert('Ошибка сохранения')
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: Record<string, unknown> } }
+      const data = axiosError.response?.data
+      let message = 'Ошибка сохранения'
+
+      if (data) {
+        // Пытаемся извлечь сообщение из разных полей
+        if (typeof data.start_date === 'string') {
+          message = data.start_date
+        } else if (Array.isArray(data.start_date)) {
+          message = data.start_date[0] as string
+        } else if (typeof data.error === 'string') {
+          message = data.error
+        } else if (typeof data.detail === 'string') {
+          message = data.detail
+        } else if (typeof data.non_field_errors === 'object' && Array.isArray(data.non_field_errors)) {
+          message = data.non_field_errors[0] as string
+        }
+      }
+
+      alert(message)
     } finally {
       setSaving(false)
     }
@@ -183,6 +226,8 @@ export default function NutritionProgramEdit() {
           ? d
           : {
               ...d,
+              meals: sourceDay.meals.map((m) => ({ ...m })),
+              activity: sourceDay.activity,
               allowed_ingredients: [...sourceDay.allowed_ingredients],
               forbidden_ingredients: [...sourceDay.forbidden_ingredients],
               notes: sourceDay.notes,
@@ -195,10 +240,43 @@ export default function NutritionProgramEdit() {
     const prevDay = days.find((d) => d.day_number === dayNumber - 1)
     if (!prevDay) return
     updateDay(dayNumber, {
+      meals: prevDay.meals.map((m) => ({ ...m })),
+      activity: prevDay.activity,
       allowed_ingredients: [...prevDay.allowed_ingredients],
       forbidden_ingredients: [...prevDay.forbidden_ingredients],
       notes: prevDay.notes,
     })
+  }
+
+  const addMeal = (dayNumber: number, meal: ProgramMeal) => {
+    setDays((prev) =>
+      prev.map((d) =>
+        d.day_number === dayNumber ? { ...d, meals: [...d.meals, meal] } : d
+      )
+    )
+  }
+
+  const updateMeal = (dayNumber: number, mealIndex: number, updates: Partial<ProgramMeal>) => {
+    setDays((prev) =>
+      prev.map((d) =>
+        d.day_number === dayNumber
+          ? {
+              ...d,
+              meals: d.meals.map((m, i) => (i === mealIndex ? { ...m, ...updates } : m)),
+            }
+          : d
+      )
+    )
+  }
+
+  const removeMeal = (dayNumber: number, mealIndex: number) => {
+    setDays((prev) =>
+      prev.map((d) =>
+        d.day_number === dayNumber
+          ? { ...d, meals: d.meals.filter((_, i) => i !== mealIndex) }
+          : d
+      )
+    )
   }
 
   if (loading) {
@@ -329,6 +407,18 @@ export default function NutritionProgramEdit() {
                 className="w-full px-3 py-2 bg-[#141821] text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none resize-none"
               />
             </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
+                Общие заметки
+              </label>
+              <textarea
+                value={formData.general_notes}
+                onChange={(e) => setFormData({ ...formData, general_notes: e.target.value })}
+                rows={3}
+                placeholder="Общие рекомендации на всю программу: про воду, режим сна, кофе и т.д."
+                className="w-full px-3 py-2 bg-[#141821] text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none resize-none"
+              />
+            </div>
           </div>
         </div>
 
@@ -351,6 +441,9 @@ export default function NutritionProgramEdit() {
                 onRemoveIngredient={(type, index) =>
                   removeIngredient(day.day_number, type, index)
                 }
+                onAddMeal={(meal) => addMeal(day.day_number, meal)}
+                onUpdateMeal={(index, updates) => updateMeal(day.day_number, index, updates)}
+                onRemoveMeal={(index) => removeMeal(day.day_number, index)}
                 onCopyToAll={() => copyToAllDays(day.day_number)}
                 onCopyFromPrevious={
                   day.day_number > 1 ? () => copyFromPreviousDay(day.day_number) : undefined
@@ -371,6 +464,9 @@ interface DayCardProps {
   onUpdate: (updates: Partial<DayFormData>) => void
   onAddIngredient: (type: 'allowed' | 'forbidden', name: string) => void
   onRemoveIngredient: (type: 'allowed' | 'forbidden', index: number) => void
+  onAddMeal: (meal: ProgramMeal) => void
+  onUpdateMeal: (index: number, meal: Partial<ProgramMeal>) => void
+  onRemoveMeal: (index: number) => void
   onCopyToAll: () => void
   onCopyFromPrevious?: () => void
 }
@@ -382,11 +478,34 @@ function DayCard({
   onUpdate,
   onAddIngredient,
   onRemoveIngredient,
+  onAddMeal,
+  onUpdateMeal,
+  onRemoveMeal,
   onCopyToAll,
   onCopyFromPrevious,
 }: DayCardProps) {
   const [newAllowed, setNewAllowed] = useState('')
   const [newForbidden, setNewForbidden] = useState('')
+  const [showMealForm, setShowMealForm] = useState(false)
+  const [newMealType, setNewMealType] = useState<MealType>('breakfast')
+
+  const handleAddMeal = () => {
+    const mealConfig = MEAL_TYPES.find((m) => m.type === newMealType)
+    if (!mealConfig) return
+    onAddMeal({
+      id: crypto.randomUUID(),
+      type: newMealType,
+      time: mealConfig.defaultTime,
+      name: mealConfig.label,
+      description: '',
+    })
+    setShowMealForm(false)
+    setNewMealType('breakfast')
+  }
+
+  const getMealTypeLabel = (type: MealType) => {
+    return MEAL_TYPES.find((m) => m.type === type)?.label || type
+  }
 
   return (
     <div className="border border-border rounded-lg overflow-hidden">
@@ -398,7 +517,7 @@ function DayCard({
         <div className="flex items-center gap-3">
           <span className="font-medium text-foreground">День {day.day_number}</span>
           <span className="text-xs text-muted-foreground">
-            {day.allowed_ingredients.length} разр. / {day.forbidden_ingredients.length} запр.
+            {day.meals.length} приём(ов) · {day.allowed_ingredients.length} разр. / {day.forbidden_ingredients.length} запр.
           </span>
         </div>
         {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -426,6 +545,109 @@ function DayCard({
               <Copy size={12} />
               На все дни
             </button>
+          </div>
+
+          {/* Meals */}
+          <div>
+            <label className="block text-sm font-medium text-blue-400 mb-2">
+              Приёмы пищи
+            </label>
+            <div className="space-y-2 mb-2">
+              {day.meals.map((meal, i) => (
+                <div
+                  key={meal.id || i}
+                  className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-blue-400">
+                        {getMealTypeLabel(meal.type)}
+                      </span>
+                      <input
+                        type="time"
+                        value={meal.time}
+                        onChange={(e) => onUpdateMeal(i, { time: e.target.value })}
+                        className="text-xs px-2 py-1 bg-[#141821] text-foreground border border-border rounded outline-none"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveMeal(i)}
+                      className="text-red-400 hover:text-red-300"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={meal.name}
+                    onChange={(e) => onUpdateMeal(i, { name: e.target.value })}
+                    placeholder="Название блюда"
+                    className="w-full px-3 py-1.5 text-sm bg-[#141821] text-foreground border border-border rounded mb-2 outline-none"
+                  />
+                  <textarea
+                    value={meal.description}
+                    onChange={(e) => onUpdateMeal(i, { description: e.target.value })}
+                    placeholder="Описание блюда и ингредиенты..."
+                    rows={2}
+                    className="w-full px-3 py-1.5 text-sm bg-[#141821] text-foreground border border-border rounded outline-none resize-none"
+                  />
+                </div>
+              ))}
+            </div>
+
+            {showMealForm ? (
+              <div className="flex items-center gap-2">
+                <select
+                  value={newMealType}
+                  onChange={(e) => setNewMealType(e.target.value as MealType)}
+                  className="px-3 py-1.5 text-sm bg-[#141821] text-foreground border border-border rounded outline-none"
+                >
+                  {MEAL_TYPES.map((m) => (
+                    <option key={m.type} value={m.type}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleAddMeal}
+                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Добавить
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowMealForm(false)}
+                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Отмена
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowMealForm(true)}
+                className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
+              >
+                <Plus size={16} />
+                Добавить приём пищи
+              </button>
+            )}
+          </div>
+
+          {/* Activity */}
+          <div>
+            <label className="block text-sm font-medium text-purple-400 mb-2">
+              Рекомендации по активности
+            </label>
+            <textarea
+              value={day.activity}
+              onChange={(e) => onUpdate({ activity: e.target.value })}
+              rows={2}
+              placeholder="Рекомендации по физической активности на день..."
+              className="w-full px-3 py-2 text-sm bg-[#141821] text-foreground border border-border rounded focus:ring-1 focus:ring-purple-500 outline-none resize-none"
+            />
           </div>
 
           {/* Allowed ingredients */}

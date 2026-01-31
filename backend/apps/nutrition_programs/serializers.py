@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import MealComplianceCheck, NutritionProgram, NutritionProgramDay
+from .models import MealComplianceCheck, MealReport, NutritionProgram, NutritionProgramDay
 
 
 class NutritionProgramDaySerializer(serializers.ModelSerializer):
@@ -12,6 +12,8 @@ class NutritionProgramDaySerializer(serializers.ModelSerializer):
             'id',
             'day_number',
             'date',
+            'meals',
+            'activity',
             'allowed_ingredients',
             'forbidden_ingredients',
             'notes',
@@ -35,6 +37,7 @@ class NutritionProgramSerializer(serializers.ModelSerializer):
             'client_name',
             'name',
             'description',
+            'general_notes',
             'start_date',
             'end_date',
             'duration_days',
@@ -106,6 +109,7 @@ class NutritionProgramCreateSerializer(serializers.ModelSerializer):
             'client',
             'name',
             'description',
+            'general_notes',
             'start_date',
             'duration_days',
             'days',
@@ -166,6 +170,8 @@ class NutritionProgramCreateSerializer(serializers.ModelSerializer):
                 program=program,
                 day_number=i + 1,
                 date=program.start_date + timedelta(days=i),
+                meals=day_data.get('meals', []),
+                activity=day_data.get('activity', ''),
                 allowed_ingredients=day_data.get('allowed_ingredients', []),
                 forbidden_ingredients=day_data.get('forbidden_ingredients', []),
                 notes=day_data.get('notes', ''),
@@ -187,13 +193,23 @@ class NutritionProgramCreateSerializer(serializers.ModelSerializer):
             for day_data in days_data:
                 day_number = day_data.get('day_number')
                 if day_number:
-                    NutritionProgramDay.objects.filter(
-                        program=instance, day_number=day_number
-                    ).update(
-                        allowed_ingredients=day_data.get('allowed_ingredients', []),
-                        forbidden_ingredients=day_data.get('forbidden_ingredients', []),
-                        notes=day_data.get('notes', ''),
-                    )
+                    # Обновляем только переданные поля, чтобы не затирать существующие данные
+                    update_fields = {}
+                    if 'meals' in day_data:
+                        update_fields['meals'] = day_data['meals']
+                    if 'activity' in day_data:
+                        update_fields['activity'] = day_data['activity']
+                    if 'allowed_ingredients' in day_data:
+                        update_fields['allowed_ingredients'] = day_data['allowed_ingredients']
+                    if 'forbidden_ingredients' in day_data:
+                        update_fields['forbidden_ingredients'] = day_data['forbidden_ingredients']
+                    if 'notes' in day_data:
+                        update_fields['notes'] = day_data['notes']
+
+                    if update_fields:
+                        NutritionProgramDay.objects.filter(
+                            program=instance, day_number=day_number
+                        ).update(**update_fields)
 
         return instance
 
@@ -208,6 +224,8 @@ class NutritionProgramDayUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = NutritionProgramDay
         fields = [
+            'meals',
+            'activity',
             'allowed_ingredients',
             'forbidden_ingredients',
             'notes',
@@ -253,3 +271,65 @@ class ComplianceStatsSerializer(serializers.Serializer):
     violations = serializers.IntegerField()
     compliance_rate = serializers.FloatField()
     most_common_violations = serializers.ListField(child=serializers.CharField())
+
+
+class MealReportSerializer(serializers.ModelSerializer):
+    """Serializer для фото-отчёта о приёме пищи."""
+
+    meal_type_display = serializers.CharField(source='get_meal_type_display', read_only=True)
+    program_name = serializers.CharField(source='program_day.program.name', read_only=True)
+    day_number = serializers.IntegerField(source='program_day.day_number', read_only=True)
+
+    class Meta:
+        model = MealReport
+        fields = [
+            'id',
+            'program_day',
+            'meal_type',
+            'meal_type_display',
+            'meal_time',
+            'photo_file_id',
+            'photo_url',
+            'planned_description',
+            'recognized_ingredients',
+            'is_compliant',
+            'compliance_score',
+            'ai_analysis',
+            'program_name',
+            'day_number',
+            'created_at',
+        ]
+        read_only_fields = [
+            'id',
+            'planned_description',
+            'recognized_ingredients',
+            'is_compliant',
+            'compliance_score',
+            'ai_analysis',
+            'created_at',
+        ]
+
+
+class MealReportCreateSerializer(serializers.Serializer):
+    """Serializer для создания фото-отчёта."""
+
+    meal_type = serializers.ChoiceField(choices=MealReport.MEAL_TYPE_CHOICES)
+    photo_file_id = serializers.CharField(required=False, allow_blank=True)
+    photo_url = serializers.URLField(required=False, allow_blank=True)
+    photo_base64 = serializers.CharField(required=False, allow_blank=True)
+    date = serializers.DateField(
+        required=False,
+        help_text='Дата отчёта (опционально, по умолчанию сегодня). Формат: YYYY-MM-DD',
+    )
+
+    def validate(self, attrs):
+        """Проверяем что передано хотя бы одно из полей фото."""
+        if not any([
+            attrs.get('photo_file_id'),
+            attrs.get('photo_url'),
+            attrs.get('photo_base64'),
+        ]):
+            raise serializers.ValidationError(
+                'Необходимо передать photo_file_id, photo_url или photo_base64'
+            )
+        return attrs

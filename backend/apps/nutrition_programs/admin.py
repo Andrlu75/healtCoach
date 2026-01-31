@@ -1,12 +1,12 @@
 from django.contrib import admin
 
-from .models import MealComplianceCheck, NutritionProgram, NutritionProgramDay
+from .models import MealComplianceCheck, MealReport, NutritionProgram, NutritionProgramDay
 
 
 class NutritionProgramDayInline(admin.TabularInline):
     model = NutritionProgramDay
     extra = 0
-    fields = ['day_number', 'date', 'allowed_ingredients', 'forbidden_ingredients', 'notes']
+    fields = ['day_number', 'date', 'meals', 'activity', 'allowed_ingredients', 'forbidden_ingredients', 'notes']
 
 
 @admin.register(NutritionProgram)
@@ -34,3 +34,24 @@ class MealComplianceCheckAdmin(admin.ModelAdmin):
     search_fields = ['meal__dish_name', 'program_day__program__name']
     readonly_fields = ['created_at']
     raw_id_fields = ['meal', 'program_day']
+
+
+@admin.register(MealReport)
+class MealReportAdmin(admin.ModelAdmin):
+    list_display = ['program_day', 'meal_type', 'meal_time', 'is_compliant', 'compliance_score', 'created_at']
+    list_filter = ['meal_type', 'is_compliant', 'created_at']
+    search_fields = ['program_day__program__name', 'program_day__program__client__first_name']
+    readonly_fields = ['created_at', 'recognized_ingredients', 'is_compliant', 'compliance_score', 'ai_analysis']
+    raw_id_fields = ['program_day']
+    fieldsets = (
+        (None, {
+            'fields': ('program_day', 'meal_type', 'meal_time')
+        }),
+        ('Фото', {
+            'fields': ('photo_file_id', 'photo_url')
+        }),
+        ('Анализ', {
+            'fields': ('planned_description', 'recognized_ingredients', 'is_compliant', 'compliance_score', 'ai_analysis'),
+            'classes': ('collapse',)
+        }),
+    )

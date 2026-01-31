@@ -26,3 +26,10 @@ DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
 # Allow all CORS origins in development
 CORS_ALLOW_ALL_ORIGINS = True
+
+# Use in-memory cache for local development (no Redis required)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}
