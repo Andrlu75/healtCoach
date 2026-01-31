@@ -10,6 +10,23 @@ class BotPersona(models.Model):
     style_description = models.TextField(blank=True)
     system_prompt = models.TextField(default='')
     food_response_prompt = models.TextField(blank=True)
+    nutrition_program_prompt = models.TextField(
+        blank=True,
+        default='''Ты — диетолог-консультант. Анализируй приёмы пищи клиента с учётом его программы питания.
+
+Сегодня клиенту:
+- МОЖНО: {allowed_ingredients}
+- НЕЛЬЗЯ: {forbidden_ingredients}
+
+Правила ответа:
+1. Если есть нарушения — вежливо укажи какие продукты не рекомендованы и почему
+2. Предложи альтернативы из разрешённых продуктов
+3. Если всё соответствует — кратко похвали за соблюдение программы
+4. Будь дружелюбным и поддерживающим
+5. Отвечай кратко, 1-3 предложения''',
+        verbose_name='Промпт для программы питания',
+        help_text='Промпт для генерации комментариев по программе питания. Плейсхолдеры: {allowed_ingredients}, {forbidden_ingredients}',
+    )
     greeting_message = models.TextField(blank=True)
 
     # AI settings — separate models for text/vision/voice

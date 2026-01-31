@@ -13,6 +13,8 @@ const Profile = lazy(() => import('../../features/profile/Profile'))
 const Workouts = lazy(() => import('../../features/workouts/Workouts'))
 const WorkoutDetail = lazy(() => import('../../features/workouts/WorkoutDetail'))
 const WorkoutRun = lazy(() => import('../../features/workouts/WorkoutRun'))
+const NutritionProgram = lazy(() => import('../../features/nutrition/NutritionProgram'))
+const NutritionHistory = lazy(() => import('../../features/nutrition/NutritionHistory'))
 
 export function ClientRoutes() {
   return (
@@ -29,6 +31,8 @@ export function ClientRoutes() {
           <Route path="/workouts" element={<Workouts />} />
           <Route path="/workouts/:id" element={<WorkoutDetail />} />
           <Route path="/workouts/:id/run" element={<WorkoutRun />} />
+          <Route path="/nutrition" element={<NutritionProgram />} />
+          <Route path="/nutrition/history" element={<NutritionHistory />} />
         </Route>
       </Routes>
     </Suspense>

@@ -21,6 +21,7 @@ urlpatterns = [
     path('api/exercises/', include('apps.exercises.urls')),
     path('api/workouts/', include('apps.workouts.urls')),
     path('api/integrations/', include('apps.integrations.urls')),
+    path('api/nutrition/', include('apps.nutrition_programs.urls')),
 ]
 
 if settings.DEBUG:

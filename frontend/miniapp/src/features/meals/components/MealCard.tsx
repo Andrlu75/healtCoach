@@ -141,19 +141,32 @@ export function MealCard({ meal, onDelete, compact = false }: MealCardProps) {
               </div>
             </div>
 
-            <div className="text-right">
-              <span className={cn(
-                'font-semibold text-gray-900 dark:text-gray-100',
-                compact ? 'text-xs' : 'text-sm'
-              )}>
-                {meal.calories || 0}
-              </span>
-              <span className={cn(
-                'text-gray-400 dark:text-gray-500 ml-0.5',
-                compact ? 'text-[10px]' : 'text-xs'
-              )}>
-                ккал
-              </span>
+            <div className="flex items-center gap-2">
+              {/* Compliance status indicator */}
+              {meal.compliance_status && (
+                <div className={cn(
+                  'w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium',
+                  meal.compliance_status.is_compliant
+                    ? 'bg-green-500 text-white'
+                    : 'bg-red-500 text-white'
+                )}>
+                  {meal.compliance_status.is_compliant ? '✓' : '!'}
+                </div>
+              )}
+              <div className="text-right">
+                <span className={cn(
+                  'font-semibold text-gray-900 dark:text-gray-100',
+                  compact ? 'text-xs' : 'text-sm'
+                )}>
+                  {meal.calories || 0}
+                </span>
+                <span className={cn(
+                  'text-gray-400 dark:text-gray-500 ml-0.5',
+                  compact ? 'text-[10px]' : 'text-xs'
+                )}>
+                  ккал
+                </span>
+              </div>
             </div>
           </motion.div>
 

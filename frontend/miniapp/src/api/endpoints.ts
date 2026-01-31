@@ -193,3 +193,34 @@ export const getOnboardingQuestions = () =>
 
 export const submitOnboarding = (answers: Record<string, unknown>) =>
   api.post('/miniapp/onboarding/submit/', { answers })
+
+// Nutrition Programs
+import type {
+  TodayNutritionProgram,
+  NutritionHistory,
+  NutritionProgramSummary,
+} from '../types/nutrition'
+
+export interface NutritionViolation {
+  id: number
+  meal_id: number
+  meal_name: string
+  meal_time: string
+  program_name: string
+  day_number: number
+  found_forbidden: string[]
+  ai_comment: string
+  created_at: string
+}
+
+export const getNutritionProgramToday = () =>
+  api.get<TodayNutritionProgram & { has_program: boolean }>('/miniapp/nutrition-program/today/')
+
+export const getNutritionProgramHistory = () =>
+  api.get<NutritionHistory & { has_program: boolean }>('/miniapp/nutrition-program/history/')
+
+export const getNutritionProgramViolations = (params?: { limit?: number }) =>
+  api.get<{ violations: NutritionViolation[] }>('/miniapp/nutrition-program/violations/', { params })
+
+export const getNutritionProgramSummary = () =>
+  api.get<NutritionProgramSummary & { has_program: boolean }>('/miniapp/nutrition-program/summary/')

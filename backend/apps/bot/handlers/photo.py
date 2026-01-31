@@ -17,6 +17,7 @@ ANALYSIS_INTRO_PHRASES = [
 
 from apps.accounts.models import Client
 from apps.chat.models import InteractionLog
+from apps.nutrition_programs.models import MealComplianceCheck
 from apps.meals.services import (
     analyze_food,
     classify_and_analyze,
@@ -227,6 +228,21 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
             'response_id': meta.get('response_id', ''),
         }
 
+    # Получаем compliance_check один раз для использования в обоих местах
+    compliance_check = None
+    if meal.program_check_status:
+        compliance_check = await sync_to_async(
+            lambda: MealComplianceCheck.objects.filter(meal=meal).select_related('program_day__program').first()
+        )()
+
+    # Добавляем информацию о программе питания в ответ клиенту
+    if meal.program_check_status:
+        if meal.program_check_status == 'violation':
+            if compliance_check and compliance_check.ai_comment:
+                response_text += f'\n\n⚠️ {compliance_check.ai_comment}'
+        elif meal.program_check_status == 'compliant':
+            response_text += '\n\n✅ Отлично! Вы соблюдаете программу питания.'
+
     await send_message(bot.token, chat_id, response_text)
 
     # Сохраняем AI комментарий в meal
@@ -235,7 +251,7 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
         await sync_to_async(meal.save)(update_fields=['ai_comment'])
 
     # Send notification to coach's report chat (with photo)
-    await _notify_coach_about_meal(bot, client, analysis, summary, image_data)
+    await _notify_coach_about_meal(bot, client, analysis, summary, image_data, meal, compliance_check)
 
     # Log interaction
     await sync_to_async(InteractionLog.objects.create)(
@@ -429,7 +445,7 @@ async def _handle_data_photo(bot: TelegramBot, client: Client, chat_id: int, ima
     await send_message(bot.token, chat_id, response_text)
 
 
-async def _notify_coach_about_meal(bot: TelegramBot, client: Client, analysis: dict, summary: dict, image_data: bytes | None = None):
+async def _notify_coach_about_meal(bot: TelegramBot, client: Client, analysis: dict, summary: dict, image_data: bytes | None = None, meal=None, compliance_check=None):
     """Send notification about meal to coach's report chat (with photo if available)."""
     try:
         # Get coach's notification chat ID
@@ -469,6 +485,18 @@ async def _notify_coach_about_meal(bot: TelegramBot, client: Client, analysis: d
             f'<b>{dish_name}</b>\n'
             f'{kbju_str}\n\n'
         )
+
+        # Добавляем информацию о программе питания
+        if meal and meal.program_check_status:
+            if meal.program_check_status == 'violation':
+                if compliance_check:
+                    forbidden_str = ', '.join(compliance_check.found_forbidden[:5])
+                    caption += f'⚠️ <b>Нарушение программы питания!</b>\n'
+                    caption += f'Запрещённые продукты: {forbidden_str}\n\n'
+                else:
+                    caption += f'⚠️ <b>Нарушение программы питания!</b>\n\n'
+            elif meal.program_check_status == 'compliant':
+                caption += f'✅ Соответствует программе питания\n\n'
 
         if daily_target:
             progress_pct = int(daily_calories / daily_target * 100) if daily_target else 0

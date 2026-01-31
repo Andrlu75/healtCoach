@@ -145,6 +145,27 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
             )}
           </div>
 
+          {/* Compliance status banner */}
+          {meal.compliance_status && !meal.compliance_status.is_compliant && (
+            <div className="flex-shrink-0 mx-4 p-3 bg-red-500/20 border border-red-500/30 rounded-xl">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-red-400 font-medium text-sm">⚠️ Нарушение программы</span>
+              </div>
+              {meal.compliance_status.found_forbidden.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {meal.compliance_status.found_forbidden.map((ing, i) => (
+                    <span key={i} className="px-2 py-0.5 bg-red-500/30 text-red-300 text-xs rounded">
+                      {ing}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {meal.compliance_status.ai_comment && (
+                <p className="text-white/70 text-xs">{meal.compliance_status.ai_comment}</p>
+              )}
+            </div>
+          )}
+
           {/* Footer with nutrition */}
           <div className="flex-shrink-0 p-4 pb-10 bg-gradient-to-t from-black to-transparent">
             <div className="grid grid-cols-4 gap-2 text-center">
@@ -198,6 +219,16 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <span className="text-2xl">{icon}</span>
+            </div>
+          )}
+          {/* Compliance status indicator */}
+          {meal.compliance_status && (
+            <div className={`absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium ${
+              meal.compliance_status.is_compliant
+                ? 'bg-green-500 text-white'
+                : 'bg-red-500 text-white'
+            }`}>
+              {meal.compliance_status.is_compliant ? '✓' : '!'}
             </div>
           )}
         </div>

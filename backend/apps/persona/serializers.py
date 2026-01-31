@@ -7,7 +7,8 @@ class BotPersonaSerializer(serializers.ModelSerializer):
         model = BotPersona
         fields = [
             'id', 'name', 'age', 'city', 'is_default',
-            'style_description', 'system_prompt', 'food_response_prompt', 'greeting_message',
+            'style_description', 'system_prompt', 'food_response_prompt',
+            'nutrition_program_prompt', 'greeting_message',
             'text_provider', 'text_model',
             'vision_provider', 'vision_model',
             'voice_provider', 'voice_model',

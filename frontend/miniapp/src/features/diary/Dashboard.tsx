@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Droplets, Plus, Zap, Sparkles, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
-import { getDailySummary, getMeals } from '../../api/endpoints'
+import { getDailySummary, getMeals, getNutritionProgramSummary } from '../../api/endpoints'
 import { useAuthStore } from '../auth'
 import { useHaptic } from '../../shared/hooks'
 import { Card } from '../../shared/components/ui'
@@ -30,6 +30,11 @@ function Dashboard() {
   const { data: mealsData, isLoading: mealsLoading } = useQuery({
     queryKey: ['meals', today],
     queryFn: () => getMeals({ date: today }).then((r) => r.data),
+  })
+
+  const { data: nutritionProgram } = useQuery({
+    queryKey: ['nutritionProgramSummary'],
+    queryFn: () => getNutritionProgramSummary().then((r) => r.data),
   })
 
   const totals = summary?.totals || { calories: 0, proteins: 0, fats: 0, carbs: 0 }
@@ -117,6 +122,59 @@ function Dashboard() {
             target={client.daily_water}
           />
         </Card>
+      )}
+
+      {/* Nutrition program widget */}
+      {nutritionProgram?.has_program && nutritionProgram.status === 'active' && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <Card
+            variant="elevated"
+            className="p-4 cursor-pointer"
+            onClick={() => navigate('/nutrition')}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🥗</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Программа питания
+                </span>
+              </div>
+              {nutritionProgram.compliance_rate !== null && (
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  nutritionProgram.compliance_rate >= 80
+                    ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                    : nutritionProgram.compliance_rate >= 50
+                      ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                }`}>
+                  {nutritionProgram.compliance_rate}%
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500 dark:text-gray-400">
+                {nutritionProgram.name}
+              </span>
+              <span className="text-gray-700 dark:text-gray-300 font-medium">
+                День {nutritionProgram.current_day || 1} / {nutritionProgram.total_days}
+              </span>
+            </div>
+
+            <div className="mt-2 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{
+                  width: `${((nutritionProgram.current_day || 1) / nutritionProgram.total_days) * 100}%`,
+                }}
+                className="h-full bg-green-500 rounded-full"
+              />
+            </div>
+          </Card>
+        </motion.div>
       )}
 
       {/* Meals photo thumbnails */}

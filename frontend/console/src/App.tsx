@@ -9,6 +9,9 @@ import OnboardingEditor from './pages/OnboardingEditor'
 import Reports from './pages/Reports'
 import Invites from './pages/Invites'
 import Logs from './pages/Logs'
+import NutritionPrograms from './pages/NutritionPrograms'
+import NutritionProgramEdit from './pages/NutritionProgramEdit'
+import NutritionProgramStats from './pages/NutritionProgramStats'
 import AISettings from './pages/settings/AISettings'
 import TelegramSettings from './pages/settings/TelegramSettings'
 import PersonaSettings from './pages/settings/PersonaSettings'
@@ -49,6 +52,10 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="clients" element={<Clients />} />
           <Route path="clients/:id" element={<ClientDetail />} />
+          <Route path="nutrition-programs" element={<NutritionPrograms />} />
+          <Route path="nutrition-programs/new" element={<NutritionProgramEdit />} />
+          <Route path="nutrition-programs/:id" element={<NutritionProgramEdit />} />
+          <Route path="nutrition-programs/:id/stats" element={<NutritionProgramStats />} />
           {/* Остальное */}
           <Route path="onboarding" element={<OnboardingEditor />} />
           <Route path="logs" element={<Logs />} />

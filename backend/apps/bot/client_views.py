@@ -457,11 +457,40 @@ class ClientMealDraftConfirmView(APIView):
         except Exception as notify_err:
             logger.warning('[DRAFT CONFIRM VIEW] Failed to notify coach: %s', notify_err)
 
+        # Add compliance feedback to response
+        compliance_feedback = None
+        meal.refresh_from_db()  # Get updated program_check_status
+        if meal.program_check_status:
+            if meal.program_check_status == 'violation':
+                from apps.nutrition_programs.models import MealComplianceCheck
+                compliance_check = MealComplianceCheck.objects.filter(meal=meal).first()
+                if compliance_check:
+                    compliance_feedback = {
+                        'is_compliant': False,
+                        'found_forbidden': compliance_check.found_forbidden,
+                        'ai_comment': compliance_check.ai_comment,
+                    }
+                    if ai_response:
+                        ai_response += f'\n\n⚠️ {compliance_check.ai_comment}'
+                    else:
+                        ai_response = f'⚠️ {compliance_check.ai_comment}'
+            elif meal.program_check_status == 'compliant':
+                compliance_feedback = {
+                    'is_compliant': True,
+                    'found_forbidden': [],
+                    'ai_comment': 'Отлично! Вы соблюдаете программу питания.',
+                }
+                if ai_response:
+                    ai_response += '\n\n✅ Отлично! Вы соблюдаете программу питания.'
+                else:
+                    ai_response = '✅ Отлично! Вы соблюдаете программу питания.'
+
         return Response({
             'status': 'confirmed',
             'meal_id': meal.id,
             'meal': MealSerializer(meal).data,
             'ai_response': ai_response,
+            'compliance_feedback': compliance_feedback,
         })
 
 

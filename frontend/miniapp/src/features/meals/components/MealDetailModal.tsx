@@ -113,6 +113,49 @@ export function MealDetailModal({ meal, isOpen, onClose }: MealDetailModalProps)
                   </div>
                 </div>
 
+                {/* Compliance status */}
+                {meal.compliance_status && (
+                  <div className={`p-3 rounded-xl ${
+                    meal.compliance_status.is_compliant
+                      ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                      : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium text-white ${
+                        meal.compliance_status.is_compliant ? 'bg-green-500' : 'bg-red-500'
+                      }`}>
+                        {meal.compliance_status.is_compliant ? '✓' : '!'}
+                      </span>
+                      <span className={`text-sm font-medium ${
+                        meal.compliance_status.is_compliant
+                          ? 'text-green-700 dark:text-green-400'
+                          : 'text-red-700 dark:text-red-400'
+                      }`}>
+                        {meal.compliance_status.is_compliant
+                          ? 'Соответствует программе питания'
+                          : 'Содержит запрещённые продукты'}
+                      </span>
+                    </div>
+                    {!meal.compliance_status.is_compliant && meal.compliance_status.found_forbidden.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {meal.compliance_status.found_forbidden.map((item, i) => (
+                          <span
+                            key={i}
+                            className="px-2 py-0.5 bg-red-200 dark:bg-red-800/50 text-red-700 dark:text-red-300 rounded text-xs"
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {meal.compliance_status.ai_comment && (
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        {meal.compliance_status.ai_comment}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Ingredients */}
                 {meal.ingredients && meal.ingredients.length > 0 && (
                   <div>
@@ -120,14 +163,21 @@ export function MealDetailModal({ meal, isOpen, onClose }: MealDetailModalProps)
                       Состав
                     </h3>
                     <div className="flex flex-wrap gap-2">
-                      {meal.ingredients.map((ingredient, index) => (
-                        <span
-                          key={index}
-                          className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full text-sm text-gray-700 dark:text-gray-300"
-                        >
-                          {ingredient}
-                        </span>
-                      ))}
+                      {meal.ingredients.map((ingredient, index) => {
+                        const isForbidden = meal.compliance_status?.found_forbidden?.includes(ingredient)
+                        return (
+                          <span
+                            key={index}
+                            className={`px-3 py-1.5 rounded-full text-sm ${
+                              isForbidden
+                                ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-700'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                            }`}
+                          >
+                            {ingredient}
+                          </span>
+                        )
+                      })}
                     </div>
                   </div>
                 )}

@@ -1,3 +1,5 @@
+export * from './nutrition'
+
 export interface ClientData {
   id: number
   first_name: string
@@ -15,6 +17,12 @@ export interface ClientData {
   meal_analysis_mode: 'ask' | 'fast' | 'smart'
 }
 
+export interface ComplianceStatus {
+  is_compliant: boolean
+  found_forbidden: string[]
+  ai_comment: string
+}
+
 export interface Meal {
   id: number
   dish_name: string
@@ -27,6 +35,7 @@ export interface Meal {
   image?: string
   thumbnail?: string
   ingredients?: string[]
+  compliance_status?: ComplianceStatus | null
 }
 
 export interface DailySummary {

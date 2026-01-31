@@ -42,15 +42,36 @@ class AddIngredientSerializer(serializers.Serializer):
     name = serializers.CharField()
 
 
+class ComplianceStatusSerializer(serializers.Serializer):
+    """Сериализатор для статуса соблюдения программы питания."""
+    is_compliant = serializers.BooleanField()
+    found_forbidden = serializers.ListField(child=serializers.CharField())
+    ai_comment = serializers.CharField()
+
+
 class MealSerializer(serializers.ModelSerializer):
+    compliance_status = serializers.SerializerMethodField()
+
     class Meta:
         model = Meal
         fields = [
             'id', 'image', 'thumbnail', 'image_type', 'dish_name', 'dish_type',
             'calories', 'proteins', 'fats', 'carbohydrates',
             'ingredients', 'ai_confidence', 'ai_comment', 'meal_time', 'created_at',
+            'compliance_status',
         ]
         read_only_fields = fields
+
+    def get_compliance_status(self, obj):
+        """Возвращает статус соблюдения программы питания."""
+        check = obj.compliance_checks.first()
+        if not check:
+            return None
+        return {
+            'is_compliant': check.is_compliant,
+            'found_forbidden': check.found_forbidden,
+            'ai_comment': check.ai_comment,
+        }
 
 
 class MealCreateSerializer(serializers.ModelSerializer):

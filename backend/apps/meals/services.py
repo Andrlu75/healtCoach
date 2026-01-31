@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from apps.accounts.models import Client
 from apps.bot.services import _build_client_context
+from apps.nutrition_programs.services import process_meal_compliance
 from apps.persona.models import AIProviderConfig, AIUsageLog, BotPersona, TelegramBot
 from core.ai.factory import get_ai_provider
 
@@ -442,7 +443,160 @@ async def save_meal(client: Client, image_data: bytes, analysis: dict) -> Meal:
         filename = f'meal_{meal.pk}_{now.strftime("%Y%m%d_%H%M%S")}.jpg'
         await sync_to_async(meal.image.save)(filename, ContentFile(image_data), save=True)
 
+    # Check nutrition program compliance
+    await check_meal_program_compliance(meal)
+
     return meal
+
+
+async def check_meal_program_compliance(meal: Meal) -> tuple[str | None, bool]:
+    """
+    Проверяет соответствие приёма пищи активной программе питания.
+
+    Returns:
+        Кортеж (feedback_text, is_compliant) или (None, True) если нет активной программы
+    """
+    try:
+        check, feedback = await sync_to_async(process_meal_compliance)(meal)
+
+        if check:
+            # Обновляем статус проверки в meal
+            meal.program_check_status = 'compliant' if check.is_compliant else 'violation'
+            await sync_to_async(meal.save)(update_fields=['program_check_status'])
+
+            # Генерируем AI feedback если есть промпт в persona
+            ai_feedback = await _generate_ai_compliance_feedback(meal, check, feedback)
+            if ai_feedback:
+                feedback = ai_feedback
+                # Обновляем ai_comment в check
+                check.ai_comment = ai_feedback
+                await sync_to_async(check.save)(update_fields=['ai_comment'])
+
+            logger.info(
+                '[COMPLIANCE] Checked meal=%s status=%s feedback=%s',
+                meal.pk,
+                meal.program_check_status,
+                feedback[:50] if feedback else '',
+            )
+
+            return feedback, check.is_compliant
+
+        return None, True
+
+    except Exception as e:
+        logger.exception('[COMPLIANCE] Error checking meal=%s: %s', meal.pk, e)
+        return None, True
+
+
+async def _generate_ai_compliance_feedback(
+    meal: Meal,
+    check,
+    default_feedback: str,
+) -> str | None:
+    """
+    Генерирует AI feedback для программы питания если есть nutrition_program_prompt.
+
+    Returns:
+        AI-сгенерированный feedback или None если промпта нет
+    """
+    from apps.nutrition_programs.models import MealComplianceCheck
+    from core.ai.factory import get_ai_provider
+    from core.ai.model_fetcher import get_cached_pricing
+    from decimal import Decimal
+
+    try:
+        # Получаем клиента
+        client = await sync_to_async(lambda: meal.client)()
+
+        # Получаем persona клиента (или дефолтную коуча)
+        persona = await sync_to_async(lambda: client.persona)()
+        if not persona:
+            bot = await sync_to_async(
+                lambda: TelegramBot.objects.filter(coach=client.coach).first()
+            )()
+            if bot:
+                persona = await sync_to_async(
+                    lambda: BotPersona.objects.filter(coach=bot.coach).first()
+                )()
+
+        if not persona or not persona.nutrition_program_prompt:
+            return None
+
+        # Получаем день программы
+        program_day = await sync_to_async(lambda: check.program_day)()
+        program = await sync_to_async(lambda: program_day.program)()
+
+        # Получаем provider
+        provider_name = persona.text_provider or 'openai'
+        model = persona.text_model or None
+
+        config = await sync_to_async(
+            lambda: AIProviderConfig.objects.filter(
+                coach=client.coach, provider=provider_name, is_active=True
+            ).first()
+        )()
+        if not config:
+            logger.warning('[COMPLIANCE AI] No API config for provider %s', provider_name)
+            return None
+
+        provider = get_ai_provider(provider_name, config.api_key)
+
+        # Формируем контекст
+        allowed_str = ', '.join(program_day.allowed_ingredients_list[:10]) or 'не указано'
+        forbidden_str = ', '.join(program_day.forbidden_ingredients_list[:10]) or 'не указано'
+
+        prompt = persona.nutrition_program_prompt
+        # Заменяем плейсхолдеры если есть
+        prompt = prompt.replace('{allowed_ingredients}', allowed_str)
+        prompt = prompt.replace('{forbidden_ingredients}', forbidden_str)
+
+        user_message = (
+            f'Блюдо: {meal.dish_name}\n'
+            f'Ингредиенты: {", ".join(meal.ingredients or [])}\n\n'
+            f'Программа питания: {program.name}\n'
+            f'Разрешённые продукты сегодня: {allowed_str}\n'
+            f'Запрещённые продукты: {forbidden_str}\n\n'
+            f'Результат проверки: {"✅ Соответствует" if check.is_compliant else "⚠️ Нарушение"}\n'
+        )
+
+        if not check.is_compliant:
+            user_message += f'Найденные запрещённые продукты: {", ".join(check.found_forbidden)}\n'
+
+        response = await provider.complete(
+            messages=[{'role': 'user', 'content': user_message}],
+            system_prompt=prompt,
+            max_tokens=200,
+            temperature=persona.temperature,
+            model=model,
+        )
+
+        # Log usage
+        model_used = response.model or model or ''
+        input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
+        output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
+
+        cost_usd = Decimal('0')
+        pricing = get_cached_pricing(provider_name, model_used)
+        if pricing and (input_tokens or output_tokens):
+            price_in, price_out = pricing
+            cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
+        await sync_to_async(AIUsageLog.objects.create)(
+            coach=client.coach,
+            provider=provider_name,
+            model=model_used,
+            task_type='text',
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=cost_usd,
+        )
+
+        logger.info('[COMPLIANCE AI] Generated feedback for meal=%s', meal.pk)
+        return response.content
+
+    except Exception as e:
+        logger.warning('[COMPLIANCE AI] Error generating feedback: %s', e)
+        return None
 
 
 async def get_daily_summary(client: Client, target_date: date = None) -> dict:
@@ -509,8 +663,14 @@ async def get_daily_summary(client: Client, target_date: date = None) -> dict:
     }
 
 
-def format_meal_response(analysis: dict, summary: dict) -> str:
-    """Format meal analysis + daily summary for Telegram response."""
+def format_meal_response(analysis: dict, summary: dict, compliance_feedback: str = None) -> str:
+    """Format meal analysis + daily summary for Telegram response.
+
+    Args:
+        analysis: Результат анализа еды
+        summary: Дневная сводка
+        compliance_feedback: Отзыв о соответствии программе питания (опционально)
+    """
     name = analysis.get('dish_name', 'Блюдо')
     cal = analysis.get('calories', 0)
     prot = analysis.get('proteins', 0)
@@ -533,6 +693,10 @@ def format_meal_response(analysis: dict, summary: dict) -> str:
         f'Остаток на день:\n'
         f'Ккал: {r_cal} | Б: {r_prot} | Ж: {r_fat} | У: {r_carb}'
     )
+
+    # Добавляем блок с информацией о программе питания
+    if compliance_feedback:
+        text += f'\n\n*Программа питания:*\n{compliance_feedback}'
 
     return text
 
@@ -1363,6 +1527,9 @@ async def confirm_draft(draft: 'MealDraft') -> Meal:
                 logger.info('[SMART CONFIRM] AI comment generated for meal=%s', meal.pk)
         except Exception as comment_err:
             logger.warning('[SMART CONFIRM] Failed to generate AI comment: %s', comment_err)
+
+        # Проверяем соответствие программе питания
+        await check_meal_program_compliance(meal)
 
         # Обновляем черновик
         draft.status = 'confirmed'

@@ -9,7 +9,8 @@ import {
 import { clientsApi } from '../api/clients'
 import { settingsApi } from '../api/settings'
 import { mealsApi, metricsApi, chatApi } from '../api/data'
-import type { Client, Meal, HealthMetric, ChatMessage, BotPersona } from '../types'
+import { nutritionProgramsApi } from '../api/nutritionPrograms'
+import type { Client, Meal, HealthMetric, ChatMessage, BotPersona, NutritionProgramListItem } from '../types'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
@@ -34,11 +35,12 @@ const timezoneOptions = [
   { value: 'Asia/Kamchatka', label: 'Камчатка (UTC+12)' },
 ]
 
-type Tab = 'meals' | 'metrics' | 'chat' | 'settings'
+type Tab = 'meals' | 'metrics' | 'nutrition' | 'chat' | 'settings'
 
 const tabs: { id: Tab; label: string; icon: typeof Utensils }[] = [
   { id: 'meals', label: 'Питание', icon: Utensils },
   { id: 'metrics', label: 'Метрики', icon: Activity },
+  { id: 'nutrition', label: 'Программа', icon: Calendar },
   { id: 'chat', label: 'Чат', icon: MessageCircle },
   { id: 'settings', label: 'Настройки', icon: Settings },
 ]
@@ -98,6 +100,7 @@ export default function ClientDetail() {
   const [meals, setMeals] = useState<Meal[]>([])
   const [metrics, setMetrics] = useState<HealthMetric[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [nutritionPrograms, setNutritionPrograms] = useState<NutritionProgramListItem[]>([])
   const [tabLoading, setTabLoading] = useState(false)
 
   useEffect(() => {
@@ -153,6 +156,10 @@ export default function ClientDetail() {
           setMetrics(metricsRes.data)
           setMeals(mealsRes.data)
         })
+        .finally(() => setTabLoading(false))
+    } else if (tab === 'nutrition') {
+      nutritionProgramsApi.list({ client: clientId })
+        .then(({ data }) => setNutritionPrograms(data.results || []))
         .finally(() => setTabLoading(false))
     } else if (tab === 'chat') {
       chatApi.messages(clientId)
@@ -421,6 +428,8 @@ export default function ClientDetail() {
             <MealsTab meals={meals} />
           ) : tab === 'metrics' ? (
             <MetricsTab metrics={metrics} meals={meals} clientId={clientId} clientTimezone={client?.timezone} />
+          ) : tab === 'nutrition' ? (
+            <NutritionTab programs={nutritionPrograms} clientId={clientId} onProgramsUpdate={loadTabData} />
           ) : tab === 'chat' ? (
             <ChatTab
               messages={messages}
@@ -1047,6 +1056,196 @@ function MetricsTab({ metrics, meals, clientId, clientTimezone }: { metrics: Hea
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// Nutrition programs tab
+function NutritionTab({
+  programs,
+  clientId,
+  onProgramsUpdate,
+}: {
+  programs: NutritionProgramListItem[]
+  clientId: number
+  onProgramsUpdate: () => void
+}) {
+  const navigate = useNavigate()
+  const [actionLoading, setActionLoading] = useState<number | null>(null)
+
+  const statusLabels: Record<string, { label: string; class: string }> = {
+    draft: { label: 'Черновик', class: 'bg-secondary text-secondary-foreground' },
+    active: { label: 'Активна', class: 'bg-green-500/20 text-green-400' },
+    completed: { label: 'Завершена', class: 'bg-blue-500/20 text-blue-400' },
+    cancelled: { label: 'Отменена', class: 'bg-red-500/20 text-red-400' },
+  }
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'short',
+    })
+  }
+
+  const handleActivate = async (e: React.MouseEvent, programId: number) => {
+    e.stopPropagation()
+    setActionLoading(programId)
+    try {
+      await nutritionProgramsApi.activate(programId)
+      onProgramsUpdate()
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleCancel = async (e: React.MouseEvent, programId: number) => {
+    e.stopPropagation()
+    if (!confirm('Отменить программу питания?')) return
+    setActionLoading(programId)
+    try {
+      await nutritionProgramsApi.cancel(programId)
+      onProgramsUpdate()
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  if (!programs.length) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+          <Calendar className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <h3 className="text-sm font-medium text-foreground mb-1">Нет программ питания</h3>
+        <p className="text-sm text-muted-foreground mb-4">Создайте программу для этого клиента</p>
+        <button
+          onClick={() => navigate(`/nutrition-programs/new?client=${clientId}`)}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
+        >
+          Создать программу
+        </button>
+      </div>
+    )
+  }
+
+  const activeProgram = programs.find((p) => p.status === 'active')
+
+  return (
+    <div className="space-y-4">
+      {/* Active program card */}
+      {activeProgram && (
+        <div className="p-4 rounded-xl border-2 border-green-500/30 bg-green-500/5">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-xs font-medium text-green-400">Активная программа</span>
+          </div>
+
+          <div
+            onClick={() => navigate(`/nutrition-programs/${activeProgram.id}`)}
+            className="cursor-pointer"
+          >
+            <div className="font-medium text-foreground mb-1">{activeProgram.name}</div>
+            <div className="text-sm text-muted-foreground mb-3">
+              {formatDate(activeProgram.start_date)} - {formatDate(activeProgram.end_date)}
+            </div>
+
+            <div className="flex items-center gap-4 text-sm mb-3">
+              <span className="text-muted-foreground">
+                День <span className="text-foreground font-medium">{activeProgram.current_day || 1}</span> из {activeProgram.duration_days}
+              </span>
+              {activeProgram.compliance_rate !== null && (
+                <span className="text-muted-foreground">
+                  Соблюдение: <span className="text-foreground font-medium">{activeProgram.compliance_rate}%</span>
+                </span>
+              )}
+            </div>
+
+            {activeProgram.compliance_rate !== null && (
+              <div className="h-2 bg-muted rounded-full overflow-hidden mb-3">
+                <div
+                  className={`h-full transition-all ${
+                    activeProgram.compliance_rate >= 80
+                      ? 'bg-green-500'
+                      : activeProgram.compliance_rate >= 50
+                        ? 'bg-yellow-500'
+                        : 'bg-red-500'
+                  }`}
+                  style={{ width: `${activeProgram.compliance_rate}%` }}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+            <button
+              onClick={() => navigate(`/nutrition-programs/${activeProgram.id}/stats`)}
+              className="text-xs text-primary hover:text-primary/80"
+            >
+              Статистика
+            </button>
+            <span className="text-border">|</span>
+            <button
+              onClick={(e) => handleCancel(e, activeProgram.id)}
+              disabled={actionLoading === activeProgram.id}
+              className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
+            >
+              {actionLoading === activeProgram.id ? 'Отмена...' : 'Отменить'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Other programs */}
+      {programs.filter((p) => p.status !== 'active').length > 0 && (
+        <div>
+          <h4 className="text-sm font-medium text-muted-foreground mb-2">
+            {activeProgram ? 'Другие программы' : 'Программы'}
+          </h4>
+          <div className="space-y-2">
+            {programs
+              .filter((p) => p.status !== 'active')
+              .map((program) => (
+                <div
+                  key={program.id}
+                  onClick={() => navigate(`/nutrition-programs/${program.id}`)}
+                  className="p-3 rounded-lg border border-border bg-card hover:bg-muted cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-foreground text-sm">{program.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatDate(program.start_date)} - {formatDate(program.end_date)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {program.status === 'draft' && (
+                        <button
+                          onClick={(e) => handleActivate(e, program.id)}
+                          disabled={actionLoading === program.id}
+                          className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded hover:bg-green-500/30 disabled:opacity-50"
+                        >
+                          {actionLoading === program.id ? '...' : 'Активировать'}
+                        </button>
+                      )}
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full font-medium ${statusLabels[program.status]?.class}`}
+                      >
+                        {statusLabels[program.status]?.label}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={() => navigate(`/nutrition-programs/new?client=${clientId}`)}
+        className="w-full p-3 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
+      >
+        + Создать новую программу
+      </button>
     </div>
   )
 }

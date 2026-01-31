@@ -1,3 +1,5 @@
+export * from './nutrition'
+
 export interface User {
   id: number
   username: string
@@ -57,6 +59,7 @@ export interface BotPersona {
   style_description: string
   system_prompt: string
   food_response_prompt: string
+  nutrition_program_prompt: string
   greeting_message: string
   text_provider: string
   text_model: string

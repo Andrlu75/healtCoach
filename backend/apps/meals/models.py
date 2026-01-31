@@ -211,6 +211,18 @@ class Meal(models.Model):
     ai_confidence = models.IntegerField(null=True, blank=True)
     ai_comment = models.TextField(blank=True, verbose_name='Комментарий AI')
 
+    PROGRAM_CHECK_STATUS_CHOICES = [
+        ('compliant', 'Соответствует'),
+        ('violation', 'Нарушение'),
+    ]
+    program_check_status = models.CharField(
+        max_length=20,
+        choices=PROGRAM_CHECK_STATUS_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name='Статус проверки программы',
+    )
+
     plate_type = models.CharField(max_length=100, blank=True)
     layout = models.CharField(max_length=200, blank=True)
     decorations = models.CharField(max_length=200, blank=True)

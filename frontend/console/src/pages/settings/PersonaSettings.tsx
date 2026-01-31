@@ -179,6 +179,18 @@ export default function PersonaSettings() {
         </div>
 
         <div>
+          <label className="block text-sm font-medium text-secondary-foreground mb-1">Промпт для программы питания</label>
+          <textarea
+            value={data.nutrition_program_prompt || ''}
+            onChange={(e) => setData({ ...data, nutrition_program_prompt: e.target.value })}
+            rows={4}
+            placeholder="Проанализируй приём пищи с учётом программы питания клиента. Разрешённые продукты: {allowed}. Запрещённые: {forbidden}..."
+            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none font-mono text-sm bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
+          />
+          <p className="text-xs text-muted-foreground mt-1">Промпт для генерации комментариев при проверке соответствия программе питания. Если пусто — используется стандартный текст.</p>
+        </div>
+
+        <div>
           <label className="block text-sm font-medium text-secondary-foreground mb-1">Приветственное сообщение</label>
           <textarea
             value={data.greeting_message || ''}

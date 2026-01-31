@@ -38,4 +38,7 @@ urlpatterns = [
 
     # Integrations
     path('integrations/', include('apps.integrations.client_urls')),
+
+    # Nutrition programs
+    path('nutrition-program/', include('apps.nutrition_programs.client_urls')),
 ]
