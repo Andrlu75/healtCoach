@@ -1,5 +1,8 @@
 FROM node:20-alpine AS builder
 
+# Cache bust: 2026-01-31
+ARG CACHEBUST=1
+
 WORKDIR /app
 
 COPY package*.json ./
