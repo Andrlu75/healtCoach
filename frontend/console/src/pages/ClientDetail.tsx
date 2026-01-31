@@ -938,43 +938,33 @@ function MetricsTab({ metrics, meals, clientId }: { metrics: HealthMetric[]; mea
         )}
       </div>
 
-      {/* Calorie balance card */}
-      {(todayConsumed > 0 || todayBurned > 0) && (
-        <div className={`p-4 rounded-xl border ${
-          calorieBalance > 0
-            ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
-            : calorieBalance < 0
-              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-              : 'bg-gray-500/20 text-gray-400 border-gray-500/30'
-        }`}>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-xl">{calorieBalance > 0 ? '📈' : calorieBalance < 0 ? '📉' : '⚖️'}</span>
-            <span className="text-sm font-medium opacity-90">Баланс калорий</span>
-          </div>
-
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold">
-              {calorieBalance > 0 ? '+' : ''}{calorieBalance}
-            </span>
-            <span className="text-sm opacity-70">ккал</span>
-          </div>
-
-          <div className="mt-3 pt-3 border-t border-current/20 grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <div className="opacity-70">Потреблено</div>
-              <div className="font-medium">{Math.round(todayConsumed)} ккал</div>
-            </div>
-            <div>
-              <div className="opacity-70">Потрачено</div>
-              <div className="font-medium">{Math.round(todayBurned)} ккал</div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Metric cards */}
-      {types.length > 0 && (
+      {(types.length > 0 || todayConsumed > 0 || todayBurned > 0) && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {/* Calorie balance card */}
+          {(todayConsumed > 0 || todayBurned > 0) && (
+            <div className={`p-4 rounded-xl border ${
+              calorieBalance > 0
+                ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+                : calorieBalance < 0
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                  : 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+            }`}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl">{calorieBalance > 0 ? '📈' : calorieBalance < 0 ? '📉' : '⚖️'}</span>
+                <span className="text-sm font-medium opacity-90">Баланс</span>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-2xl font-bold">
+                  {calorieBalance > 0 ? '+' : ''}{calorieBalance}
+                </div>
+                <div className="text-xs opacity-70">
+                  {Math.round(todayConsumed)} - {Math.round(todayBurned)} ккал
+                </div>
+              </div>
+            </div>
+          )}
           {types.map((type) => {
             const data = metricsByType[type]
             const config = metricConfig[type] || { ...defaultMetricConfig, label: type }
