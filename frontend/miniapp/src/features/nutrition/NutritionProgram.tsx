@@ -87,17 +87,24 @@ function MealReportImage({ report }: { report: MealReport }) {
 
 function MealCard({
   meal,
-  report,
+  reports,
   isUploading,
   onPhotoClick,
 }: {
   meal: Meal
-  report?: MealReport
+  reports: MealReport[]
   isUploading?: boolean
   onPhotoClick: (mealType: string) => void
 }) {
   const colors = MEAL_COLORS[meal.type] || MEAL_COLORS.lunch
   const icon = MEAL_ICONS[meal.type] || '🍽️'
+
+  // Вычисляем общий статус по всем отчётам
+  const hasReports = reports.length > 0
+  const avgScore = hasReports
+    ? Math.round(reports.reduce((sum, r) => sum + r.compliance_score, 0) / reports.length)
+    : 0
+  const allCompliant = hasReports && reports.every((r) => r.is_compliant)
 
   return (
     <motion.div
@@ -118,13 +125,13 @@ function MealCard({
               </span>
             </div>
           </div>
-          {report && (
+          {hasReports && (
             <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-              report.is_compliant
+              allCompliant
                 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
                 : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
             }`}>
-              {report.is_compliant ? '✓' : '!'} {report.compliance_score}%
+              {allCompliant ? '✓' : '!'} {avgScore}%
             </div>
           )}
         </div>
@@ -135,32 +142,39 @@ function MealCard({
 
         {/* Photo section */}
         <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-          {isUploading ? (
-            <div className="w-full py-6 flex flex-col items-center justify-center gap-2">
+          {isUploading && (
+            <div className="w-full py-4 flex flex-col items-center justify-center gap-2 mb-3">
               <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 Анализируем фото...
               </span>
             </div>
-          ) : report?.photo_url || report?.photo_file_id ? (
-            <div
-              className="relative cursor-pointer"
-              onClick={() => onPhotoClick(meal.type)}
-            >
-              <MealReportImage report={report} />
-              {report.ai_analysis && (
-                <p className="mt-2 text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
-                  {report.ai_analysis}
-                </p>
-              )}
+          )}
+
+          {/* Показываем все загруженные фото */}
+          {reports.length > 0 && (
+            <div className="space-y-3 mb-3">
+              {reports.map((report) => (
+                <div key={report.id} className="relative">
+                  <MealReportImage report={report} />
+                  {report.ai_analysis && (
+                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                      {report.ai_analysis}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
-          ) : (
+          )}
+
+          {/* Кнопка добавления фото (всегда видна) */}
+          {!isUploading && (
             <button
               onClick={() => onPhotoClick(meal.type)}
               className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 transition-colors flex items-center justify-center gap-2"
             >
               <span className="text-lg">📷</span>
-              Добавить фото
+              {reports.length > 0 ? 'Добавить ещё фото' : 'Добавить фото'}
             </button>
           )}
         </div>
@@ -300,20 +314,22 @@ function NutritionProgram() {
   const meals: Meal[] = todayData.meals || []
   const reports: MealReport[] = reportsData?.reports || []
 
-  // Create a map of reports by meal type
-  const reportsByType: Record<string, MealReport> = {}
+  // Create a map of reports by meal type (array of reports for each type)
+  const reportsByType: Record<string, MealReport[]> = {}
   reports.forEach((r) => {
-    reportsByType[r.meal_type] = r
+    if (!reportsByType[r.meal_type]) {
+      reportsByType[r.meal_type] = []
+    }
+    reportsByType[r.meal_type].push(r)
   })
 
   return (
     <div className="p-4 space-y-4 pb-20">
-      {/* Hidden file input */}
+      {/* Hidden file input - без capture чтобы показать выбор: камера или галерея */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="hidden"
         onChange={handleFileChange}
       />
@@ -377,7 +393,7 @@ function NutritionProgram() {
             <MealCard
               key={`${meal.type}-${index}`}
               meal={meal}
-              report={reportsByType[meal.type]}
+              reports={reportsByType[meal.type] || []}
               isUploading={uploadingMealType === meal.type}
               onPhotoClick={handlePhotoClick}
             />

@@ -263,31 +263,13 @@ class MealReportCreateView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Проверяем есть ли уже отчёт за этот приём пищи сегодня
-        existing = MealReport.objects.filter(
+        # Создаём новый отчёт (разрешаем несколько фото на один приём пищи)
+        meal_report = MealReport(
             program_day=program_day,
             meal_type=meal_type,
-        ).first()
-
-        if existing:
-            # Обновляем существующий отчёт и сбрасываем результаты анализа
-            meal_report = existing
-            meal_report.photo_file_id = photo_file_id
-            meal_report.photo_url = photo_url
-            meal_report.recognized_ingredients = []
-            meal_report.is_compliant = True
-            meal_report.compliance_score = 100
-            meal_report.ai_analysis = ''
-            meal_report.planned_description = ''
-        else:
-            # Создаём новый отчёт
-            meal_report = MealReport(
-                program_day=program_day,
-                meal_type=meal_type,
-                photo_file_id=photo_file_id,
-                photo_url=photo_url,
-            )
-
+            photo_file_id=photo_file_id,
+            photo_url=photo_url,
+        )
         meal_report.save()
 
         # Получаем данные фото для анализа
