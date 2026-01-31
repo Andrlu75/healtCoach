@@ -284,10 +284,18 @@ class MealReportCreateView(APIView):
         if image_data:
             try:
                 from asgiref.sync import async_to_sync
+                logger.info(
+                    '[MEAL_REPORT] Starting analysis: report=%s meal_type=%s program_day=%s image_size=%d',
+                    meal_report.pk, meal_type, program_day.pk, len(image_data)
+                )
                 async_to_sync(analyze_meal_report)(meal_report, image_data)
+                logger.info('[MEAL_REPORT] Analysis completed successfully for report=%s', meal_report.pk)
             except Exception as e:
-                logger.exception('Failed to analyze meal report: %s', e)
-                meal_report.ai_analysis = 'Не удалось проанализировать фото'
+                logger.exception(
+                    '[MEAL_REPORT] Failed to analyze report=%s: %s (type=%s)',
+                    meal_report.pk, str(e), type(e).__name__
+                )
+                meal_report.ai_analysis = f'Не удалось проанализировать фото: {str(e)[:100]}'
                 meal_report.save()
 
         return Response(MealReportSerializer(meal_report).data, status=status.HTTP_201_CREATED)

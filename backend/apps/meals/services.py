@@ -19,6 +19,31 @@ logger = logging.getLogger(__name__)
 
 MEAL_CORRECTION_WINDOW_MINUTES = 5
 
+# Промпт по умолчанию для контролёра программы питания
+DEFAULT_NUTRITION_PROGRAM_CONTROLLER_PROMPT = """Ты — контролёр программы питания. Твоя задача — сравнить то, что съел клиент, с его планом питания, учитывая весь контекст программы.
+
+ПРОГРАММА ПИТАНИЯ:
+{program_info}
+
+ИСТОРИЯ ВЫПОЛНЕНИЯ ПРОГРАММЫ:
+{program_history}
+
+СЕГОДНЯШНИЙ ДЕНЬ:
+- Запланировано: {planned_meal}
+- Запрещённые продукты: {forbidden_ingredients}
+- Рекомендуемые продукты: {allowed_ingredients}
+
+ФАКТ — ЧТО СЪЕЛ КЛИЕНТ:
+{actual_meal}
+
+Дай краткую оценку (2-4 предложения):
+1. Насколько блюдо соответствует плану
+2. Как этот приём пищи вписывается в общий прогресс по программе
+3. Если есть отклонения — дай конкретный совет
+4. Если клиент хорошо справляется — похвали и мотивируй
+
+Будь дружелюбным, конкретным и учитывай прогресс клиента."""
+
 CLASSIFY_CORRECTION_PROMPT = """Пользователь ранее отправил фото еды, которое было распознано как: "{dish_name}" ({calories} ккал, Б:{proteins} Ж:{fats} У:{carbs}).
 
 Теперь пользователь написал: "{user_text}"
@@ -229,6 +254,264 @@ async def _get_vision_provider(bot: TelegramBot, client: Client = None):
     provider = get_ai_provider(provider_name, config.api_key)
     logger.info('[VISION] Provider ready: %s', provider_name)
     return provider, provider_name, model, persona
+
+
+async def _get_program_history(program, current_day_number: int) -> str:
+    """Собирает историю выполнения программы за предыдущие дни.
+
+    Args:
+        program: Программа питания
+        current_day_number: Номер текущего дня
+
+    Returns:
+        Текстовое описание истории для контекста AI
+    """
+    from apps.nutrition_programs.models import MealComplianceCheck, MealReport
+
+    try:
+        # Получаем все проверки за программу
+        checks = await sync_to_async(list)(
+            MealComplianceCheck.objects.filter(
+                program_day__program=program
+            ).select_related('meal', 'program_day').order_by('-created_at')[:20]
+        )
+
+        # Также получаем отчёты из MealReport
+        reports = await sync_to_async(list)(
+            MealReport.objects.filter(
+                program_day__program=program
+            ).select_related('program_day').order_by('-created_at')[:20]
+        )
+
+        total_checks = len(checks) + len(reports)
+        if total_checks == 0:
+            return f'Это первый приём пищи в программе (день {current_day_number}).'
+
+        # Считаем статистику
+        compliant_count = sum(1 for c in checks if c.is_compliant)
+        compliant_count += sum(1 for r in reports if r.is_compliant)
+        violation_count = total_checks - compliant_count
+
+        compliance_rate = round(compliant_count / total_checks * 100) if total_checks > 0 else 0
+
+        history_parts = [
+            f'Прогресс: день {current_day_number} из {program.duration_days}',
+            f'Всего записей: {total_checks}, соблюдено: {compliant_count}, нарушений: {violation_count}',
+            f'Процент соблюдения: {compliance_rate}%',
+        ]
+
+        # Добавляем последние нарушения (для контекста)
+        violations = [c for c in checks if not c.is_compliant][:3]
+        violations += [r for r in reports if not r.is_compliant][:3]
+
+        if violations:
+            history_parts.append('\nПоследние нарушения:')
+            for v in violations[:3]:
+                if hasattr(v, 'meal') and v.meal:
+                    history_parts.append(f'- {v.meal.dish_name}: {", ".join(v.found_forbidden) if v.found_forbidden else "отклонение от плана"}')
+                elif hasattr(v, 'ai_analysis') and v.ai_analysis:
+                    history_parts.append(f'- {v.ai_analysis[:80]}...')
+
+        # Добавляем позитив если есть хорошие результаты
+        if compliance_rate >= 80:
+            history_parts.append('\n✅ Клиент отлично справляется с программой!')
+        elif compliance_rate >= 60:
+            history_parts.append('\n⚠️ Есть небольшие отклонения, но в целом хорошо.')
+        elif compliance_rate < 40 and total_checks >= 3:
+            history_parts.append('\n❗ Есть сложности с соблюдением программы.')
+
+        return '\n'.join(history_parts)
+
+    except Exception as e:
+        logger.warning('[PROGRAM_HISTORY] Error getting history: %s', e)
+        return f'День {current_day_number} из {program.duration_days}.'
+
+
+async def get_program_controller_feedback(
+    client: Client,
+    meal_data: dict,
+    program_meal_type: str = None,
+) -> str | None:
+    """Контролёр программы питания — анализирует соответствие блюда программе.
+
+    Args:
+        client: Клиент
+        meal_data: Данные о блюде (dish_name, ingredients, calories и т.д.)
+        program_meal_type: Тип приёма пищи из программы (breakfast, lunch, etc.)
+
+    Returns:
+        Текст рекомендации от контролёра или None если нет активной программы
+    """
+    from apps.nutrition_programs.models import MealComplianceCheck
+    from apps.nutrition_programs.services import (
+        get_active_program_for_client,
+        get_client_today,
+        get_program_day,
+    )
+    from core.ai.model_fetcher import get_cached_pricing
+    from decimal import Decimal
+
+    logger.info('[PROGRAM_CONTROLLER] Starting for client=%s meal_type=%s', client.pk, program_meal_type)
+
+    try:
+        # Получаем программу питания
+        today = await sync_to_async(get_client_today)(client)
+        program = await sync_to_async(get_active_program_for_client)(client, today)
+
+        if not program:
+            logger.info('[PROGRAM_CONTROLLER] No active program for client=%s', client.pk)
+            return None
+
+        program_day = await sync_to_async(get_program_day)(program, today)
+        if not program_day:
+            logger.info('[PROGRAM_CONTROLLER] No program day for client=%s date=%s', client.pk, today)
+            return None
+
+        # Получаем историю выполнения программы
+        program_history = await _get_program_history(program, program_day.day_number)
+
+        # Получаем запланированное блюдо
+        planned_meal_info = 'Не указано'
+        if program_meal_type:
+            planned_meal = program_day.get_meal_by_type(program_meal_type)
+            if planned_meal:
+                planned_name = planned_meal.get('name', '')
+                planned_desc = planned_meal.get('description', '')
+                planned_time = planned_meal.get('time', '')
+                planned_meal_info = f'{planned_name}'
+                if planned_desc:
+                    planned_meal_info += f': {planned_desc}'
+                if planned_time:
+                    planned_meal_info += f' ({planned_time})'
+
+        # Формируем информацию о программе
+        program_info = f'Программа: {program.name}\nДень: {program_day.day_number} из {program.duration_days}'
+        if program.general_notes:
+            program_info += f'\nОписание: {program.general_notes[:200]}'
+        if program_day.notes:
+            program_info += f'\nЗаметки на день: {program_day.notes}'
+
+        # Списки продуктов
+        allowed = program_day.allowed_ingredients_list[:15]
+        forbidden = program_day.forbidden_ingredients_list[:15]
+
+        allowed_str = ', '.join(allowed) if allowed else 'не указано'
+        forbidden_str = ', '.join(forbidden) if forbidden else 'не указано'
+
+        # Информация о съеденном
+        dish_name = meal_data.get('dish_name', 'Неизвестное блюдо')
+        ingredients = meal_data.get('ingredients', [])
+        if isinstance(ingredients, list) and ingredients:
+            if isinstance(ingredients[0], dict):
+                ingredients_str = ', '.join(i.get('name', '') for i in ingredients if i.get('name'))
+            else:
+                ingredients_str = ', '.join(str(i) for i in ingredients)
+        else:
+            ingredients_str = 'не определены'
+
+        actual_meal = f'{dish_name}\nИнгредиенты: {ingredients_str}'
+        if meal_data.get('calories'):
+            actual_meal += f'\nКБЖУ: {meal_data.get("calories", 0)} ккал, Б:{meal_data.get("proteins", 0)} Ж:{meal_data.get("fats", 0)} У:{meal_data.get("carbohydrates", 0)}'
+
+        # Получаем провайдер и персону
+        bot = await sync_to_async(
+            lambda: TelegramBot.objects.filter(coach=client.coach).first()
+        )()
+        if not bot:
+            logger.warning('[PROGRAM_CONTROLLER] No bot for coach=%s', client.coach_id)
+            return None
+
+        persona = await sync_to_async(lambda: client.persona)()
+        if not persona:
+            persona = await sync_to_async(
+                lambda: BotPersona.objects.filter(coach=bot.coach).first()
+            )()
+
+        if not persona:
+            logger.warning('[PROGRAM_CONTROLLER] No persona for coach=%s', client.coach_id)
+            return None
+
+        # Используем промпт из персоны или дефолтный
+        prompt_template = persona.nutrition_program_prompt or DEFAULT_NUTRITION_PROGRAM_CONTROLLER_PROMPT
+
+        # Подставляем переменные (с безопасным fallback для отсутствующих плейсхолдеров)
+        try:
+            system_prompt = prompt_template.format(
+                program_info=program_info,
+                program_history=program_history,
+                planned_meal=planned_meal_info,
+                actual_meal=actual_meal,
+                forbidden_ingredients=forbidden_str,
+                allowed_ingredients=allowed_str,
+            )
+        except KeyError:
+            # Если в кастомном промпте нет всех плейсхолдеров - используем дефолтный
+            system_prompt = DEFAULT_NUTRITION_PROGRAM_CONTROLLER_PROMPT.format(
+                program_info=program_info,
+                program_history=program_history,
+                planned_meal=planned_meal_info,
+                actual_meal=actual_meal,
+                forbidden_ingredients=forbidden_str,
+                allowed_ingredients=allowed_str,
+            )
+
+        # Получаем text provider
+        provider_name = persona.text_provider or 'openai'
+        model = persona.text_model or None
+
+        config = await sync_to_async(
+            lambda: AIProviderConfig.objects.filter(
+                coach=client.coach, provider=provider_name, is_active=True
+            ).first()
+        )()
+        if not config:
+            logger.warning('[PROGRAM_CONTROLLER] No API config for provider %s', provider_name)
+            return None
+
+        provider = get_ai_provider(provider_name, config.api_key)
+
+        # Запрос к AI
+        user_message = f'Проанализируй соответствие блюда "{dish_name}" программе питания.'
+
+        response = await provider.complete(
+            messages=[{'role': 'user', 'content': user_message}],
+            system_prompt=system_prompt,
+            max_tokens=300,
+            temperature=0.7,
+            model=model,
+        )
+
+        # Логируем использование
+        model_used = response.model or model or ''
+        input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
+        output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
+
+        cost_usd = Decimal('0')
+        pricing = get_cached_pricing(provider_name, model_used)
+        if pricing and (input_tokens or output_tokens):
+            price_in, price_out = pricing
+            cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
+        await sync_to_async(AIUsageLog.objects.create)(
+            coach=client.coach,
+            provider=provider_name,
+            model=model_used,
+            task_type='text',
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=cost_usd,
+        )
+
+        logger.info(
+            '[PROGRAM_CONTROLLER] Generated feedback for client=%s: %d chars',
+            client.pk, len(response.content)
+        )
+
+        return response.content
+
+    except Exception as e:
+        logger.exception('[PROGRAM_CONTROLLER] Error for client=%s: %s', client.pk, e)
+        return None
 
 
 async def classify_image(bot: TelegramBot, image_data: bytes) -> str:
@@ -772,6 +1055,7 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
     """
     import time
     from apps.chat.models import InteractionLog
+    from apps.nutrition_programs.services import get_active_program_for_client, get_client_today, get_program_day
     from core.ai.factory import get_ai_provider
     from core.ai.model_fetcher import get_cached_pricing
     from decimal import Decimal
@@ -792,7 +1076,30 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
 
     provider, provider_name, model, persona = await _get_vision_provider(bot, client)
 
-    prompt = ANALYZE_FOOD_PROMPT
+    # Получаем информацию о программе питания
+    program_context = ''
+    try:
+        today = await sync_to_async(get_client_today)(client)
+        program = await sync_to_async(get_active_program_for_client)(client, today)
+        if program:
+            program_day = await sync_to_async(get_program_day)(program, today)
+            if program_day:
+                allowed = program_day.allowed_ingredients_list[:10]
+                forbidden = program_day.forbidden_ingredients_list[:10]
+                program_context = f"""
+
+ВАЖНО: У клиента активна программа питания "{program.name}" (день {program_day.day_number}).
+"""
+                if forbidden:
+                    program_context += f"ЗАПРЕЩЁННЫЕ продукты: {', '.join(forbidden)}\n"
+                if allowed:
+                    program_context += f"Рекомендуемые продукты: {', '.join(allowed)}\n"
+                program_context += "Учитывай это при анализе и давай рекомендации согласно программе."
+                logger.info('[ANALYZE] Added program context for program=%s day=%s', program.pk, program_day.day_number)
+    except Exception as e:
+        logger.warning('[ANALYZE] Could not get program context: %s', e)
+
+    prompt = ANALYZE_FOOD_PROMPT + program_context
     if caption:
         prompt += f'\n\nУточнение от пользователя: "{caption}"'
 
@@ -922,6 +1229,17 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
                 '[ANALYZE] No API config for text provider %s, skipping AI response',
                 text_provider_name
             )
+
+    # Вызываем контролёр программы питания (если есть активная программа)
+    program_feedback = await get_program_controller_feedback(client, data)
+    if program_feedback:
+        # Добавляем рекомендацию контролёра к основному ответу
+        if data.get('ai_response'):
+            data['ai_response'] = data['ai_response'] + '\n\n📋 *Программа питания:*\n' + program_feedback
+        else:
+            data['ai_response'] = '📋 *Программа питания:*\n' + program_feedback
+        data['program_feedback'] = program_feedback
+        logger.info('[ANALYZE] Added program controller feedback for client=%s', client.pk)
 
     # Always log interaction
     duration_ms = int((time.time() - start_time) * 1000)
@@ -1558,6 +1876,7 @@ async def generate_meal_comment(client: Client, meal: Meal) -> str:
 
     Использует persona.food_response_prompt для генерации рекомендаций.
     """
+    from apps.nutrition_programs.services import get_active_program_for_client, get_client_today, get_program_day
     from core.ai.factory import get_ai_provider
     from core.ai.model_fetcher import get_cached_pricing
     from decimal import Decimal
@@ -1599,6 +1918,25 @@ async def generate_meal_comment(client: Client, meal: Meal) -> str:
     # Get daily summary
     summary = await get_daily_summary(client)
 
+    # Получаем информацию о программе питания
+    program_context = ''
+    try:
+        today = await sync_to_async(get_client_today)(client)
+        program = await sync_to_async(get_active_program_for_client)(client, today)
+        if program:
+            program_day = await sync_to_async(get_program_day)(program, today)
+            if program_day:
+                allowed = program_day.allowed_ingredients_list[:10]
+                forbidden = program_day.forbidden_ingredients_list[:10]
+                program_context = f'\n\nПРОГРАММА ПИТАНИЯ: "{program.name}" (день {program_day.day_number})'
+                if forbidden:
+                    program_context += f'\nЗапрещённые продукты: {", ".join(forbidden)}'
+                if allowed:
+                    program_context += f'\nРекомендуемые продукты: {", ".join(allowed)}'
+                logger.info('[MEAL COMMENT] Added program context for program=%s', program.pk)
+    except Exception as e:
+        logger.warning('[MEAL COMMENT] Could not get program context: %s', e)
+
     # Build meal data
     meal_data = {
         'dish_name': meal.dish_name,
@@ -1615,6 +1953,7 @@ async def generate_meal_comment(client: Client, meal: Meal) -> str:
         f'{json.dumps(meal_data, ensure_ascii=False)}\n\n'
         f'Дневная сводка:\n'
         f'{json.dumps(summary, ensure_ascii=False)}'
+        f'{program_context}'
     )
 
     # Build system prompt with client context
@@ -1655,8 +1994,17 @@ async def generate_meal_comment(client: Client, meal: Meal) -> str:
             cost_usd=text_cost,
         )
 
-        logger.info('[MEAL COMMENT] Generated %d chars', len(text_response.content))
-        return text_response.content
+        base_comment = text_response.content
+        logger.info('[MEAL COMMENT] Generated %d chars', len(base_comment))
+
+        # Добавляем рекомендацию от контролёра программы питания
+        program_feedback = await get_program_controller_feedback(client, meal_data)
+        if program_feedback:
+            full_comment = base_comment + '\n\n📋 *Программа питания:*\n' + program_feedback
+            logger.info('[MEAL COMMENT] Added program controller feedback')
+            return full_comment
+
+        return base_comment
 
     except Exception as e:
         logger.exception('[MEAL COMMENT] Error generating comment: %s', e)
