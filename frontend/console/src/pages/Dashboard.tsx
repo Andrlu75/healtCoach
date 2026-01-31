@@ -39,18 +39,17 @@ export default function Dashboard() {
             return (
               <div key={client.client_id} className="bg-card rounded-lg border border-border p-3">
                 <div className="text-sm font-medium text-foreground truncate mb-2">{client.client_name}</div>
-                <div className="flex items-baseline gap-1 mb-1">
+                <div className="flex items-baseline gap-1 mb-2">
                   <span className="text-lg font-bold text-foreground">{client.meals.length}</span>
                   <span className="text-xs text-muted-foreground">приёмов</span>
                 </div>
-                <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden mb-1">
-                  <div
-                    className={`h-full transition-all ${caloriesPercent >= 100 ? 'bg-green-500' : caloriesPercent >= 70 ? 'bg-yellow-500' : 'bg-orange-500'}`}
-                    style={{ width: `${Math.min(caloriesPercent, 100)}%` }}
-                  />
-                </div>
-                <div className="text-[10px] text-muted-foreground">
-                  {client.totals.calories}/{client.norms.calories} ккал
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {client.totals.calories}/{client.norms.calories} ккал
+                  </span>
+                  <span className={`text-sm font-semibold ${caloriesPercent >= 100 ? 'text-green-500' : caloriesPercent >= 70 ? 'text-yellow-500' : 'text-orange-500'}`}>
+                    {caloriesPercent}%
+                  </span>
                 </div>
               </div>
             )
