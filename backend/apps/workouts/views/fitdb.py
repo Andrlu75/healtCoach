@@ -402,7 +402,20 @@ class FitDBAssignmentSerializer(serializers.ModelSerializer):
 
 def get_client_from_token(request):
     """Extract client from JWT token claims."""
-    client_id = getattr(request.auth, 'payload', {}).get('client_id') if request.auth else None
+    if not request.auth:
+        return None
+
+    # simplejwt tokens: access claims via payload dict
+    try:
+        payload = getattr(request.auth, 'payload', None)
+        if payload:
+            client_id = payload.get('client_id')
+        else:
+            # Fallback: dict-like access
+            client_id = request.auth['client_id']
+    except (AttributeError, KeyError, TypeError):
+        client_id = None
+
     if not client_id:
         return None
     try:
