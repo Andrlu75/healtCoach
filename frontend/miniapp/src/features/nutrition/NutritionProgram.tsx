@@ -7,7 +7,6 @@ import {
 } from '../../api/endpoints'
 import { Card, CardContent, CardHeader, CardTitle } from '../../shared/components/ui'
 import { Skeleton } from '../../shared/components/feedback'
-import { cn } from '../../shared/lib/cn'
 
 function NutritionProgram() {
   const navigate = useNavigate()
