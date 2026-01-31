@@ -141,8 +141,14 @@ export default function ClientDetail() {
         .then(({ data }) => setMeals(data))
         .finally(() => setTabLoading(false))
     } else if (tab === 'metrics') {
-      metricsApi.list({ client_id: clientId })
-        .then(({ data }) => setMetrics(data))
+      Promise.all([
+        metricsApi.list({ client_id: clientId }),
+        mealsApi.list({ client_id: clientId }),
+      ])
+        .then(([metricsRes, mealsRes]) => {
+          setMetrics(metricsRes.data)
+          setMeals(mealsRes.data)
+        })
         .finally(() => setTabLoading(false))
     } else if (tab === 'chat') {
       chatApi.messages(clientId)
@@ -410,7 +416,7 @@ export default function ClientDetail() {
           ) : tab === 'meals' ? (
             <MealsTab meals={meals} />
           ) : tab === 'metrics' ? (
-            <MetricsTab metrics={metrics} />
+            <MetricsTab metrics={metrics} meals={meals} clientId={clientId} />
           ) : tab === 'chat' ? (
             <ChatTab
               messages={messages}
@@ -760,20 +766,60 @@ const metricConfig: Record<string, { label: string; icon: string; color: string;
 const defaultMetricConfig = { label: '', icon: '📊', color: 'bg-gray-500/20 text-gray-400 border-gray-500/30', format: (v: number) => String(v) }
 
 // Metrics tab
-function MetricsTab({ metrics }: { metrics: HealthMetric[] }) {
+function MetricsTab({ metrics, meals, clientId }: { metrics: HealthMetric[]; meals: Meal[]; clientId: number }) {
   const [selectedType, setSelectedType] = useState<string | null>(null)
+  const [integrations, setIntegrations] = useState<Array<{
+    type: string
+    name: string
+    connected: boolean
+    last_sync_at?: string
+    has_error?: boolean
+    error_message?: string
+    last_sync_status?: string
+    metrics_synced?: Record<string, number>
+  }>>([])
+  const [syncing, setSyncing] = useState<string | null>(null)
+  const [integrationsLoading, setIntegrationsLoading] = useState(true)
 
-  if (!metrics.length) {
-    return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-          <Activity className="w-8 h-8 text-muted-foreground" />
-        </div>
-        <h3 className="text-sm font-medium text-foreground mb-1">Нет записей метрик</h3>
-        <p className="text-sm text-muted-foreground">Здесь будут отображаться показатели здоровья клиента</p>
-      </div>
-    )
+  // Load integrations status
+  useEffect(() => {
+    import('../api/data').then(({ integrationsApi }) => {
+      integrationsApi.overview()
+        .then(({ data }) => {
+          const clientData = data.clients.find(c => c.client_id === clientId)
+          if (clientData) {
+            setIntegrations(clientData.integrations)
+          }
+        })
+        .finally(() => setIntegrationsLoading(false))
+    })
+  }, [clientId])
+
+  const handleSync = async (integrationType: string) => {
+    setSyncing(integrationType)
+    try {
+      const { integrationsApi } = await import('../api/data')
+      await integrationsApi.triggerSync(clientId, integrationType)
+      // Refresh integrations status after a delay
+      setTimeout(() => {
+        integrationsApi.overview().then(({ data }) => {
+          const clientData = data.clients.find(c => c.client_id === clientId)
+          if (clientData) {
+            setIntegrations(clientData.integrations)
+          }
+        })
+      }, 2000)
+    } finally {
+      setSyncing(null)
+    }
   }
+
+  const integrationIcons: Record<string, string> = {
+    google_fit: '🏃',
+    huawei_health: '⌚',
+  }
+
+  const hasConnectedIntegrations = integrations.some(i => i.connected)
 
   // Group metrics by type and calculate today's totals
   const today = dayjs().format('YYYY-MM-DD')
@@ -796,6 +842,13 @@ function MetricsTab({ metrics }: { metrics: HealthMetric[] }) {
 
   const types = Object.keys(metricsByType)
 
+  // Calculate calorie balance: consumed (from meals) - burned (active_calories)
+  const todayConsumed = meals
+    .filter((m) => dayjs(m.meal_time).format('YYYY-MM-DD') === today)
+    .reduce((sum, m) => sum + (m.calories || 0), 0)
+  const todayBurned = metricsByType['active_calories']?.today || 0
+  const calorieBalance = Math.round(todayConsumed - todayBurned)
+
   // Get metrics for selected type
   const selectedMetrics = selectedType
     ? metrics.filter((m) => m.metric_type === selectedType).slice(0, 20)
@@ -803,15 +856,132 @@ function MetricsTab({ metrics }: { metrics: HealthMetric[] }) {
 
   return (
     <div className="space-y-6">
-      {/* Metric cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {types.map((type) => {
-          const data = metricsByType[type]
-          const config = metricConfig[type] || { ...defaultMetricConfig, label: type }
-          const isSelected = selectedType === type
+      {/* Integrations section */}
+      <div className="bg-muted rounded-xl p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-medium text-foreground">Источники данных</h3>
+        </div>
 
-          return (
-            <button
+        {integrationsLoading ? (
+          <div className="text-sm text-muted-foreground">Загрузка...</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {integrations.map((integration) => (
+              <div
+                key={integration.type}
+                className={`p-3 rounded-lg border ${
+                  integration.connected
+                    ? integration.has_error
+                      ? 'bg-red-500/10 border-red-500/30'
+                      : 'bg-green-500/10 border-green-500/30'
+                    : 'bg-card border-border'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{integrationIcons[integration.type] || '📊'}</span>
+                    <div>
+                      <div className="text-sm font-medium text-foreground">{integration.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {integration.connected ? (
+                          integration.has_error ? (
+                            <span className="text-red-400">Ошибка синхронизации</span>
+                          ) : integration.last_sync_at ? (
+                            `Синхр.: ${dayjs(integration.last_sync_at).format('D MMM, HH:mm')}`
+                          ) : (
+                            'Подключено'
+                          )
+                        ) : (
+                          'Не подключено'
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {integration.connected && (
+                    <button
+                      onClick={() => handleSync(integration.type)}
+                      disabled={syncing === integration.type}
+                      className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    >
+                      {syncing === integration.type ? 'Синхр...' : 'Обновить'}
+                    </button>
+                  )}
+                </div>
+
+                {integration.connected && integration.metrics_synced && Object.keys(integration.metrics_synced).length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-border/50">
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(integration.metrics_synced).map(([metric, count]) => (
+                        <span key={metric} className="text-xs bg-secondary px-2 py-0.5 rounded text-secondary-foreground">
+                          {metric}: +{count}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {integration.has_error && integration.error_message && (
+                  <div className="mt-2 text-xs text-red-400 truncate" title={integration.error_message}>
+                    {integration.error_message}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!integrationsLoading && !hasConnectedIntegrations && (
+          <p className="text-sm text-muted-foreground mt-3">
+            Клиент может подключить Google Fit или Huawei Health в мини-приложении
+          </p>
+        )}
+      </div>
+
+      {/* Calorie balance card */}
+      {(todayConsumed > 0 || todayBurned > 0) && (
+        <div className={`p-4 rounded-xl border ${
+          calorieBalance > 0
+            ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+            : calorieBalance < 0
+              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+              : 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+        }`}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xl">{calorieBalance > 0 ? '📈' : calorieBalance < 0 ? '📉' : '⚖️'}</span>
+            <span className="text-sm font-medium opacity-90">Баланс калорий</span>
+          </div>
+
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold">
+              {calorieBalance > 0 ? '+' : ''}{calorieBalance}
+            </span>
+            <span className="text-sm opacity-70">ккал</span>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-current/20 grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <div className="opacity-70">Потреблено</div>
+              <div className="font-medium">{Math.round(todayConsumed)} ккал</div>
+            </div>
+            <div>
+              <div className="opacity-70">Потрачено</div>
+              <div className="font-medium">{Math.round(todayBurned)} ккал</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Metric cards */}
+      {types.length > 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {types.map((type) => {
+            const data = metricsByType[type]
+            const config = metricConfig[type] || { ...defaultMetricConfig, label: type }
+            const isSelected = selectedType === type
+
+            return (
+              <button
               key={type}
               onClick={() => setSelectedType(isSelected ? null : type)}
               className={`p-4 rounded-xl border text-left transition-all ${config.color} ${
