@@ -501,10 +501,16 @@ async def analyze_meal_report(
     # Получаем запланированное блюдо
     planned_meal = program_day.get_meal_by_type(meal_report.meal_type)
     planned_description = ''
+    planned_name = ''
     if planned_meal:
+        planned_name = planned_meal.get('name', '')
         planned_description = planned_meal.get('description', '')
         meal_report.planned_description = planned_description
         meal_report.meal_time = planned_meal.get('time', '')
+
+    # Получаем списки разрешённых и запрещённых продуктов
+    allowed_ingredients = program_day.allowed_ingredients_list
+    forbidden_ingredients = program_day.forbidden_ingredients_list
 
     # Получаем AI provider
     bot = await sync_to_async(
@@ -534,20 +540,45 @@ async def analyze_meal_report(
 
     provider = get_ai_provider(provider_name, config.api_key)
 
-    # Используем простой промпт для распознавания еды (как в meals)
-    analysis_prompt = """Проанализируй фото еды и верни JSON (без markdown-обёртки, только чистый JSON):
-{
-  "dish_name": "название блюда",
-  "dish_type": "тип (завтрак/обед/ужин/перекус)",
+    # Формируем промпт с учётом программы питания
+    planned_info = ''
+    if planned_name or planned_description:
+        planned_info = f"""
+ЗАПЛАНИРОВАНО НА ЭТОТ ПРИЁМ ПИЩИ:
+- Блюдо: {planned_name}
+- Описание: {planned_description}
+"""
+
+    restrictions_info = ''
+    if forbidden_ingredients:
+        restrictions_info += f"\nЗАПРЕЩЁННЫЕ продукты: {', '.join(forbidden_ingredients[:10])}"
+    if allowed_ingredients:
+        restrictions_info += f"\nРЕКОМЕНДУЕМЫЕ продукты: {', '.join(allowed_ingredients[:10])}"
+
+    analysis_prompt = f"""Ты — помощник по питанию. Проанализируй фото еды и сравни с программой питания клиента.
+{planned_info}{restrictions_info}
+
+Верни JSON (без markdown-обёртки, только чистый JSON):
+{{
+  "dish_name": "название блюда на фото",
+  "ingredients": ["ингредиент1", "ингредиент2", ...],
   "calories": число_ккал,
   "proteins": граммы_белка,
   "fats": граммы_жиров,
   "carbohydrates": граммы_углеводов,
-  "ingredients": ["ингредиент1", "ингредиент2"],
-  "confidence": число_от_1_до_100
-}
+  "matches_plan": true/false (соответствует ли запланированному блюду),
+  "compliance_score": число_0_до_100 (оценка соответствия программе),
+  "analysis": "Краткий анализ: что хорошо, что можно улучшить, рекомендации"
+}}
 
-Оценивай порцию по визуальному размеру. Если не уверен — дай приблизительные значения.
+ВАЖНО при оценке compliance_score:
+- 90-100: полностью соответствует плану
+- 70-89: в целом соответствует, небольшие отклонения
+- 50-69: частичное соответствие, есть замечания
+- 30-49: значительные отклонения от плана
+- 0-29: не соответствует программе
+
+В поле "analysis" дай КОНКРЕТНЫЕ рекомендации исходя из программы питания.
 """
 
     logger.info(
@@ -602,14 +633,19 @@ async def analyze_meal_report(
             'fats': 0,
             'carbohydrates': 0,
             'ingredients': [],
-            'confidence': 0,
+            'compliance_score': 50,
+            'matches_plan': False,
+            'analysis': 'Не удалось распознать блюдо на фото.',
         }
 
-    # Извлекаем распознанные ингредиенты
+    # Извлекаем данные из ответа AI
     recognized = data.get('ingredients', [])
     recognized_dish = data.get('dish_name', 'Неизвестное блюдо')
+    ai_compliance_score = data.get('compliance_score', 50)
+    matches_plan = data.get('matches_plan', False)
+    ai_analysis_text = data.get('analysis', '')
 
-    # Проверяем ингредиенты через fuzzy matching с программой
+    # Дополнительно проверяем ингредиенты через fuzzy matching
     found_forbidden = []
     found_allowed = []
 
@@ -621,7 +657,7 @@ async def analyze_meal_report(
 
         # Проверяем на запрещённые
         forbidden_match = find_ingredient_match(
-            ingredient, program_day.forbidden_ingredients_list, threshold=75
+            ingredient, forbidden_ingredients, threshold=75
         )
         if forbidden_match:
             found_forbidden.append(ingredient)
@@ -629,36 +665,37 @@ async def analyze_meal_report(
 
         # Проверяем на разрешённые
         allowed_match = find_ingredient_match(
-            ingredient, program_day.allowed_ingredients_list, threshold=75
+            ingredient, allowed_ingredients, threshold=75
         )
         if allowed_match:
             found_allowed.append(ingredient)
 
-    # Вычисляем compliance_score
-    # Базовый score зависит от соотношения разрешённых/запрещённых
+    # Используем оценку от AI, но корректируем если найдены запрещённые
+    compliance_score = ai_compliance_score
     if found_forbidden:
-        compliance_score = max(0, 30 - len(found_forbidden) * 10)
-    elif found_allowed:
-        compliance_score = min(100, 70 + len(found_allowed) * 5)
-    else:
-        compliance_score = 50  # Нейтральный, если ничего не найдено
+        # Снижаем score если найдены запрещённые ингредиенты
+        penalty = len(found_forbidden) * 15
+        compliance_score = max(0, min(compliance_score, 40) - penalty)
 
     is_compliant = compliance_score >= 70 and len(found_forbidden) == 0
 
-    # Формируем анализ
+    # Формируем финальный анализ
     analysis_parts = []
-    if recognized_dish and recognized_dish != 'Неизвестное блюдо':
-        analysis_parts.append(f'Распознано: {recognized_dish}')
-    if data.get('calories'):
-        analysis_parts.append(f"~{data.get('calories')} ккал")
-    if found_forbidden:
-        analysis_parts.append(f"Запрещённые: {', '.join(found_forbidden)}")
-    if found_allowed:
-        analysis_parts.append(f"Разрешённые: {', '.join(found_allowed[:5])}")
-    if not analysis_parts:
-        analysis_parts.append('Анализ завершён')
 
-    ai_analysis = '. '.join(analysis_parts)
+    # Сначала AI анализ
+    if ai_analysis_text:
+        analysis_parts.append(ai_analysis_text)
+
+    # Добавляем информацию о запрещённых если AI не упомянул
+    if found_forbidden and 'запрещ' not in ai_analysis_text.lower():
+        analysis_parts.append(f"Обнаружены запрещённые продукты: {', '.join(found_forbidden)}")
+
+    if not analysis_parts:
+        if recognized_dish and recognized_dish != 'Неизвестное блюдо':
+            analysis_parts.append(f'Распознано: {recognized_dish}')
+        analysis_parts.append('Анализ завершён.')
+
+    ai_analysis = ' '.join(analysis_parts)
 
     result = {
         'recognized_ingredients': [
@@ -671,6 +708,7 @@ async def analyze_meal_report(
         'found_forbidden': found_forbidden,
         'found_allowed': found_allowed,
         'recognized_dish': recognized_dish,
+        'matches_plan': matches_plan,
         'calories': data.get('calories', 0),
         'proteins': data.get('proteins', 0),
         'fats': data.get('fats', 0),
@@ -686,7 +724,7 @@ async def analyze_meal_report(
 
     logger.info(
         '[MEAL_REPORT] Analysis complete: report=%s compliant=%s score=%s forbidden=%s',
-        meal_report.pk, is_compliant, compliance_score, all_forbidden
+        meal_report.pk, is_compliant, compliance_score, found_forbidden
     )
 
     return result
