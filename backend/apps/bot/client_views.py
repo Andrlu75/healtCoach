@@ -26,12 +26,16 @@ def get_client_from_token(request):
         logger.debug('get_client_from_token: no request.auth')
         return None
 
-    # simplejwt tokens support dict-like access to claims
+    # simplejwt tokens: access claims via payload dict or dict-like access
     try:
-        client_id = request.auth.get('client_id')
-        if not client_id:
-            client_id = getattr(request.auth, 'payload', {}).get('client_id')
-    except (AttributeError, KeyError) as e:
+        # Try payload dict first (works for all token types)
+        payload = getattr(request.auth, 'payload', None)
+        if payload:
+            client_id = payload.get('client_id')
+        else:
+            # Fallback: dict-like access (request.auth['key'])
+            client_id = request.auth['client_id']
+    except (AttributeError, KeyError, TypeError) as e:
         logger.warning('get_client_from_token: error accessing claims: %s', e)
         client_id = None
 
