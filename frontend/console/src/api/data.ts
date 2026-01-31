@@ -108,6 +108,45 @@ export const logsApi = {
     api.get<{ results: InteractionLog[]; count: number; page: number; page_size: number }>('/chat/logs/', { params }),
 }
 
+// Integrations
+export interface IntegrationStatus {
+  type: string
+  name: string
+  connected: boolean
+  last_sync_at?: string
+  has_error?: boolean
+  error_message?: string
+  error_count?: number
+  last_sync_status?: string
+  metrics_synced?: Record<string, number>
+}
+
+export interface ClientIntegrations {
+  client_id: number
+  client_name: string
+  integrations: IntegrationStatus[]
+}
+
+export interface IntegrationsOverviewResponse {
+  clients: ClientIntegrations[]
+  summary: {
+    google_fit_active: number
+    huawei_health_active: number
+    total_clients: number
+  }
+}
+
+export const integrationsApi = {
+  overview: () =>
+    api.get<IntegrationsOverviewResponse>('/integrations/overview/'),
+  triggerSync: (client_id: number, integration_type: string) =>
+    api.post('/integrations/sync/', { client_id, integration_type }),
+  disconnect: (client_id: number, integration_type: string) =>
+    api.post('/integrations/disconnect/', { client_id, integration_type }),
+  logs: (client_id: number, integration_type: string) =>
+    api.get<{ logs: Array<{ id: number; started_at: string; finished_at: string | null; status: string; metrics_synced: Record<string, number>; error_message: string }> }>('/integrations/logs/', { params: { client_id, integration_type } }),
+}
+
 export const onboardingApi = {
   getQuestions: () =>
     api.get<OnboardingQuestion[]>('/onboarding/questions/'),
