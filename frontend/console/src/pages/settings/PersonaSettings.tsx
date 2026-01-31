@@ -179,15 +179,39 @@ export default function PersonaSettings() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-secondary-foreground mb-1">Промпт для программы питания</label>
+          <label className="block text-sm font-medium text-secondary-foreground mb-1">
+            🎯 Контролёр программы питания
+          </label>
           <textarea
             value={data.nutrition_program_prompt || ''}
             onChange={(e) => setData({ ...data, nutrition_program_prompt: e.target.value })}
-            rows={4}
-            placeholder="Проанализируй приём пищи с учётом программы питания клиента. Разрешённые продукты: {allowed}. Запрещённые: {forbidden}..."
+            rows={8}
+            placeholder={`Ты — контролёр программы питания. Сравни что съел клиент с планом.
+
+ПРОГРАММА: {program_info}
+ИСТОРИЯ: {program_history}
+ПЛАН НА СЕГОДНЯ: {planned_meal}
+ФАКТ: {actual_meal}
+Запрещено: {forbidden_ingredients}
+Рекомендуется: {allowed_ingredients}
+
+Дай краткую оценку (2-4 предложения)...`}
             className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none font-mono text-sm bg-[#141821] text-white placeholder:text-gray-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:border-gray-600 disabled:cursor-not-allowed"
           />
-          <p className="text-xs text-muted-foreground mt-1">Промпт для генерации комментариев при проверке соответствия программе питания. Если пусто — используется стандартный текст.</p>
+          <div className="mt-2 p-3 bg-muted/50 rounded-lg">
+            <p className="text-xs text-muted-foreground mb-2">
+              <strong>Контролёр программы питания</strong> — AI-помощник который анализирует каждый приём пищи с учётом всей программы.
+            </p>
+            <p className="text-xs text-muted-foreground mb-1">Доступные переменные:</p>
+            <ul className="text-xs text-muted-foreground space-y-0.5 list-disc list-inside">
+              <li><code className="text-blue-400">{'{program_info}'}</code> — название программы, день X из Y</li>
+              <li><code className="text-blue-400">{'{program_history}'}</code> — статистика: % соблюдения, нарушения</li>
+              <li><code className="text-blue-400">{'{planned_meal}'}</code> — что было запланировано</li>
+              <li><code className="text-blue-400">{'{actual_meal}'}</code> — что съел клиент (блюдо, КБЖУ)</li>
+              <li><code className="text-blue-400">{'{forbidden_ingredients}'}</code> — запрещённые продукты</li>
+              <li><code className="text-blue-400">{'{allowed_ingredients}'}</code> — рекомендуемые продукты</li>
+            </ul>
+          </div>
         </div>
 
         <div>
