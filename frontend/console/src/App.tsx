@@ -88,8 +88,8 @@ function App() {
           <Route path="fitdb/templates/new" element={<FitdbTemplateBuilder />} />
           <Route path="fitdb/templates/:id" element={<FitdbTemplateBuilder />} />
           <Route path="fitdb/clients" element={<FitdbClients />} />
-          <Route path="fitdb/clients/:id" element={<FitdbClientDetail />} />
-          <Route path="fitdb/clients/:clientId/schedule" element={<FitdbWorkoutScheduler />} />
+          <Route path="fitdb/clients/:clientId" element={<FitdbWorkoutScheduler />} />
+          <Route path="fitdb/clients/:clientId/stats" element={<FitdbClientDetail />} />
           <Route path="fitdb/history" element={<FitdbWorkoutHistory />} />
           {/* MiniApp demo - для тестирования Telegram Mini App */}
           <Route path="miniapp" element={<MiniAppDemo />} />

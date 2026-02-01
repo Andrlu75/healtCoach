@@ -198,10 +198,10 @@ const ClientDetail = () => {
       {/* Header */}
       <header className="bg-background/80 backdrop-blur-lg border-b border-border/50 px-4 py-3 sticky top-0 z-10">
         <div className="flex items-center justify-between max-w-lg mx-auto">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/fitdb/clients')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(`/fitdb/clients/${id}`)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="font-semibold text-foreground">{client.name}</h1>
+          <h1 className="font-semibold text-foreground">{client.name} — Статистика</h1>
           <div className="w-10" />
         </div>
       </header>
@@ -321,16 +321,10 @@ const ClientDetail = () => {
             <Dumbbell className="w-5 h-5 text-primary" />
             Назначенные тренировки
           </h3>
-          <div className="flex gap-2">
-            <Button size="sm" onClick={() => navigate(`/fitdb/clients/${id}/schedule`)}>
-              <Calendar className="w-4 h-4 mr-1" />
-              Расписание
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
-              <Plus className="w-4 h-4 mr-1" />
-              Быстро назначить
-            </Button>
-          </div>
+          <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-1" />
+            Быстро назначить
+          </Button>
         </div>
 
         {/* Assignment Wizard */}

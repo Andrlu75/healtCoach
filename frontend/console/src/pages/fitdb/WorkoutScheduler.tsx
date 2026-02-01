@@ -511,12 +511,17 @@ export default function WorkoutScheduler() {
           <div className="container mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+                <Button variant="ghost" size="icon" onClick={() => navigate('/fitdb/clients')}>
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
                 <div>
-                  <h1 className="text-lg font-bold text-foreground">Расписание тренировок</h1>
-                  {client && <p className="text-sm text-muted-foreground">{client.name}</p>}
+                  <h1 className="text-lg font-bold text-foreground">{client?.name || 'Расписание тренировок'}</h1>
+                  <button
+                    onClick={() => navigate(`/fitdb/clients/${clientId}/stats`)}
+                    className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Статистика →
+                  </button>
                 </div>
               </div>
 
