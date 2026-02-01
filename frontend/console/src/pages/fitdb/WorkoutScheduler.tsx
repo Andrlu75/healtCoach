@@ -358,20 +358,32 @@ export default function WorkoutScheduler() {
     setActiveDragWorkout(null)
 
     const { active, over } = event
-    if (!over || !clientId) return
+    console.log('DragEnd event:', { active, over, clientId })
+
+    if (!over || !clientId) {
+      console.log('DragEnd aborted: no over or clientId', { over, clientId })
+      return
+    }
 
     const workout = active.data.current?.workout as Workout | undefined
     const dropData = over.data.current as { date: string } | undefined
 
-    if (!workout || !dropData?.date) return
+    console.log('DragEnd data:', { workout, dropData })
+
+    if (!workout || !dropData?.date) {
+      console.log('DragEnd aborted: no workout or date', { workout, dropData })
+      return
+    }
 
     try {
+      console.log('Creating assignment:', { workout_id: workout.id, client_id: clientId, due_date: dropData.date })
       // Create assignment
       const result = await assignmentsApi.create({
         workout_id: workout.id,
         client_id: clientId,
         due_date: dropData.date,
       })
+      console.log('Assignment created:', result)
 
       // Add to local state
       setAssignments((prev) => [
