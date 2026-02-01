@@ -15,6 +15,8 @@ import NutritionProgramStats from './pages/NutritionProgramStats'
 // База блюд
 import DishesDatabase from './pages/dishes/DishesDatabase'
 import DishForm from './pages/dishes/DishForm'
+// База продуктов
+import ProductsDatabase from './pages/products/ProductsDatabase'
 import AISettings from './pages/settings/AISettings'
 import TelegramSettings from './pages/settings/TelegramSettings'
 import PersonaSettings from './pages/settings/PersonaSettings'
@@ -63,6 +65,8 @@ function App() {
           <Route path="dishes" element={<DishesDatabase />} />
           <Route path="dishes/new" element={<DishForm />} />
           <Route path="dishes/:id" element={<DishForm />} />
+          {/* База продуктов */}
+          <Route path="products" element={<ProductsDatabase />} />
           {/* Остальное */}
           <Route path="onboarding" element={<OnboardingEditor />} />
           <Route path="logs" element={<Logs />} />

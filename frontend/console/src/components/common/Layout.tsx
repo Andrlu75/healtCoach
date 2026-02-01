@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, Outlet } from 'react-router-dom'
-import { LayoutDashboard, Users, Bot, Brain, Send, LogOut, FileText, ClipboardList, LinkIcon, ScrollText, Dumbbell, Menu, X, UserCog, Utensils, ChefHat } from 'lucide-react'
+import { LayoutDashboard, Users, Bot, Brain, Send, LogOut, FileText, ClipboardList, LinkIcon, ScrollText, Dumbbell, Menu, X, UserCog, Utensils, ChefHat, Package } from 'lucide-react'
 import { useAuthStore } from '../../stores/auth'
 
 const nav: { to: string; icon: React.ComponentType<{ size?: number }>; label: string; highlight?: boolean }[] = [
@@ -8,6 +8,7 @@ const nav: { to: string; icon: React.ComponentType<{ size?: number }>; label: st
   { to: '/clients', icon: Users, label: 'Клиенты' },
   { to: '/nutrition-programs', icon: Utensils, label: 'Программы питания' },
   { to: '/dishes', icon: ChefHat, label: 'База блюд' },
+  { to: '/products', icon: Package, label: 'База продуктов' },
   { to: '/fitdb', icon: Dumbbell, label: 'Тренировки' },
   { to: '/logs', icon: ScrollText, label: 'Логи' },
   { to: '/reports', icon: FileText, label: 'Отчёты' },
