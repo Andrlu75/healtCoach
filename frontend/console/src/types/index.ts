@@ -1,3 +1,4 @@
+export * from './dishes'
 export * from './nutrition'
 
 export interface User {
