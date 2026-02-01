@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/use-toast'
+import { ShoppingLinksInput } from '@/components/dishes/ShoppingLinksInput'
 
 export default function DishForm() {
   const { id } = useParams()
@@ -496,7 +497,7 @@ export default function DishForm() {
                 <div className="space-y-3">
                   {formData.ingredients.map((ing, index) => (
                     <div key={index} className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg">
-                      <div className="flex-1 grid grid-cols-6 gap-2">
+                      <div className="flex-1 grid grid-cols-7 gap-2">
                         <div className="col-span-2">
                           <Input
                             placeholder="Название"
@@ -527,6 +528,12 @@ export default function DishForm() {
                           placeholder="Ж"
                           value={ing.fats || ''}
                           onChange={(e) => handleIngredientChange(index, 'fats', parseFloat(e.target.value) || 0)}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="У"
+                          value={ing.carbohydrates || ''}
+                          onChange={(e) => handleIngredientChange(index, 'carbohydrates', parseFloat(e.target.value) || 0)}
                         />
                       </div>
                       <Button
@@ -725,6 +732,22 @@ export default function DishForm() {
               </CardContent>
             </Card>
           )}
+
+          {/* Ссылки на покупку */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Где купить</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ShoppingLinksInput
+                links={formData.shopping_links}
+                onChange={(links) =>
+                  setFormData((prev) => ({ ...prev, shopping_links: links }))
+                }
+                disabled={isSaving}
+              />
+            </CardContent>
+          </Card>
         </div>
       </div>
     </form>
