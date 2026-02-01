@@ -24,6 +24,7 @@ from apps.meals.services import (
     classify_image,
     format_meal_response,
     get_daily_summary,
+    get_program_controller_feedback,
     save_meal,
     ANALYZE_FOOD_PROMPT,
 )
@@ -34,58 +35,48 @@ from apps.metrics.services import (
 )
 from apps.persona.models import TelegramBot
 
-from ..telegram_api import get_file, send_chat_action, send_message, send_notification, send_photo_notification
+from django.conf import settings
+
+from ..telegram_api import get_file, send_chat_action, send_message, send_message_with_webapp, send_notification, send_photo_notification
 from ..services import get_ai_vision_response, _get_persona, _get_api_key
 
 logger = logging.getLogger(__name__)
 
 
 async def handle_photo(bot: TelegramBot, client: Client, message: dict):
-    """Handle incoming photo message with classification."""
+    """Handle incoming photo message - redirect to MiniApp."""
     chat_id = message['chat']['id']
-    total_start = time.time()
 
     photos = message.get('photo')
     if not photos:
         return
 
-    # Get the largest photo (last in the array)
-    file_id = photos[-1]['file_id']
-    caption = message.get('caption', '')
+    # Redirect to MiniApp for photo analysis
+    miniapp_url = getattr(settings, 'TELEGRAM_MINIAPP_URL', '')
 
-    await send_chat_action(bot.token, chat_id)
+    if miniapp_url:
+        await send_message_with_webapp(
+            bot.token,
+            chat_id,
+            text=(
+                '📸 Для анализа еды, пожалуйста, используйте приложение.\n\n'
+                'Там вы сможете:\n'
+                '• Сфотографировать или выбрать фото еды\n'
+                '• Получить детальный анализ КБЖУ\n'
+                '• Отслеживать программу питания\n'
+                '• Видеть статистику за день'
+            ),
+            button_text='📱 Открыть приложение',
+            webapp_url=miniapp_url,
+        )
+    else:
+        await send_message(
+            bot.token,
+            chat_id,
+            'Анализ фото временно недоступен. Обратитесь к тренеру.',
+        )
 
-    try:
-        # Download photo
-        image_data = await get_file(bot.token, file_id)
-        if not image_data:
-            await send_message(bot.token, chat_id, 'Не удалось загрузить фото.')
-            return
-
-        # Send acknowledgment message
-        await send_message(bot.token, chat_id, '📸 Фото получил! Анализирую, это займёт около минуты...')
-
-        # Classify and analyze in one call
-        result = await classify_and_analyze(bot, image_data, caption)
-        image_type = result.get('type', 'other')
-
-        if image_type == 'food':
-            # Already have analysis from classify_and_analyze
-            await _handle_food_photo_with_analysis(bot, client, chat_id, image_data, caption, result, total_start)
-        elif image_type == 'data':
-            await _handle_data_photo(bot, client, chat_id, image_data)
-            total_ms = int((time.time() - total_start) * 1000)
-            logger.info('[PHOTO] client=%s type=data total=%dms requests=1', client.pk, total_ms)
-        else:
-            # Generic AI vision response for non-food photos
-            response_text = await get_ai_vision_response(bot, client, image_data, caption)
-            await send_message(bot.token, chat_id, response_text)
-            total_ms = int((time.time() - total_start) * 1000)
-            logger.info('[PHOTO] client=%s type=other total=%dms requests=2', client.pk, total_ms)
-
-    except Exception as e:
-        logger.exception('Error handling photo for client %s: %s', client.pk, e)
-        await send_message(bot.token, chat_id, 'Произошла ошибка. Попробуйте позже.')
+    logger.info('[PHOTO] client=%s redirected to miniapp', client.pk)
 
 
 async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, chat_id: int, image_data: bytes, caption: str, analysis: dict, total_start: float = None):
@@ -235,13 +226,11 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
             lambda: MealComplianceCheck.objects.filter(meal=meal).select_related('program_day__program').first()
         )()
 
-    # Добавляем информацию о программе питания в ответ клиенту
-    if meal.program_check_status:
-        if meal.program_check_status == 'violation':
-            if compliance_check and compliance_check.ai_comment:
-                response_text += f'\n\n⚠️ {compliance_check.ai_comment}'
-        elif meal.program_check_status == 'compliant':
-            response_text += '\n\n✅ Отлично! Вы соблюдаете программу питания.'
+    # Добавляем полный feedback программы питания (как в miniapp)
+    meal_type = analysis.get('dish_type', '')
+    program_feedback = await get_program_controller_feedback(client, analysis, meal_type)
+    if program_feedback:
+        response_text += f'\n\n📋 *Программа питания:*\n{program_feedback}'
 
     await send_message(bot.token, chat_id, response_text)
 
