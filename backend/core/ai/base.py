@@ -9,6 +9,10 @@ class AIResponse:
     response_id: Optional[str] = None
     model: str = ''
     usage: dict = field(default_factory=dict)
+    is_error: bool = False
+    error_type: Optional[str] = None  # 'rate_limit', 'connection', 'api', 'auth', 'timeout'
+    finish_reason: Optional[str] = None  # 'stop', 'length', 'content_filter'
+    is_truncated: bool = False  # True если ответ обрезан (finish_reason='length')
 
 
 class AbstractAIProvider(ABC):
@@ -22,6 +26,7 @@ class AbstractAIProvider(ABC):
         max_tokens: int = 600,
         temperature: float = 0.7,
         model: Optional[str] = None,
+        json_mode: bool = False,
     ) -> AIResponse:
         pass
 
