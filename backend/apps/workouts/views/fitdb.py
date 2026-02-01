@@ -22,13 +22,15 @@ class FitDBWorkoutSerializer(serializers.ModelSerializer):
     is_template = serializers.SerializerMethodField()
     is_favorite = serializers.SerializerMethodField()
     exercise_count = serializers.SerializerMethodField()
+    tags = serializers.ListField(child=serializers.CharField(), required=False)
 
     class Meta:
         model = WorkoutTemplate
-        fields = ['id', 'name', 'description', 'is_template', 'is_favorite', 'exercise_count', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'description', 'is_template', 'is_favorite', 'exercise_count', 'tags', 'created_at', 'updated_at']
 
     def get_is_template(self, obj):
-        return True  # All WorkoutTemplates are templates
+        # Template = not personalized for a specific client
+        return not obj.is_personalized
 
     def get_is_favorite(self, obj):
         return False  # Not implemented yet
@@ -109,10 +111,23 @@ class FitDBWorkoutViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
+        qs = WorkoutTemplate.objects.filter(is_active=True)
+
+        # Filter by is_template (not personalized)
+        is_template = self.request.query_params.get('is_template')
+        if is_template is not None:
+            if is_template.lower() in ('true', '1'):
+                qs = qs.filter(is_personalized=False)
+            elif is_template.lower() in ('false', '0'):
+                qs = qs.filter(is_personalized=True)
+
+        # Filter by tag
+        tag = self.request.query_params.get('tag')
+        if tag:
+            qs = qs.filter(tags__contains=[tag])
+
         # Annotate with exercise count to avoid N+1 queries
-        return WorkoutTemplate.objects.filter(is_active=True).annotate(
-            exercise_count=Count('blocks__exercises')
-        )
+        return qs.annotate(exercise_count=Count('blocks__exercises'))
 
     def create(self, request, *args, **kwargs):
         data = request.data
@@ -145,10 +160,22 @@ class FitDBWorkoutViewSet(viewsets.ModelViewSet):
             instance.name = data['name']
         if 'description' in data:
             instance.description = data['description']
+        if 'tags' in data:
+            instance.tags = data['tags'] if isinstance(data['tags'], list) else []
         instance.save()
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def tags(self, request):
+        """Get all unique tags across all workout templates"""
+        all_tags = set()
+        templates = WorkoutTemplate.objects.filter(is_active=True, is_personalized=False)
+        for template in templates:
+            if template.tags:
+                all_tags.update(template.tags)
+        return Response(sorted(list(all_tags)))
 
     @action(detail=True, methods=['post'])
     def clone(self, request, pk=None):

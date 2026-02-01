@@ -4,7 +4,7 @@ import { DndContext, DragOverlay, useDroppable, useDraggable } from '@dnd-kit/co
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { ArrowLeft, ChevronLeft, ChevronRight, Dumbbell, Loader2, X, Calendar, GripVertical, Plus, Minus, Trash2, Search, Save, Edit3 } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Dumbbell, Loader2, X, Calendar, GripVertical, Plus, Minus, Trash2, Search, Save, Edit3, Tag, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
@@ -21,6 +21,7 @@ interface Workout {
   name: string
   description: string | null
   exerciseCount: number
+  tags: string[]
 }
 
 interface Assignment {
@@ -57,8 +58,8 @@ interface WorkoutExerciseItem {
   orderIndex: number
 }
 
-// Draggable workout card
-function DraggableWorkout({ workout }: { workout: Workout }) {
+// Draggable workout card - красивая плашка
+function DraggableWorkout({ workout, onEditTags }: { workout: Workout; onEditTags: (workout: Workout) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `workout-${workout.id}`,
     data: { workout },
@@ -75,16 +76,42 @@ function DraggableWorkout({ workout }: { workout: Workout }) {
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
-      {...attributes}
-      className="bg-card border border-border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors"
+      className="bg-gradient-to-br from-card to-muted/30 border border-border rounded-xl p-4 cursor-grab active:cursor-grabbing hover:border-primary/50 hover:shadow-md transition-all group"
     >
-      <div className="flex items-start gap-2">
-        <GripVertical size={16} className="text-muted-foreground mt-0.5 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm text-foreground truncate">{workout.name}</p>
-          <p className="text-xs text-muted-foreground">{workout.exerciseCount} упр.</p>
+      <div className="flex items-start gap-3" {...listeners} {...attributes}>
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <Dumbbell size={18} className="text-primary" />
         </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-foreground leading-tight mb-1">{workout.name}</p>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="bg-muted px-2 py-0.5 rounded-full">{workout.exerciseCount} упр.</span>
+          </div>
+        </div>
+        <GripVertical size={18} className="text-muted-foreground/50 shrink-0 mt-1" />
+      </div>
+      {/* Теги */}
+      <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+        {workout.tags && workout.tags.length > 0 ? (
+          workout.tags.map((tag) => (
+            <span
+              key={tag}
+              className="text-[10px] font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full"
+            >
+              {tag}
+            </span>
+          ))
+        ) : null}
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onEditTags(workout)
+          }}
+          className="w-5 h-5 rounded-full bg-muted hover:bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          title="Редактировать теги"
+        >
+          <Tag size={10} className="text-muted-foreground" />
+        </button>
       </div>
     </div>
   )
@@ -216,6 +243,12 @@ export default function WorkoutScheduler() {
   const [exerciseSearchQuery, setExerciseSearchQuery] = useState('')
   const [exerciseSearchLoading, setExerciseSearchLoading] = useState(false)
 
+  // Состояние для тегов и фильтрации
+  const [allTags, setAllTags] = useState<string[]>([])
+  const [selectedTag, setSelectedTag] = useState<string | null>(null)
+  const [editingTagsWorkout, setEditingTagsWorkout] = useState<Workout | null>(null)
+  const [newTagInput, setNewTagInput] = useState('')
+
   // Load data
   useEffect(() => {
     const loadData = async () => {
@@ -228,6 +261,10 @@ export default function WorkoutScheduler() {
           setClient({ id: String(clientData.id), name: clientData.name })
         }
 
+        // Load all tags
+        const tagsData = await workoutsApi.getTags()
+        setAllTags(tagsData || [])
+
         // Load workout templates only
         const workoutsData = await workoutsApi.list({ ordering: 'name', is_template: true })
         setWorkouts(
@@ -236,6 +273,7 @@ export default function WorkoutScheduler() {
             name: w.name,
             description: w.description,
             exerciseCount: w.exercise_count || 0,
+            tags: w.tags || [],
           }))
         )
 
@@ -490,6 +528,47 @@ export default function WorkoutScheduler() {
     setExerciseSearchQuery('')
   }
 
+  // Фильтрованные тренировки по выбранному тегу
+  const filteredWorkouts = selectedTag
+    ? workouts.filter((w) => w.tags && w.tags.includes(selectedTag))
+    : workouts
+
+  // Обновление тегов тренировки
+  const handleUpdateWorkoutTags = async (workoutId: string, tags: string[]) => {
+    try {
+      await workoutsApi.update(workoutId, { tags })
+      setWorkouts((prev) =>
+        prev.map((w) => (w.id === workoutId ? { ...w, tags } : w))
+      )
+      // Обновить список всех тегов
+      const newAllTags = new Set(allTags)
+      tags.forEach((t) => newAllTags.add(t))
+      setAllTags(Array.from(newAllTags).sort())
+      toast({ title: 'Теги обновлены' })
+    } catch (error) {
+      console.error('Error updating tags:', error)
+      toast({ title: 'Ошибка', description: 'Не удалось обновить теги', variant: 'destructive' })
+    }
+  }
+
+  const addTagToWorkout = (tag: string) => {
+    if (!editingTagsWorkout) return
+    const currentTags = editingTagsWorkout.tags || []
+    if (!currentTags.includes(tag)) {
+      const newTags = [...currentTags, tag]
+      handleUpdateWorkoutTags(editingTagsWorkout.id, newTags)
+      setEditingTagsWorkout({ ...editingTagsWorkout, tags: newTags })
+    }
+    setNewTagInput('')
+  }
+
+  const removeTagFromWorkout = (tag: string) => {
+    if (!editingTagsWorkout) return
+    const newTags = (editingTagsWorkout.tags || []).filter((t) => t !== tag)
+    handleUpdateWorkoutTags(editingTagsWorkout.id, newTags)
+    setEditingTagsWorkout({ ...editingTagsWorkout, tags: newTags })
+  }
+
   const goToPreviousWeek = () => setWeekStart((prev) => addDays(prev, -7))
   const goToNextWeek = () => setWeekStart((prev) => addDays(prev, 7))
   const goToCurrentWeek = () => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))
@@ -564,33 +643,89 @@ export default function WorkoutScheduler() {
             </div>
 
             {/* Right: Workouts panel */}
-            <div className="w-80 shrink-0">
+            <div className="w-96 shrink-0">
               <div className="sticky top-20">
-                <div className="bg-card border border-border rounded-lg p-4">
-                  <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Dumbbell size={16} className="text-primary" />
-                    Шаблоны тренировок ({workouts.length})
-                  </h2>
+                <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                  {/* Заголовок и кнопка добавления */}
+                  <div className="p-4 border-b border-border/50 bg-muted/30">
+                    <div className="flex items-center justify-between mb-3">
+                      <h2 className="font-semibold text-foreground flex items-center gap-2">
+                        <Dumbbell size={18} className="text-primary" />
+                        Шаблоны тренировок
+                      </h2>
+                      <Button
+                        size="sm"
+                        onClick={() => navigate('/fitdb/templates/new')}
+                        className="h-8"
+                      >
+                        <Plus size={14} className="mr-1" />
+                        Добавить
+                      </Button>
+                    </div>
 
-                  <div className="space-y-2 max-h-[calc(100vh-220px)] overflow-y-auto">
-                    {workouts.length > 0 ? (
-                      workouts.map((workout) => (
-                        <DraggableWorkout key={workout.id} workout={workout} />
+                    {/* Фильтр по тегам */}
+                    {allTags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          onClick={() => setSelectedTag(null)}
+                          className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                            selectedTag === null
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                          }`}
+                        >
+                          Все
+                        </button>
+                        {allTags.map((tag) => (
+                          <button
+                            key={tag}
+                            onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+                            className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                              selectedTag === tag
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                            }`}
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Список тренировок */}
+                  <div className="p-3 space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                    {filteredWorkouts.length > 0 ? (
+                      filteredWorkouts.map((workout) => (
+                        <DraggableWorkout
+                          key={workout.id}
+                          workout={workout}
+                          onEditTags={setEditingTagsWorkout}
+                        />
                       ))
                     ) : (
-                      <div className="text-center py-8">
-                        <Dumbbell className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                        <p className="text-sm text-muted-foreground">Нет тренировок</p>
+                      <div className="text-center py-12">
+                        <Dumbbell className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+                        <p className="text-sm text-muted-foreground mb-3">
+                          {selectedTag ? 'Нет тренировок с этим тегом' : 'Нет шаблонов тренировок'}
+                        </p>
                         <Button
-                          variant="link"
+                          variant="outline"
                           size="sm"
-                          onClick={() => navigate('/fitdb/workouts/new')}
-                          className="mt-2"
+                          onClick={() => navigate('/fitdb/templates/new')}
                         >
-                          Создать тренировку
+                          <Plus size={14} className="mr-1" />
+                          Создать шаблон
                         </Button>
                       </div>
                     )}
+                  </div>
+
+                  {/* Подсказка */}
+                  <div className="p-3 border-t border-border/50 bg-muted/20">
+                    <p className="text-[11px] text-muted-foreground text-center">
+                      Перетащите тренировку на день в календаре
+                    </p>
                   </div>
                 </div>
               </div>
@@ -978,6 +1113,113 @@ export default function WorkoutScheduler() {
                 </p>
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Диалог редактирования тегов */}
+      <Dialog open={!!editingTagsWorkout} onOpenChange={(open) => !open && setEditingTagsWorkout(null)}>
+        <DialogContent className="max-w-md p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+            <DialogTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Tag className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <span className="block">Теги тренировки</span>
+                <span className="text-sm font-normal text-muted-foreground">
+                  {editingTagsWorkout?.name}
+                </span>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="p-6 space-y-4">
+            {/* Текущие теги */}
+            <div>
+              <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                Текущие теги
+              </label>
+              <div className="flex flex-wrap gap-2 min-h-[40px]">
+                {editingTagsWorkout?.tags && editingTagsWorkout.tags.length > 0 ? (
+                  editingTagsWorkout.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1.5 text-sm bg-primary/10 text-primary px-3 py-1.5 rounded-full"
+                    >
+                      {tag}
+                      <button
+                        onClick={() => removeTagFromWorkout(tag)}
+                        className="w-4 h-4 rounded-full hover:bg-primary/20 flex items-center justify-center"
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-sm text-muted-foreground">Нет тегов</span>
+                )}
+              </div>
+            </div>
+
+            {/* Добавить новый тег */}
+            <div>
+              <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                Добавить тег
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Введите новый тег..."
+                  value={newTagInput}
+                  onChange={(e) => setNewTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newTagInput.trim()) {
+                      addTagToWorkout(newTagInput.trim())
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={() => newTagInput.trim() && addTagToWorkout(newTagInput.trim())}
+                  disabled={!newTagInput.trim()}
+                >
+                  <Plus size={16} />
+                </Button>
+              </div>
+            </div>
+
+            {/* Быстрый выбор из существующих тегов */}
+            {allTags.length > 0 && (
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                  Или выберите существующий
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {allTags
+                    .filter((tag) => !editingTagsWorkout?.tags?.includes(tag))
+                    .map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={() => addTagToWorkout(tag)}
+                        className="text-xs px-2.5 py-1.5 rounded-full bg-muted hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-1"
+                      >
+                        <Plus size={12} />
+                        {tag}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="px-6 py-4 border-t bg-muted/30">
+            <Button
+              className="w-full"
+              onClick={() => setEditingTagsWorkout(null)}
+            >
+              <Check size={16} className="mr-2" />
+              Готово
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

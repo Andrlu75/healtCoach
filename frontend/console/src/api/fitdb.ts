@@ -109,9 +109,14 @@ export const exercisesApi = {
 
 // Workouts API
 export const workoutsApi = {
-  async list(params?: { ordering?: string; search?: string; is_favorite?: boolean; is_template?: boolean }) {
+  async list(params?: { ordering?: string; search?: string; is_favorite?: boolean; is_template?: boolean; tag?: string }) {
     const { data } = await api.get('/workouts/fitdb/workouts/', { params });
     return data.results || data;
+  },
+
+  async getTags() {
+    const { data } = await api.get('/workouts/fitdb/workouts/tags/');
+    return data as string[];
   },
 
   async get(id: string) {
@@ -124,7 +129,7 @@ export const workoutsApi = {
     return data;
   },
 
-  async update(id: string, workout: { name?: string; description?: string; is_favorite?: boolean }) {
+  async update(id: string, workout: { name?: string; description?: string; is_favorite?: boolean; tags?: string[] }) {
     const { data } = await api.patch(`/workouts/fitdb/workouts/${id}/`, workout);
     return data;
   },
