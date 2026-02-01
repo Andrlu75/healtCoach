@@ -1,8 +1,11 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { ChevronRight, Save, Play, X, Copy, Plus, Check, Loader2, ShoppingCart, Sparkles, ArrowLeft, ChefHat } from 'lucide-react'
+import { ChevronRight, Save, Play, X, Copy, Plus, Check, Loader2, ShoppingCart, Sparkles, ArrowLeft, ChefHat, ChevronLeft } from 'lucide-react'
+import { DndContext, DragOverlay, pointerWithin, useDroppable } from '@dnd-kit/core'
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { nutritionProgramsApi } from '../api/nutritionPrograms'
 import { DishSelector } from '../components/dishes/DishSelector'
+import { DraggableDishesPanel, DishDragOverlay } from '../components/dishes/DraggableDishesPanel'
 import type { DishListItem, MealType as DishMealType } from '../types/dishes'
 import { clientsApi } from '../api/clients'
 import type {
@@ -67,6 +70,10 @@ export default function NutritionProgramEdit() {
 
   const [days, setDays] = useState<DayFormData[]>([])
   const [program, setProgram] = useState<NutritionProgram | null>(null)
+
+  // Drag-and-drop state
+  const [isDishPanelOpen, setIsDishPanelOpen] = useState(false)
+  const [activeDragDish, setActiveDragDish] = useState<DishListItem | null>(null)
 
   useEffect(() => {
     clientsApi.list({ status: 'active' }).then(({ data }) => {
@@ -345,6 +352,47 @@ export default function NutritionProgramEdit() {
     triggerAutoSave()
   }
 
+  // Drag-and-drop handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event
+    const dish = active.data.current?.dish as DishListItem | undefined
+    if (dish) {
+      setActiveDragDish(dish)
+    }
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveDragDish(null)
+
+    if (!over) return
+
+    const dish = active.data.current?.dish as DishListItem | undefined
+    if (!dish) return
+
+    // Получаем тип приёма пищи из drop zone
+    const dropData = over.data.current as { mealType: MealType; dayNumber: number } | undefined
+    if (!dropData) return
+
+    const mealConfig = MEAL_TYPES.find((m) => m.type === dropData.mealType)
+    if (!mealConfig) return
+
+    // Формируем описание из КБЖУ
+    const description = `${dish.portion_weight > 0 ? `Порция: ${dish.portion_weight}г. ` : ''}` +
+      `Калории: ${Math.round(dish.calories)} ккал, ` +
+      `Б: ${Math.round(dish.proteins)}г, ` +
+      `Ж: ${Math.round(dish.fats)}г, ` +
+      `У: ${Math.round(dish.carbohydrates)}г`
+
+    addMeal(dropData.dayNumber, {
+      id: crypto.randomUUID(),
+      type: dropData.mealType,
+      time: mealConfig.defaultTime,
+      name: dish.name,
+      description,
+    })
+  }
+
   const updateMeal = (dayNumber: number, mealIndex: number, updates: Partial<ProgramMeal>) => {
     setDays((prev) =>
       prev.map((d) =>
@@ -391,80 +439,100 @@ export default function NutritionProgramEdit() {
     : -1
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
-      {/* Compact Header */}
-      <div className="flex-shrink-0 border-b border-border bg-card px-6 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => {
-                allowNavigationRef.current = true
-                navigate('/nutrition-programs')
-              }}
-              className="p-1.5 -ml-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
-            >
-              <ArrowLeft size={20} />
-            </button>
-            <div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-0.5">
-                <Link to="/nutrition-programs" className="hover:text-foreground">
-                  Программы питания
-                </Link>
-                <ChevronRight size={12} />
-                <span>{isNew ? 'Новая' : 'Редактирование'}</span>
-              </div>
-              <h1 className="text-lg font-semibold text-foreground">
-                {formData.name || 'Новая программа питания'}
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Save status */}
-            {!isNew && (
-              <span className="text-xs text-muted-foreground">
-                {autoSaving ? (
-                  <span className="flex items-center gap-1">
-                    <Loader2 size={12} className="animate-spin" />
-                    Сохранение...
-                  </span>
-                ) : lastSaved ? (
-                  <span className="flex items-center gap-1 text-green-500">
-                    <Check size={12} />
-                    {lastSaved.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                ) : null}
-              </span>
-            )}
-
-            <button
-              type="button"
-              onClick={(e) => handleSubmit(e, false)}
-              disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 text-sm font-medium"
-            >
-              <Save size={16} />
-              Сохранить
-            </button>
-
-            {(isNew || program?.status === 'draft') && (
+    <DndContext
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      collisionDetection={pointerWithin}
+    >
+      <div className="h-[calc(100vh-4rem)] flex flex-col">
+        {/* Compact Header */}
+        <div className="flex-shrink-0 border-b border-border bg-card px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={(e) => handleSubmit(e, true)}
-                disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
+                onClick={() => {
+                  allowNavigationRef.current = true
+                  navigate('/nutrition-programs')
+                }}
+                className="p-1.5 -ml-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
               >
-                <Play size={16} />
-                Активировать
+                <ArrowLeft size={20} />
               </button>
-            )}
+              <div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-0.5">
+                  <Link to="/nutrition-programs" className="hover:text-foreground">
+                    Программы питания
+                  </Link>
+                  <ChevronRight size={12} />
+                  <span>{isNew ? 'Новая' : 'Редактирование'}</span>
+                </div>
+                <h1 className="text-lg font-semibold text-foreground">
+                  {formData.name || 'Новая программа питания'}
+                </h1>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Toggle dishes panel */}
+              <button
+                type="button"
+                onClick={() => setIsDishPanelOpen(!isDishPanelOpen)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isDishPanelOpen
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+              >
+                <ChefHat size={16} />
+                База блюд
+                {isDishPanelOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+              </button>
+
+              {/* Save status */}
+              {!isNew && (
+                <span className="text-xs text-muted-foreground">
+                  {autoSaving ? (
+                    <span className="flex items-center gap-1">
+                      <Loader2 size={12} className="animate-spin" />
+                      Сохранение...
+                    </span>
+                  ) : lastSaved ? (
+                    <span className="flex items-center gap-1 text-green-500">
+                      <Check size={12} />
+                      {lastSaved.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  ) : null}
+                </span>
+              )}
+
+              <button
+                type="button"
+                onClick={(e) => handleSubmit(e, false)}
+                disabled={saving}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 text-sm font-medium"
+              >
+                <Save size={16} />
+                Сохранить
+              </button>
+
+              {(isNew || program?.status === 'draft') && (
+                <button
+                  type="button"
+                  onClick={(e) => handleSubmit(e, true)}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
+                >
+                  <Play size={16} />
+                  Активировать
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Main content with sidebar */}
-      <div className="flex-1 flex overflow-hidden">
+        {/* Main content with sidebar */}
+        <div className="flex-1 flex overflow-hidden">
         {/* Sidebar Navigation */}
         <div className="w-56 flex-shrink-0 border-r border-border bg-card/50 overflow-y-auto">
           <div className="p-3">
@@ -686,8 +754,20 @@ export default function NutritionProgramEdit() {
             )}
           </div>
         </div>
+
+        {/* Draggable Dishes Panel */}
+        <DraggableDishesPanel
+          isOpen={isDishPanelOpen}
+          onToggle={() => setIsDishPanelOpen(false)}
+        />
       </div>
+
+      {/* Drag Overlay */}
+      <DragOverlay>
+        {activeDragDish ? <DishDragOverlay dish={activeDragDish} /> : null}
+      </DragOverlay>
     </div>
+    </DndContext>
   )
 }
 
@@ -870,6 +950,44 @@ function HighlightedMealDescription({
   )
 }
 
+// Meal Drop Zone Component
+interface MealDropZoneProps {
+  mealType: MealType
+  dayNumber: number
+  label: string
+  children?: React.ReactNode
+}
+
+function MealDropZone({ mealType, dayNumber, label, children }: MealDropZoneProps) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `dropzone-${dayNumber}-${mealType}`,
+    data: { mealType, dayNumber },
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-lg border-2 border-dashed p-3 transition-all ${
+        isOver
+          ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+          : 'border-border/50 hover:border-border'
+      }`}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <span className={`text-xs font-medium ${isOver ? 'text-primary' : 'text-muted-foreground'}`}>
+          {label}
+        </span>
+        {isOver && (
+          <span className="text-[10px] text-primary animate-pulse">
+            Отпустите для добавления
+          </span>
+        )}
+      </div>
+      {children}
+    </div>
+  )
+}
+
 // Day Editor Component
 interface DayEditorProps {
   day: DayFormData
@@ -1041,10 +1159,6 @@ function DayEditor({
       .filter((item) => item.category === category)
   }
 
-  const getMealTypeLabel = (type: MealType) => {
-    return MEAL_TYPES.find((m) => m.type === type)?.label || type
-  }
-
   return (
     <div>
       {/* Day header */}
@@ -1104,57 +1218,77 @@ function DayEditor({
       <div className="flex gap-6">
         {/* Left column - Meals & notes */}
         <div className="flex-1 space-y-4">
-          {/* Meals */}
-          {day.meals.length > 0 ? (
-            <div className="space-y-3">
-              {day.meals.map((meal, i) => (
-                <div
-                  key={meal.id || i}
-                  className="bg-card border border-border rounded-lg p-3"
+          {/* Meals organized by type with drop zones */}
+          <div className="space-y-3">
+            {MEAL_TYPES.map((mealType) => {
+              const mealsOfType = day.meals
+                .map((meal, index) => ({ meal, index }))
+                .filter(({ meal }) => meal.type === mealType.type)
+
+              return (
+                <MealDropZone
+                  key={mealType.type}
+                  mealType={mealType.type}
+                  dayNumber={day.day_number}
+                  label={mealType.label}
                 >
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-foreground">
-                        {getMealTypeLabel(meal.type)}
-                      </span>
-                      <input
-                        type="time"
-                        value={meal.time}
-                        onChange={(e) => onUpdateMeal(i, { time: e.target.value })}
-                        className="text-xs px-1.5 py-0.5 bg-background text-foreground border border-border rounded outline-none"
-                      />
+                  {mealsOfType.length > 0 ? (
+                    <div className="space-y-2">
+                      {mealsOfType.map(({ meal, index }) => (
+                        <div
+                          key={meal.id || index}
+                          className="bg-card border border-border rounded-lg p-3"
+                        >
+                          <div className="flex items-center justify-between gap-3 mb-2">
+                            <input
+                              type="time"
+                              value={meal.time}
+                              onChange={(e) => onUpdateMeal(index, { time: e.target.value })}
+                              className="text-xs px-1.5 py-0.5 bg-background text-foreground border border-border rounded outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => onRemoveMeal(index)}
+                              className="text-muted-foreground hover:text-red-400"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+
+                          <input
+                            type="text"
+                            value={meal.name}
+                            onChange={(e) => onUpdateMeal(index, { name: e.target.value })}
+                            placeholder="Название блюда"
+                            className="w-full px-2 py-1.5 text-sm bg-background text-foreground border border-border rounded mb-2 outline-none"
+                          />
+
+                          <HighlightedMealDescription
+                            value={meal.description}
+                            onChange={(value) => onUpdateMeal(index, { description: value })}
+                            placeholder="Описание блюда и ингредиенты..."
+                            highlightWords={getHighlightWords()}
+                          />
+                        </div>
+                      ))}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => onRemoveMeal(i)}
-                      className="text-muted-foreground hover:text-red-400"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-
-                  <input
-                    type="text"
-                    value={meal.name}
-                    onChange={(e) => onUpdateMeal(i, { name: e.target.value })}
-                    placeholder="Название блюда"
-                    className="w-full px-2 py-1.5 text-sm bg-background text-foreground border border-border rounded mb-2 outline-none"
-                  />
-
-                  <HighlightedMealDescription
-                    value={meal.description}
-                    onChange={(value) => onUpdateMeal(i, { description: value })}
-                    placeholder="Описание блюда и ингредиенты..."
-                    highlightWords={getHighlightWords()}
-                  />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground p-4 bg-muted/30 rounded-lg text-center">
-              Приёмы пищи не добавлены
-            </div>
-          )}
+                  ) : (
+                    <div className="text-xs text-muted-foreground text-center py-2">
+                      Перетащите блюдо сюда или нажмите кнопку
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDishSelector(mealType.type)}
+                    className="w-full mt-2 flex items-center justify-center gap-1.5 text-xs py-1.5 text-muted-foreground hover:text-foreground border border-dashed border-border rounded hover:border-primary/50 hover:bg-muted/30 transition-colors"
+                  >
+                    <Plus size={12} />
+                    Добавить
+                  </button>
+                </MealDropZone>
+              )
+            })}
+          </div>
 
           {showMealForm ? (
             <div className="flex items-center gap-2">
