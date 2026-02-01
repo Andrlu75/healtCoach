@@ -1,18 +1,24 @@
+import json
+import logging
 from datetime import date
 import zoneinfo
 
 from asgiref.sync import async_to_sync
 from django.db.models import Q
+from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import status, viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import MultiPartParser, JSONParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Dish, DishTag, Meal, MealDraft, Product
 from .serializers import (
     DishDetailSerializer,
+    DishExportSerializer,
+    DishImportSerializer,
     DishListSerializer,
     DishTagSerializer,
     MealDraftSerializer,
@@ -20,6 +26,8 @@ from .serializers import (
     ProductSerializer,
 )
 from apps.accounts.models import Client
+
+logger = logging.getLogger(__name__)
 
 
 def get_client_timezone(client):
@@ -567,3 +575,332 @@ class DishViewSet(viewsets.ModelViewSet):
         dish.save(update_fields=['is_active', 'updated_at'])
 
         return Response({'status': 'archived', 'id': dish.id})
+
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        """Экспорт блюд в JSON.
+
+        GET /api/dishes/export/
+        Возвращает JSON файл со всеми блюдами коуча.
+        Параметры:
+        - active_only: true/false (по умолчанию true)
+        """
+        coach = request.user.coach_profile
+        active_only = request.query_params.get('active_only', 'true').lower() == 'true'
+
+        queryset = Dish.objects.filter(coach=coach).prefetch_related('tags')
+        if active_only:
+            queryset = queryset.filter(is_active=True)
+
+        serializer = DishExportSerializer(queryset, many=True)
+
+        export_data = {
+            'version': '1.0',
+            'exported_at': timezone.now().isoformat(),
+            'dishes_count': len(serializer.data),
+            'dishes': serializer.data,
+        }
+
+        response = HttpResponse(
+            json.dumps(export_data, ensure_ascii=False, indent=2),
+            content_type='application/json; charset=utf-8',
+        )
+        response['Content-Disposition'] = 'attachment; filename="dishes_export.json"'
+
+        logger.info(f'Exported {len(serializer.data)} dishes for coach {coach.id}')
+        return response
+
+    @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, JSONParser], url_path='import')
+    def import_dishes(self, request):
+        """Импорт блюд из JSON.
+
+        POST /api/dishes/import/
+        Принимает JSON файл или JSON body с блюдами.
+
+        Body format:
+        {
+            "dishes": [
+                {"name": "...", "description": "...", ...},
+                ...
+            ]
+        }
+
+        Параметры:
+        - skip_duplicates: true/false (по умолчанию true) - пропустить блюда с уже существующими названиями
+        """
+        coach = request.user.coach_profile
+        skip_duplicates = request.query_params.get('skip_duplicates', 'true').lower() == 'true'
+
+        # Получаем данные из файла или body
+        if 'file' in request.FILES:
+            try:
+                file_content = request.FILES['file'].read().decode('utf-8')
+                data = json.loads(file_content)
+            except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                return Response(
+                    {'error': f'Ошибка чтения JSON файла: {e}'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            data = request.data
+
+        # Поддержка формата экспорта (с версией) и простого списка
+        if 'dishes' in data:
+            dishes_data = data['dishes']
+        elif isinstance(data, list):
+            dishes_data = data
+        else:
+            return Response(
+                {'error': 'Неверный формат данных. Ожидается {"dishes": [...]} или [...]'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Валидация
+        serializer = DishImportSerializer(data={'dishes': dishes_data})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        validated_dishes = serializer.validated_data['dishes']
+
+        # Получаем существующие названия блюд
+        existing_names = set(
+            Dish.objects.filter(coach=coach).values_list('name', flat=True)
+        )
+
+        # Получаем существующие теги
+        existing_tags = {
+            tag.name: tag for tag in DishTag.objects.filter(coach=coach)
+        }
+
+        created_count = 0
+        skipped_count = 0
+        created_tags_count = 0
+        errors = []
+
+        for i, dish_data in enumerate(validated_dishes):
+            dish_name = dish_data['name']
+
+            # Проверка дубликатов
+            if dish_name in existing_names:
+                if skip_duplicates:
+                    skipped_count += 1
+                    continue
+                else:
+                    # Добавляем суффикс
+                    suffix = 1
+                    new_name = f'{dish_name} ({suffix})'
+                    while new_name in existing_names:
+                        suffix += 1
+                        new_name = f'{dish_name} ({suffix})'
+                    dish_data['name'] = new_name
+                    dish_name = new_name
+
+            try:
+                # Извлекаем теги
+                tag_names = dish_data.pop('tags', [])
+
+                # Создаём блюдо
+                dish = Dish.objects.create(
+                    coach=coach,
+                    **dish_data,
+                )
+
+                # Обрабатываем теги
+                tags_to_set = []
+                for tag_name in tag_names:
+                    if tag_name in existing_tags:
+                        tags_to_set.append(existing_tags[tag_name])
+                    else:
+                        # Создаём новый тег
+                        new_tag = DishTag.objects.create(coach=coach, name=tag_name)
+                        existing_tags[tag_name] = new_tag
+                        tags_to_set.append(new_tag)
+                        created_tags_count += 1
+
+                if tags_to_set:
+                    dish.tags.set(tags_to_set)
+
+                existing_names.add(dish_name)
+                created_count += 1
+
+            except Exception as e:
+                errors.append({'index': i, 'name': dish_name, 'error': str(e)})
+
+        logger.info(
+            f'Imported {created_count} dishes for coach {coach.id}, '
+            f'skipped {skipped_count}, errors {len(errors)}'
+        )
+
+        return Response({
+            'status': 'success',
+            'created_count': created_count,
+            'skipped_count': skipped_count,
+            'created_tags_count': created_tags_count,
+            'errors': errors,
+        })
+
+
+# ============================================================================
+# AI API ENDPOINTS
+# ============================================================================
+
+class DishAIGenerateRecipeView(APIView):
+    """Генерация рецепта блюда через AI.
+
+    POST /api/meals/ai/generate-recipe/
+    Body: {"name": "Овсяная каша с бананом"}
+    """
+
+    def post(self, request):
+        dish_name = request.data.get('name', '').strip()
+
+        if not dish_name:
+            return Response(
+                {'error': 'Укажите название блюда в поле "name"'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from .ai_services import generate_recipe
+            result = async_to_sync(generate_recipe)(dish_name)
+
+            logger.info(f'Рецепт сгенерирован для: {dish_name}')
+            return Response(result)
+
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except RuntimeError as e:
+            logger.error(f'AI ошибка при генерации рецепта: {e}')
+            return Response(
+                {'error': 'Ошибка при генерации рецепта. Попробуйте позже.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception as e:
+            logger.exception(f'Неожиданная ошибка при генерации рецепта: {e}')
+            return Response(
+                {'error': 'Произошла ошибка. Попробуйте позже.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class DishAICalculateNutritionView(APIView):
+    """Расчёт КБЖУ по списку ингредиентов через AI.
+
+    POST /api/meals/ai/calculate-nutrition/
+    Body: {"ingredients": [{"name": "Овсянка", "weight": 100}, ...]}
+    """
+
+    def post(self, request):
+        ingredients = request.data.get('ingredients', [])
+
+        if not ingredients:
+            return Response(
+                {'error': 'Укажите список ингредиентов в поле "ingredients"'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not isinstance(ingredients, list):
+            return Response(
+                {'error': 'Поле "ingredients" должно быть списком'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from .ai_services import calculate_nutrition_from_ingredients
+            result = async_to_sync(calculate_nutrition_from_ingredients)(ingredients)
+
+            logger.info(f'КБЖУ рассчитано для {len(ingredients)} ингредиентов')
+            return Response(result)
+
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except RuntimeError as e:
+            logger.error(f'AI ошибка при расчёте КБЖУ: {e}')
+            return Response(
+                {'error': 'Ошибка при расчёте КБЖУ. Попробуйте позже.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception as e:
+            logger.exception(f'Неожиданная ошибка при расчёте КБЖУ: {e}')
+            return Response(
+                {'error': 'Произошла ошибка. Попробуйте позже.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class DishAISuggestDescriptionView(APIView):
+    """Генерация описания блюда через AI.
+
+    POST /api/meals/ai/suggest-description/
+    Body: {"name": "Овсяная каша с бананом"}
+    """
+
+    def post(self, request):
+        dish_name = request.data.get('name', '').strip()
+
+        if not dish_name:
+            return Response(
+                {'error': 'Укажите название блюда в поле "name"'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from .ai_services import suggest_dish_description
+            description = async_to_sync(suggest_dish_description)(dish_name)
+
+            logger.info(f'Описание сгенерировано для: {dish_name}')
+            return Response({'description': description})
+
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except RuntimeError as e:
+            logger.error(f'AI ошибка при генерации описания: {e}')
+            return Response(
+                {'error': 'Ошибка при генерации описания. Попробуйте позже.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception as e:
+            logger.exception(f'Неожиданная ошибка при генерации описания: {e}')
+            return Response(
+                {'error': 'Произошла ошибка. Попробуйте позже.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class ProductAISuggestNutritionView(APIView):
+    """Подсказка КБЖУ продукта через AI.
+
+    POST /api/meals/ai/suggest-product-nutrition/
+    Body: {"name": "Куриная грудка"}
+    """
+
+    def post(self, request):
+        product_name = request.data.get('name', '').strip()
+
+        if not product_name:
+            return Response(
+                {'error': 'Укажите название продукта в поле "name"'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from .ai_services import suggest_product_nutrition
+            result = async_to_sync(suggest_product_nutrition)(product_name)
+
+            logger.info(f'КБЖУ продукта подсказано для: {product_name}')
+            return Response(result)
+
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except RuntimeError as e:
+            logger.error(f'AI ошибка при подсказке КБЖУ продукта: {e}')
+            return Response(
+                {'error': 'Ошибка при подсказке КБЖУ. Попробуйте позже.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception as e:
+            logger.exception(f'Неожиданная ошибка при подсказке КБЖУ продукта: {e}')
+            return Response(
+                {'error': 'Произошла ошибка. Попробуйте позже.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

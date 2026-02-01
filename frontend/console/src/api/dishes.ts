@@ -99,6 +99,59 @@ export const dishesApi = {
     )
     return data
   },
+
+  /**
+   * Экспорт блюд в JSON.
+   * Возвращает URL для скачивания файла.
+   */
+  async exportDishes(activeOnly = true): Promise<void> {
+    const response = await api.get(`${BASE_URL}/dishes/export/`, {
+      params: { active_only: activeOnly },
+      responseType: 'blob',
+    })
+
+    // Создаём ссылку для скачивания
+    const blob = new Blob([response.data], { type: 'application/json' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'dishes_export.json'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  },
+
+  /**
+   * Импорт блюд из JSON файла.
+   */
+  async importDishes(
+    file: File,
+    skipDuplicates = true
+  ): Promise<DishImportResult> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const { data } = await api.post<DishImportResult>(
+      `${BASE_URL}/dishes/import/?skip_duplicates=${skipDuplicates}`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }
+    )
+    return data
+  },
+}
+
+/**
+ * Результат импорта блюд.
+ */
+export interface DishImportResult {
+  status: string
+  created_count: number
+  skipped_count: number
+  created_tags_count: number
+  errors: Array<{ index: number; name: string; error: string }>
 }
 
 // ============================================================================

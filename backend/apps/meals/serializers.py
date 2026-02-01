@@ -328,3 +328,98 @@ class DishDetailSerializer(serializers.ModelSerializer):
             instance.tags.set(tags)
 
         return instance
+
+
+# ============================================================================
+# DISH EXPORT/IMPORT SERIALIZERS
+# ============================================================================
+
+class DishExportSerializer(serializers.ModelSerializer):
+    """Сериализатор для экспорта блюд в JSON.
+
+    Экспортирует все данные блюда кроме coach, photo и thumbnail.
+    Теги экспортируются по названию для возможности импорта.
+    """
+
+    tags = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Dish
+        fields = [
+            'name',
+            'description',
+            'recipe',
+            'portion_weight',
+            'calories',
+            'proteins',
+            'fats',
+            'carbohydrates',
+            'cooking_time',
+            'video_url',
+            'ingredients',
+            'shopping_links',
+            'meal_types',
+            'tags',
+            'is_active',
+        ]
+
+    def get_tags(self, obj: Dish) -> list[str]:
+        """Возвращает список названий тегов."""
+        return list(obj.tags.values_list('name', flat=True))
+
+
+class DishImportItemSerializer(serializers.Serializer):
+    """Сериализатор для одного импортируемого блюда."""
+
+    name = serializers.CharField(max_length=255)
+    description = serializers.CharField(required=False, allow_blank=True, default='')
+    recipe = serializers.CharField(required=False, allow_blank=True, default='')
+    portion_weight = serializers.IntegerField(required=False, default=0, min_value=0)
+    calories = serializers.DecimalField(
+        max_digits=7, decimal_places=2, required=False, default=Decimal('0'),
+        min_value=Decimal('0'),
+    )
+    proteins = serializers.DecimalField(
+        max_digits=6, decimal_places=2, required=False, default=Decimal('0'),
+        min_value=Decimal('0'),
+    )
+    fats = serializers.DecimalField(
+        max_digits=6, decimal_places=2, required=False, default=Decimal('0'),
+        min_value=Decimal('0'),
+    )
+    carbohydrates = serializers.DecimalField(
+        max_digits=6, decimal_places=2, required=False, default=Decimal('0'),
+        min_value=Decimal('0'),
+    )
+    cooking_time = serializers.IntegerField(required=False, allow_null=True, default=None)
+    video_url = serializers.URLField(required=False, allow_blank=True, default='')
+    ingredients = serializers.ListField(required=False, default=list)
+    shopping_links = serializers.ListField(required=False, default=list)
+    meal_types = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        default=list,
+    )
+    tags = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        default=list,
+    )
+    is_active = serializers.BooleanField(required=False, default=True)
+
+    def validate_meal_types(self, value: list) -> list:
+        """Валидация типов приёмов пищи."""
+        valid_types = {mt[0] for mt in MEAL_TYPES}
+        return [mt for mt in value if mt in valid_types]
+
+
+class DishImportSerializer(serializers.Serializer):
+    """Сериализатор для импорта блюд из JSON."""
+
+    dishes = DishImportItemSerializer(many=True)
+
+    def validate_dishes(self, value: list) -> list:
+        """Проверка что есть хотя бы одно блюдо."""
+        if not value:
+            raise serializers.ValidationError('Список блюд не может быть пустым.')
+        return value

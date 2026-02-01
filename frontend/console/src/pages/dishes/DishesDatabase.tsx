@@ -2,10 +2,11 @@
  * Страница базы данных блюд коуча.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Filter, X, Loader2 } from 'lucide-react'
+import { Plus, Search, Filter, X, Loader2, Download, Upload } from 'lucide-react'
 import { useDishesStore } from '@/stores/dishes'
+import { dishesApi, type DishImportResult } from '@/api/dishes'
 import { MEAL_TYPE_LABELS, type MealType } from '@/types/dishes'
 import { DishCard } from '@/components/dishes/DishCard'
 import { Button } from '@/components/ui/Button'
@@ -17,10 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useToast } from '@/components/ui/use-toast'
 
 export default function DishesDatabase() {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const [searchInput, setSearchInput] = useState('')
+  const [isExporting, setIsExporting] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const {
     dishes,
@@ -81,6 +87,72 @@ export default function DishesDatabase() {
 
   const hasActiveFilters = filters.search || filters.mealType || filters.tagIds.length > 0
 
+  // Экспорт блюд
+  const handleExport = async () => {
+    setIsExporting(true)
+    try {
+      await dishesApi.exportDishes(!filters.showArchived)
+      toast({ title: 'Блюда успешно экспортированы' })
+    } catch (err) {
+      toast({ title: 'Ошибка экспорта блюд', variant: 'destructive' })
+      console.error('Export error:', err)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // Импорт блюд
+  const handleImportClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Проверяем тип файла
+    if (!file.name.endsWith('.json')) {
+      toast({ title: 'Выберите JSON файл', variant: 'destructive' })
+      return
+    }
+
+    setIsImporting(true)
+    try {
+      const result: DishImportResult = await dishesApi.importDishes(file, true)
+
+      if (result.created_count > 0) {
+        toast({
+          title: 'Импорт завершён',
+          description:
+            `Импортировано ${result.created_count} блюд` +
+            (result.created_tags_count > 0 ? ` и ${result.created_tags_count} тегов` : ''),
+        })
+        // Перезагружаем список
+        fetchDishes()
+        fetchTags()
+      } else if (result.skipped_count > 0) {
+        toast({ title: `Пропущено ${result.skipped_count} дубликатов` })
+      }
+
+      if (result.errors.length > 0) {
+        toast({
+          title: `Ошибки при импорте: ${result.errors.length}`,
+          variant: 'destructive',
+        })
+        console.error('Import errors:', result.errors)
+      }
+    } catch (err) {
+      toast({ title: 'Ошибка импорта блюд', variant: 'destructive' })
+      console.error('Import error:', err)
+    } finally {
+      setIsImporting(false)
+      // Сбрасываем input для повторного выбора того же файла
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -91,10 +163,50 @@ export default function DishesDatabase() {
             {totalCount} {totalCount === 1 ? 'блюдо' : totalCount < 5 ? 'блюда' : 'блюд'}
           </p>
         </div>
-        <Button onClick={() => navigate('/dishes/new')}>
-          <Plus className="w-4 h-4 mr-2" />
-          Добавить блюдо
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Скрытый input для загрузки файла */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+
+          {/* Кнопка импорта */}
+          <Button
+            variant="outline"
+            onClick={handleImportClick}
+            disabled={isImporting}
+          >
+            {isImporting ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Upload className="w-4 h-4 mr-2" />
+            )}
+            Импорт
+          </Button>
+
+          {/* Кнопка экспорта */}
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            disabled={isExporting || totalCount === 0}
+          >
+            {isExporting ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 mr-2" />
+            )}
+            Экспорт
+          </Button>
+
+          {/* Кнопка добавления */}
+          <Button onClick={() => navigate('/dishes/new')}>
+            <Plus className="w-4 h-4 mr-2" />
+            Добавить блюдо
+          </Button>
+        </div>
       </div>
 
       {/* Фильтры */}
