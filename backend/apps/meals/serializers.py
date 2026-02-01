@@ -351,6 +351,20 @@ class DishDetailSerializer(serializers.ModelSerializer):
                 )
         return value
 
+    def validate_tag_ids(self, value) -> list:
+        """Валидация списка ID тегов с парсингом JSON-строки."""
+        # Парсинг JSON-строки (при отправке через FormData)
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                raise serializers.ValidationError('Неверный формат JSON для тегов.')
+
+        if not isinstance(value, list):
+            raise serializers.ValidationError('ID тегов должны быть списком.')
+
+        return value
+
     def create(self, validated_data: dict) -> Dish:
         """Создание блюда с привязкой тегов."""
         tag_ids = validated_data.pop('tag_ids', [])
