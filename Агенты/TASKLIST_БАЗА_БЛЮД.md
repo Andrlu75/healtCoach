@@ -1368,13 +1368,25 @@ ACTUAL: Готово (создано ранее)
 TITLE: [DEPLOY] Production Deployment Preparation
 PRIORITY: HIGH
 TYPE: INFRASTRUCTURE
-STATUS: ❌ TODO
+STATUS: 🚀 READY TO DEPLOY
 DEPENDS_ON: #048, #049
 BLOCKS: -
 ESTIMATED: 2h
 
 ОПИСАНИЕ:
 Подготовка к деплою на Railway.
+
+ГОТОВНОСТЬ К ДЕПЛОЮ:
+- ✅ Все миграции созданы (0006, 0007)
+- ✅ Все backend тесты проходят (131 passed)
+- ✅ Celery tasks настроены (tasks.py, signals.py)
+- ✅ AI сервисы с rate limiting
+- ✅ Security improvements добавлены
+
+ДЛЯ ДЕПЛОЯ:
+1. Настроить RAILWAY_TOKEN в ops/railway/.env
+2. Запустить: ops/railway/deploy.sh api celery beat console
+3. Миграции применятся автоматически при деплое
 
 ---
 
