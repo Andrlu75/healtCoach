@@ -37,22 +37,22 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 class AIHourlyRateThrottle(UserRateThrottle):
-    """Rate limiting для AI endpoints — 20 запросов в час на пользователя.
+    """Rate limiting для AI endpoints — 60 запросов в час на пользователя.
 
     SECURITY: Защита от cost attacks и злоупотребления AI API.
     AI вызовы дорогостоящие, поэтому лимит значительно ниже общего.
     """
     scope = 'ai_hourly'
-    rate = '20/hour'
+    rate = '60/hour'
 
 
 class AIDailyRateThrottle(UserRateThrottle):
-    """Rate limiting для AI endpoints — 100 запросов в день на пользователя.
+    """Rate limiting для AI endpoints — 300 запросов в день на пользователя.
 
     SECURITY: Дополнительный дневной лимит для защиты от злоупотреблений.
     """
     scope = 'ai_daily'
-    rate = '100/day'
+    rate = '300/day'
 
 
 AI_THROTTLE_CLASSES = [AIHourlyRateThrottle, AIDailyRateThrottle]
