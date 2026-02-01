@@ -12,6 +12,9 @@ import Logs from './pages/Logs'
 import NutritionPrograms from './pages/NutritionPrograms'
 import NutritionProgramEdit from './pages/NutritionProgramEdit'
 import NutritionProgramStats from './pages/NutritionProgramStats'
+// База блюд
+import DishesDatabase from './pages/dishes/DishesDatabase'
+import DishForm from './pages/dishes/DishForm'
 import AISettings from './pages/settings/AISettings'
 import TelegramSettings from './pages/settings/TelegramSettings'
 import PersonaSettings from './pages/settings/PersonaSettings'
@@ -56,6 +59,10 @@ function App() {
           <Route path="nutrition-programs/new" element={<NutritionProgramEdit />} />
           <Route path="nutrition-programs/:id" element={<NutritionProgramEdit />} />
           <Route path="nutrition-programs/:id/stats" element={<NutritionProgramStats />} />
+          {/* База блюд */}
+          <Route path="dishes" element={<DishesDatabase />} />
+          <Route path="dishes/new" element={<DishForm />} />
+          <Route path="dishes/:id" element={<DishForm />} />
           {/* Остальное */}
           <Route path="onboarding" element={<OnboardingEditor />} />
           <Route path="logs" element={<Logs />} />
