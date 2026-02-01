@@ -15,7 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Card, CardContent } from '@/components/ui/card'
 
 interface Workout {
   id: string
@@ -229,8 +228,8 @@ export default function WorkoutScheduler() {
           setClient({ id: String(clientData.id), name: clientData.name })
         }
 
-        // Load workouts
-        const workoutsData = await workoutsApi.list({ ordering: 'name' })
+        // Load workout templates only
+        const workoutsData = await workoutsApi.list({ ordering: 'name', is_template: true })
         setWorkouts(
           (workoutsData || []).map((w: any) => ({
             id: String(w.id),
@@ -570,7 +569,7 @@ export default function WorkoutScheduler() {
                 <div className="bg-card border border-border rounded-lg p-4">
                   <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                     <Dumbbell size={16} className="text-primary" />
-                    Тренировки ({workouts.length})
+                    Шаблоны тренировок ({workouts.length})
                   </h2>
 
                   <div className="space-y-2 max-h-[calc(100vh-220px)] overflow-y-auto">
@@ -607,296 +606,317 @@ export default function WorkoutScheduler() {
 
       {/* Диалог редактирования назначенной тренировки */}
       <Dialog open={!!editingAssignment} onOpenChange={(open) => !open && setEditingAssignment(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Dumbbell className="w-5 h-5 text-primary" />
-              {editingAssignment?.workoutName}
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/30">
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Dumbbell className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <span className="block">{editingAssignment?.workoutName}</span>
+                <span className="text-sm font-normal text-muted-foreground">
+                  {editingExercises.length} упражнений
+                </span>
+              </div>
             </DialogTitle>
           </DialogHeader>
 
           {editingLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-10 h-10 text-primary animate-spin" />
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto space-y-3 py-4">
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
               {editingExercises.map((ex, index) => {
                 const timeBasedCategories = ['cardio', 'warmup', 'cooldown', 'flexibility']
                 const isTimeBased = timeBasedCategories.includes(ex.exercise.category || '')
                 const isCardio = ex.exercise.category === 'cardio'
 
                 return (
-                  <Card key={ex.id} className="border-border/50">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex flex-col gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => moveExercise(index, 'up')}
-                              disabled={index === 0}
-                            >
-                              <ChevronLeft className="w-4 h-4 rotate-90" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => moveExercise(index, 'down')}
-                              disabled={index === editingExercises.length - 1}
-                            >
-                              <ChevronRight className="w-4 h-4 rotate-90" />
-                            </Button>
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground">{ex.exercise.name}</p>
-                            <p className="text-sm text-muted-foreground">{ex.exercise.muscleGroup}</p>
-                          </div>
+                  <div
+                    key={ex.id}
+                    className="bg-card border border-border rounded-2xl p-5 hover:border-primary/30 transition-colors"
+                  >
+                    {/* Заголовок упражнения */}
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-4">
+                        <div className="flex flex-col gap-1">
+                          <button
+                            onClick={() => moveExercise(index, 'up')}
+                            disabled={index === 0}
+                            className="w-8 h-8 rounded-lg bg-muted hover:bg-muted/80 disabled:opacity-30 flex items-center justify-center transition-colors"
+                          >
+                            <ChevronLeft className="w-4 h-4 rotate-90" />
+                          </button>
+                          <button
+                            onClick={() => moveExercise(index, 'down')}
+                            disabled={index === editingExercises.length - 1}
+                            className="w-8 h-8 rounded-lg bg-muted hover:bg-muted/80 disabled:opacity-30 flex items-center justify-center transition-colors"
+                          >
+                            <ChevronRight className="w-4 h-4 rotate-90" />
+                          </button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => removeExercise(ex.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-xl">
+                          {isTimeBased ? '🏃' : '💪'}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg text-foreground">{ex.exercise.name}</h3>
+                          <p className="text-sm text-muted-foreground">{ex.exercise.muscleGroup}</p>
+                        </div>
                       </div>
+                      <button
+                        onClick={() => removeExercise(ex.id)}
+                        className="w-10 h-10 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive flex items-center justify-center transition-colors"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
 
-                      {isTimeBased ? (
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <label className="text-xs text-muted-foreground">Время (мин)</label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateExercise(ex.id, {
-                                  durationSeconds: Math.max(60, (ex.durationSeconds || 0) - 60)
-                                })}
-                              >
-                                <Minus className="w-3 h-3" />
-                              </Button>
-                              <span className="w-8 text-center font-medium">
+                    {/* Параметры упражнения */}
+                    {isTimeBased ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {/* Время */}
+                        <div className="bg-muted/50 rounded-xl p-4">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                            Время
+                          </label>
+                          <div className="flex items-center justify-between mt-2">
+                            <button
+                              onClick={() => updateExercise(ex.id, {
+                                durationSeconds: Math.max(60, (ex.durationSeconds || 0) - 60)
+                              })}
+                              className="w-12 h-12 rounded-xl bg-background border border-border hover:border-primary/50 hover:bg-primary/5 flex items-center justify-center transition-all active:scale-95"
+                            >
+                              <Minus className="w-5 h-5" />
+                            </button>
+                            <div className="text-center">
+                              <span className="text-2xl font-bold text-foreground">
                                 {Math.round((ex.durationSeconds || 0) / 60)}
                               </span>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateExercise(ex.id, {
-                                  durationSeconds: (ex.durationSeconds || 0) + 60
-                                })}
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
+                              <span className="text-sm text-muted-foreground ml-1">мин</span>
                             </div>
+                            <button
+                              onClick={() => updateExercise(ex.id, {
+                                durationSeconds: (ex.durationSeconds || 0) + 60
+                              })}
+                              className="w-12 h-12 rounded-xl bg-background border border-border hover:border-primary/50 hover:bg-primary/5 flex items-center justify-center transition-all active:scale-95"
+                            >
+                              <Plus className="w-5 h-5" />
+                            </button>
                           </div>
-                          {isCardio && (
-                            <div>
-                              <label className="text-xs text-muted-foreground">Дистанция (км)</label>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => updateExercise(ex.id, {
-                                    distanceMeters: Math.max(0, (ex.distanceMeters || 0) - 500)
-                                  })}
-                                >
-                                  <Minus className="w-3 h-3" />
-                                </Button>
-                                <span className="w-10 text-center font-medium">
+                        </div>
+
+                        {/* Дистанция (только для кардио) */}
+                        {isCardio && (
+                          <div className="bg-muted/50 rounded-xl p-4">
+                            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                              Дистанция
+                            </label>
+                            <div className="flex items-center justify-between mt-2">
+                              <button
+                                onClick={() => updateExercise(ex.id, {
+                                  distanceMeters: Math.max(0, (ex.distanceMeters || 0) - 500)
+                                })}
+                                className="w-12 h-12 rounded-xl bg-background border border-border hover:border-primary/50 hover:bg-primary/5 flex items-center justify-center transition-all active:scale-95"
+                              >
+                                <Minus className="w-5 h-5" />
+                              </button>
+                              <div className="text-center">
+                                <span className="text-2xl font-bold text-foreground">
                                   {((ex.distanceMeters || 0) / 1000).toFixed(1)}
                                 </span>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => updateExercise(ex.id, {
-                                    distanceMeters: (ex.distanceMeters || 0) + 500
-                                  })}
-                                >
-                                  <Plus className="w-3 h-3" />
-                                </Button>
+                                <span className="text-sm text-muted-foreground ml-1">км</span>
                               </div>
-                            </div>
-                          )}
-                          <div>
-                            <label className="text-xs text-muted-foreground">Отдых (сек)</label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
+                              <button
                                 onClick={() => updateExercise(ex.id, {
-                                  restSeconds: Math.max(0, ex.restSeconds - 15)
+                                  distanceMeters: (ex.distanceMeters || 0) + 500
                                 })}
+                                className="w-12 h-12 rounded-xl bg-background border border-border hover:border-primary/50 hover:bg-primary/5 flex items-center justify-center transition-all active:scale-95"
                               >
-                                <Minus className="w-3 h-3" />
-                              </Button>
-                              <span className="w-8 text-center font-medium">{ex.restSeconds}</span>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateExercise(ex.id, {
-                                  restSeconds: ex.restSeconds + 15
-                                })}
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
+                                <Plus className="w-5 h-5" />
+                              </button>
                             </div>
+                          </div>
+                        )}
+
+                        {/* Отдых */}
+                        <div className="bg-muted/50 rounded-xl p-4">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                            Отдых
+                          </label>
+                          <div className="flex items-center justify-between mt-2">
+                            <button
+                              onClick={() => updateExercise(ex.id, {
+                                restSeconds: Math.max(0, ex.restSeconds - 15)
+                              })}
+                              className="w-12 h-12 rounded-xl bg-background border border-border hover:border-primary/50 hover:bg-primary/5 flex items-center justify-center transition-all active:scale-95"
+                            >
+                              <Minus className="w-5 h-5" />
+                            </button>
+                            <div className="text-center">
+                              <span className="text-2xl font-bold text-foreground">{ex.restSeconds}</span>
+                              <span className="text-sm text-muted-foreground ml-1">сек</span>
+                            </div>
+                            <button
+                              onClick={() => updateExercise(ex.id, {
+                                restSeconds: ex.restSeconds + 15
+                              })}
+                              className="w-12 h-12 rounded-xl bg-background border border-border hover:border-primary/50 hover:bg-primary/5 flex items-center justify-center transition-all active:scale-95"
+                            >
+                              <Plus className="w-5 h-5" />
+                            </button>
                           </div>
                         </div>
-                      ) : (
-                        <div className="grid grid-cols-4 gap-3">
-                          <div>
-                            <label className="text-xs text-muted-foreground">Подходы</label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateExercise(ex.id, {
-                                  sets: Math.max(1, ex.sets - 1)
-                                })}
-                              >
-                                <Minus className="w-3 h-3" />
-                              </Button>
-                              <span className="w-6 text-center font-medium">{ex.sets}</span>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateExercise(ex.id, { sets: ex.sets + 1 })}
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-xs text-muted-foreground">Повторы</label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateExercise(ex.id, {
-                                  reps: Math.max(1, ex.reps - 1)
-                                })}
-                              >
-                                <Minus className="w-3 h-3" />
-                              </Button>
-                              <span className="w-6 text-center font-medium">{ex.reps}</span>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateExercise(ex.id, { reps: ex.reps + 1 })}
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-xs text-muted-foreground">Вес (кг)</label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateExercise(ex.id, {
-                                  weightKg: Math.max(0, (ex.weightKg || 0) - 2.5)
-                                })}
-                              >
-                                <Minus className="w-3 h-3" />
-                              </Button>
-                              <span className="w-8 text-center font-medium">{ex.weightKg || '—'}</span>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateExercise(ex.id, {
-                                  weightKg: (ex.weightKg || 0) + 2.5
-                                })}
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-xs text-muted-foreground">Отдых</label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateExercise(ex.id, {
-                                  restSeconds: Math.max(0, ex.restSeconds - 15)
-                                })}
-                              >
-                                <Minus className="w-3 h-3" />
-                              </Button>
-                              <span className="w-8 text-center font-medium">{ex.restSeconds}</span>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateExercise(ex.id, {
-                                  restSeconds: ex.restSeconds + 15
-                                })}
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
-                            </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {/* Подходы */}
+                        <div className="bg-blue-500/10 rounded-xl p-4">
+                          <label className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+                            Подходы
+                          </label>
+                          <div className="flex items-center justify-between mt-2">
+                            <button
+                              onClick={() => updateExercise(ex.id, {
+                                sets: Math.max(1, ex.sets - 1)
+                              })}
+                              className="w-12 h-12 rounded-xl bg-background border border-border hover:border-blue-500/50 hover:bg-blue-500/5 flex items-center justify-center transition-all active:scale-95"
+                            >
+                              <Minus className="w-5 h-5" />
+                            </button>
+                            <span className="text-3xl font-bold text-foreground">{ex.sets}</span>
+                            <button
+                              onClick={() => updateExercise(ex.id, { sets: ex.sets + 1 })}
+                              className="w-12 h-12 rounded-xl bg-background border border-border hover:border-blue-500/50 hover:bg-blue-500/5 flex items-center justify-center transition-all active:scale-95"
+                            >
+                              <Plus className="w-5 h-5" />
+                            </button>
                           </div>
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
+
+                        {/* Повторы */}
+                        <div className="bg-green-500/10 rounded-xl p-4">
+                          <label className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">
+                            Повторы
+                          </label>
+                          <div className="flex items-center justify-between mt-2">
+                            <button
+                              onClick={() => updateExercise(ex.id, {
+                                reps: Math.max(1, ex.reps - 1)
+                              })}
+                              className="w-12 h-12 rounded-xl bg-background border border-border hover:border-green-500/50 hover:bg-green-500/5 flex items-center justify-center transition-all active:scale-95"
+                            >
+                              <Minus className="w-5 h-5" />
+                            </button>
+                            <span className="text-3xl font-bold text-foreground">{ex.reps}</span>
+                            <button
+                              onClick={() => updateExercise(ex.id, { reps: ex.reps + 1 })}
+                              className="w-12 h-12 rounded-xl bg-background border border-border hover:border-green-500/50 hover:bg-green-500/5 flex items-center justify-center transition-all active:scale-95"
+                            >
+                              <Plus className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Вес */}
+                        <div className="bg-orange-500/10 rounded-xl p-4">
+                          <label className="text-xs font-medium text-orange-600 dark:text-orange-400 uppercase tracking-wide">
+                            Вес
+                          </label>
+                          <div className="flex items-center justify-between mt-2">
+                            <button
+                              onClick={() => updateExercise(ex.id, {
+                                weightKg: Math.max(0, (ex.weightKg || 0) - 2.5)
+                              })}
+                              className="w-12 h-12 rounded-xl bg-background border border-border hover:border-orange-500/50 hover:bg-orange-500/5 flex items-center justify-center transition-all active:scale-95"
+                            >
+                              <Minus className="w-5 h-5" />
+                            </button>
+                            <div className="text-center">
+                              <span className="text-2xl font-bold text-foreground">
+                                {ex.weightKg || 0}
+                              </span>
+                              <span className="text-sm text-muted-foreground ml-1">кг</span>
+                            </div>
+                            <button
+                              onClick={() => updateExercise(ex.id, {
+                                weightKg: (ex.weightKg || 0) + 2.5
+                              })}
+                              className="w-12 h-12 rounded-xl bg-background border border-border hover:border-orange-500/50 hover:bg-orange-500/5 flex items-center justify-center transition-all active:scale-95"
+                            >
+                              <Plus className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Отдых */}
+                        <div className="bg-purple-500/10 rounded-xl p-4">
+                          <label className="text-xs font-medium text-purple-600 dark:text-purple-400 uppercase tracking-wide">
+                            Отдых
+                          </label>
+                          <div className="flex items-center justify-between mt-2">
+                            <button
+                              onClick={() => updateExercise(ex.id, {
+                                restSeconds: Math.max(0, ex.restSeconds - 15)
+                              })}
+                              className="w-12 h-12 rounded-xl bg-background border border-border hover:border-purple-500/50 hover:bg-purple-500/5 flex items-center justify-center transition-all active:scale-95"
+                            >
+                              <Minus className="w-5 h-5" />
+                            </button>
+                            <div className="text-center">
+                              <span className="text-2xl font-bold text-foreground">{ex.restSeconds}</span>
+                              <span className="text-sm text-muted-foreground ml-1">сек</span>
+                            </div>
+                            <button
+                              onClick={() => updateExercise(ex.id, {
+                                restSeconds: ex.restSeconds + 15
+                              })}
+                              className="w-12 h-12 rounded-xl bg-background border border-border hover:border-purple-500/50 hover:bg-purple-500/5 flex items-center justify-center transition-all active:scale-95"
+                            >
+                              <Plus className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )
               })}
 
               {/* Кнопка добавления упражнения */}
-              <Button
-                variant="outline"
-                className="w-full border-dashed"
+              <button
                 onClick={() => {
                   setExerciseSelectorOpen(true)
                   searchExercises('')
                 }}
+                className="w-full py-5 border-2 border-dashed border-border hover:border-primary/50 rounded-2xl flex items-center justify-center gap-3 text-muted-foreground hover:text-primary transition-colors"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Добавить упражнение
-              </Button>
+                <Plus className="w-6 h-6" />
+                <span className="font-medium">Добавить упражнение</span>
+              </button>
             </div>
           )}
 
           {/* Кнопки действий */}
-          <div className="flex gap-3 pt-4 border-t">
+          <div className="flex gap-4 px-6 py-5 border-t bg-muted/30">
             <Button
               variant="outline"
-              className="flex-1"
+              className="flex-1 h-12 text-base"
               onClick={() => setEditingAssignment(null)}
             >
               Отмена
             </Button>
             <Button
-              className="flex-1"
+              className="flex-1 h-12 text-base"
               onClick={handleSaveEditedWorkout}
               disabled={saving || editingExercises.length === 0}
             >
               {saving ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
               ) : (
-                <Save className="w-4 h-4 mr-2" />
+                <Save className="w-5 h-5 mr-2" />
               )}
-              Сохранить
+              Сохранить для клиента
             </Button>
           </div>
         </DialogContent>
@@ -904,28 +924,30 @@ export default function WorkoutScheduler() {
 
       {/* Диалог выбора упражнения */}
       <Dialog open={exerciseSelectorOpen} onOpenChange={setExerciseSelectorOpen}>
-        <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Добавить упражнение</DialogTitle>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+            <DialogTitle className="text-xl">Добавить упражнение</DialogTitle>
           </DialogHeader>
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Поиск упражнений..."
-              value={exerciseSearchQuery}
-              onChange={(e) => {
-                setExerciseSearchQuery(e.target.value)
-                searchExercises(e.target.value)
-              }}
-              className="pl-9"
-            />
+          <div className="px-6 pt-4">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                placeholder="Поиск упражнений..."
+                value={exerciseSearchQuery}
+                onChange={(e) => {
+                  setExerciseSearchQuery(e.target.value)
+                  searchExercises(e.target.value)
+                }}
+                className="pl-12 h-12 text-base rounded-xl"
+              />
+            </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-2 py-4">
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
             {exerciseSearchLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
               </div>
             ) : availableExercises.length > 0 ? (
               availableExercises
@@ -934,20 +956,27 @@ export default function WorkoutScheduler() {
                   <button
                     key={exercise.id}
                     onClick={() => addExerciseToWorkout(exercise)}
-                    className="w-full p-3 rounded-lg bg-muted/50 hover:bg-muted border border-border/50 hover:border-primary/30 transition-all text-left flex items-center gap-3"
+                    className="w-full p-4 rounded-xl bg-muted/50 hover:bg-primary/5 border border-border hover:border-primary/50 transition-all text-left flex items-center gap-4 group"
                   >
-                    <Dumbbell className="w-5 h-5 text-primary" />
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center text-xl transition-colors">
+                      💪
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">{exercise.name}</p>
+                      <p className="font-semibold text-foreground truncate">{exercise.name}</p>
                       <p className="text-sm text-muted-foreground">{exercise.muscleGroup}</p>
                     </div>
-                    <Plus className="w-5 h-5 text-primary" />
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 group-hover:bg-primary text-primary group-hover:text-white flex items-center justify-center transition-colors">
+                      <Plus className="w-5 h-5" />
+                    </div>
                   </button>
                 ))
             ) : (
-              <p className="text-center text-muted-foreground py-8">
-                {exerciseSearchQuery ? 'Упражнения не найдены' : 'Введите запрос для поиска'}
-              </p>
+              <div className="text-center py-12">
+                <Dumbbell className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">
+                  {exerciseSearchQuery ? 'Упражнения не найдены' : 'Введите название для поиска'}
+                </p>
+              </div>
             )}
           </div>
         </DialogContent>

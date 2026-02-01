@@ -109,7 +109,7 @@ export const exercisesApi = {
 
 // Workouts API
 export const workoutsApi = {
-  async list(params?: { ordering?: string; search?: string; is_favorite?: boolean }) {
+  async list(params?: { ordering?: string; search?: string; is_favorite?: boolean; is_template?: boolean }) {
     const { data } = await api.get('/workouts/fitdb/workouts/', { params });
     return data.results || data;
   },
