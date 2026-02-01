@@ -27,6 +27,7 @@ from .serializers import (
     ProductSerializer,
 )
 from apps.accounts.models import Client
+from apps.persona.models import AIProviderConfig
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,33 @@ class AIDailyRateThrottle(UserRateThrottle):
 
 
 AI_THROTTLE_CLASSES = [AIHourlyRateThrottle, AIDailyRateThrottle]
+
+
+def get_coach_ai_config(coach, provider_name: str = 'openai') -> tuple[str, str]:
+    """Получить API ключ и имя провайдера из настроек коуча.
+
+    Args:
+        coach: Объект коуча.
+        provider_name: Имя провайдера (по умолчанию openai).
+
+    Returns:
+        Кортеж (api_key, provider_name).
+
+    Raises:
+        ValueError: Если ключ не настроен.
+    """
+    config = AIProviderConfig.objects.filter(
+        coach=coach, provider=provider_name, is_active=True
+    ).first()
+
+    if not config:
+        # Попробуем найти любой активный провайдер
+        config = AIProviderConfig.objects.filter(coach=coach, is_active=True).first()
+
+    if not config:
+        raise ValueError(f'API ключ не настроен. Добавьте ключ в разделе "AI настройки".')
+
+    return config.api_key, config.provider
 
 
 def get_client_timezone(client):
@@ -791,8 +819,12 @@ class DishAIGenerateRecipeView(APIView):
             )
 
         try:
+            # Получаем API ключ из настроек коуча
+            coach = request.user.coach_profile
+            api_key, provider_name = get_coach_ai_config(coach)
+
             from .ai_services import generate_recipe
-            result = async_to_sync(generate_recipe)(dish_name)
+            result = async_to_sync(generate_recipe)(dish_name, provider_name, api_key)
 
             # SECURITY: Не логируем название блюда
             logger.info(f'AI generate_recipe: user={request.user.id}, success=true')
@@ -840,8 +872,12 @@ class DishAICalculateNutritionView(APIView):
             )
 
         try:
+            # Получаем API ключ из настроек коуча
+            coach = request.user.coach_profile
+            api_key, provider_name = get_coach_ai_config(coach)
+
             from .ai_services import calculate_nutrition_from_ingredients
-            result = async_to_sync(calculate_nutrition_from_ingredients)(ingredients)
+            result = async_to_sync(calculate_nutrition_from_ingredients)(ingredients, provider_name, api_key)
 
             # SECURITY: Не логируем содержимое ингредиентов
             logger.info(f'AI calculate_nutrition: user={request.user.id}, ingredients_count={len(ingredients)}')
@@ -883,8 +919,12 @@ class DishAISuggestDescriptionView(APIView):
             )
 
         try:
+            # Получаем API ключ из настроек коуча
+            coach = request.user.coach_profile
+            api_key, provider_name = get_coach_ai_config(coach)
+
             from .ai_services import suggest_dish_description
-            description = async_to_sync(suggest_dish_description)(dish_name)
+            description = async_to_sync(suggest_dish_description)(dish_name, provider_name, api_key)
 
             # SECURITY: Не логируем название блюда
             logger.info(f'AI suggest_description: user={request.user.id}, success=true')
@@ -926,8 +966,12 @@ class ProductAISuggestNutritionView(APIView):
             )
 
         try:
+            # Получаем API ключ из настроек коуча
+            coach = request.user.coach_profile
+            api_key, provider_name = get_coach_ai_config(coach)
+
             from .ai_services import suggest_product_nutrition
-            result = async_to_sync(suggest_product_nutrition)(product_name)
+            result = async_to_sync(suggest_product_nutrition)(product_name, provider_name, api_key)
 
             # SECURITY: Не логируем название продукта
             logger.info(f'AI suggest_product_nutrition: user={request.user.id}, success=true')
