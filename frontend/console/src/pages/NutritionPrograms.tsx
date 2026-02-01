@@ -1,13 +1,31 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Plus, Copy, X } from 'lucide-react'
+import { Search, Plus, Copy, X, Trash2, FileText, CheckCircle, XCircle, ImageOff } from 'lucide-react'
 import { nutritionProgramsApi } from '../api/nutritionPrograms'
 import { clientsApi } from '../api/clients'
-import type { NutritionProgramListItem, Client } from '../types'
+import type { NutritionProgramListItem, Client, DetailedReport } from '../types'
 
 interface CopyModalState {
   isOpen: boolean
   program: NutritionProgramListItem | null
+}
+
+interface DeleteModalState {
+  isOpen: boolean
+  program: NutritionProgramListItem | null
+}
+
+interface ReportModalState {
+  isOpen: boolean
+  programId: number | null
+}
+
+const MEAL_TYPE_LABELS: Record<string, string> = {
+  breakfast: 'Завтрак',
+  snack1: 'Перекус 1',
+  lunch: 'Обед',
+  snack2: 'Перекус 2',
+  dinner: 'Ужин',
 }
 
 const statusLabels: Record<string, { label: string; class: string }> = {
@@ -28,6 +46,11 @@ export default function NutritionPrograms() {
   const [copyModal, setCopyModal] = useState<CopyModalState>({ isOpen: false, program: null })
   const [copyData, setCopyData] = useState({ client: '', start_date: '', name: '' })
   const [copying, setCopying] = useState(false)
+  const [deleteModal, setDeleteModal] = useState<DeleteModalState>({ isOpen: false, program: null })
+  const [deleting, setDeleting] = useState(false)
+  const [reportModal, setReportModal] = useState<ReportModalState>({ isOpen: false, programId: null })
+  const [reportData, setReportData] = useState<DetailedReport | null>(null)
+  const [reportLoading, setReportLoading] = useState(false)
 
   useEffect(() => {
     clientsApi.list({ status: 'active' }).then(({ data }) => {
@@ -92,6 +115,44 @@ export default function NutritionPrograms() {
     } finally {
       setCopying(false)
     }
+  }
+
+  const openDeleteModal = (e: React.MouseEvent, program: NutritionProgramListItem) => {
+    e.stopPropagation()
+    setDeleteModal({ isOpen: true, program })
+  }
+
+  const handleDelete = async () => {
+    if (!deleteModal.program) return
+    setDeleting(true)
+    try {
+      await nutritionProgramsApi.delete(deleteModal.program.id)
+      setDeleteModal({ isOpen: false, program: null })
+      loadPrograms()
+    } catch (err) {
+      console.error('Failed to delete program:', err)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const openReportModal = async (e: React.MouseEvent, programId: number) => {
+    e.stopPropagation()
+    setReportModal({ isOpen: true, programId })
+    setReportLoading(true)
+    try {
+      const { data } = await nutritionProgramsApi.getDetailedReport(programId)
+      setReportData(data)
+    } catch (err) {
+      console.error('Failed to load report:', err)
+    } finally {
+      setReportLoading(false)
+    }
+  }
+
+  const closeReportModal = () => {
+    setReportModal({ isOpen: false, programId: null })
+    setReportData(null)
   }
 
   const formatDate = (dateStr: string) => {
@@ -321,6 +382,13 @@ export default function NutritionPrograms() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button
+                          onClick={(e) => openReportModal(e, program.id)}
+                          className="text-xs px-2 py-1 bg-blue-500/20 rounded text-blue-400 hover:bg-blue-500/30 flex items-center gap-1"
+                          title="Подробный отчёт"
+                        >
+                          <FileText size={12} />
+                        </button>
+                        <button
                           onClick={(e) => openCopyModal(e, program)}
                           className="text-xs px-2 py-1 bg-secondary rounded text-secondary-foreground hover:bg-secondary/80 flex items-center gap-1"
                           title="Копировать программу"
@@ -351,6 +419,13 @@ export default function NutritionPrograms() {
                             </button>
                           </>
                         )}
+                        <button
+                          onClick={(e) => openDeleteModal(e, program)}
+                          className="text-xs px-2 py-1 bg-red-500/20 rounded text-red-400 hover:bg-red-500/30"
+                          title="Удалить программу"
+                        >
+                          <Trash2 size={12} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -429,6 +504,234 @@ export default function NutritionPrograms() {
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
                 {copying ? 'Копирование...' : 'Копировать'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Modal */}
+      {deleteModal.isOpen && deleteModal.program && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-xl border border-border p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Удалить программу</h2>
+              <button
+                onClick={() => setDeleteModal({ isOpen: false, program: null })}
+                className="p-1 text-muted-foreground hover:text-foreground"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-2">
+              Вы уверены, что хотите удалить программу?
+            </p>
+            <p className="text-sm text-foreground font-medium mb-4">
+              {deleteModal.program.name}
+            </p>
+            <p className="text-sm text-red-400 mb-4">
+              Это действие нельзя отменить. Все данные программы будут удалены.
+            </p>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setDeleteModal({ isOpen: false, program: null })}
+                className="flex-1 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-muted"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? 'Удаление...' : 'Удалить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detailed Report Modal */}
+      {reportModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-xl border border-border w-full max-w-4xl max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-border shrink-0">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Подробный отчёт
+                </h2>
+                {reportData && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {reportData.program_name} • {reportData.client_name}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={closeReportModal}
+                className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {reportLoading ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  Загрузка отчёта...
+                </div>
+              ) : reportData ? (
+                <div className="space-y-6">
+                  {reportData.days.map((day) => (
+                    <div key={day.day_number} className="border border-border rounded-xl overflow-hidden">
+                      {/* Day header */}
+                      <div className="bg-muted px-4 py-3">
+                        <h3 className="font-semibold text-foreground">
+                          День {day.day_number}
+                          {day.date && (
+                            <span className="text-muted-foreground font-normal ml-2">
+                              {new Date(day.date).toLocaleDateString('ru-RU', {
+                                day: 'numeric',
+                                month: 'long',
+                              })}
+                            </span>
+                          )}
+                        </h3>
+                      </div>
+
+                      {/* Meals table */}
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-border bg-muted/50">
+                              <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground w-24">
+                                Приём
+                              </th>
+                              <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">
+                                План
+                              </th>
+                              <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">
+                                Факт
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {day.meals.map((meal, mealIdx) => (
+                              <tr
+                                key={`${day.day_number}-${meal.type}-${mealIdx}`}
+                                className="border-b border-border/50 last:border-0"
+                              >
+                                <td className="px-4 py-3 align-top">
+                                  <div className="text-sm font-medium text-foreground">
+                                    {MEAL_TYPE_LABELS[meal.type] || meal.type}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {meal.time}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 align-top">
+                                  <div className="text-sm text-foreground font-medium">
+                                    {meal.name}
+                                  </div>
+                                  {meal.description && (
+                                    <div className="text-sm text-muted-foreground mt-1">
+                                      {meal.description}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 align-top">
+                                  {meal.has_meal ? (
+                                    <div className="space-y-2">
+                                      {meal.actual_meals.map((actualMeal, mealItemIdx) => (
+                                        <div
+                                          key={actualMeal.id || mealItemIdx}
+                                          className="flex items-start gap-3"
+                                        >
+                                          {/* Photo thumbnail */}
+                                          {actualMeal.photo_url ? (
+                                            <img
+                                              src={actualMeal.photo_url}
+                                              alt="Фото"
+                                              className="w-16 h-16 object-cover rounded-lg shrink-0"
+                                            />
+                                          ) : (
+                                            <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center shrink-0">
+                                              <ImageOff size={20} className="text-muted-foreground" />
+                                            </div>
+                                          )}
+                                          <div className="flex-1 min-w-0">
+                                            {/* Dish name and compliance */}
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <span className="text-sm font-medium text-foreground">
+                                                {actualMeal.dish_name}
+                                              </span>
+                                              {actualMeal.program_check_status && (
+                                                actualMeal.is_compliant ? (
+                                                  <CheckCircle size={14} className="text-green-400" />
+                                                ) : (
+                                                  <XCircle size={14} className="text-red-400" />
+                                                )
+                                              )}
+                                            </div>
+                                            {/* KBJU */}
+                                            {actualMeal.calories && (
+                                              <div className="text-xs text-muted-foreground">
+                                                {Math.round(actualMeal.calories)} ккал
+                                                {actualMeal.proteins && ` • Б: ${Math.round(actualMeal.proteins)}`}
+                                                {actualMeal.fats && ` Ж: ${Math.round(actualMeal.fats)}`}
+                                                {actualMeal.carbohydrates && ` У: ${Math.round(actualMeal.carbohydrates)}`}
+                                              </div>
+                                            )}
+                                            {/* Ingredients */}
+                                            {actualMeal.ingredients && actualMeal.ingredients.length > 0 && (
+                                              <div className="text-xs text-muted-foreground mt-1">
+                                                {actualMeal.ingredients
+                                                  .slice(0, 5)
+                                                  .map((ing) => (typeof ing === 'string' ? ing : ing.name))
+                                                  .join(', ')}
+                                                {actualMeal.ingredients.length > 5 && '...'}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <ImageOff size={16} />
+                                      <span>Не отправлено</span>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
+
+                  {reportData.days.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground">
+                      Нет данных по дням программы
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  Не удалось загрузить отчёт
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-border p-4 shrink-0">
+              <button
+                onClick={closeReportModal}
+                className="w-full px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80"
+              >
+                Закрыть
               </button>
             </div>
           </div>

@@ -227,14 +227,15 @@ class ClientMealAnalyzeView(APIView):
 
         image_data = image.read()
         caption = request.data.get('caption', '')
+        program_meal_type = request.data.get('program_meal_type', '')
 
         logger.info(
-            '[MEAL ANALYZE] Image: %s, %d bytes, caption="%s"',
-            image.name, len(image_data), caption[:50] if caption else ''
+            '[MEAL ANALYZE] Image: %s, %d bytes, caption="%s", program_meal_type=%s',
+            image.name, len(image_data), caption[:50] if caption else '', program_meal_type
         )
 
         try:
-            result = async_to_sync(analyze_food_for_client)(client, image_data, caption)
+            result = async_to_sync(analyze_food_for_client)(client, image_data, caption, program_meal_type)
             logger.info(
                 '[MEAL ANALYZE] Success: client=%s dish="%s"',
                 client.pk, result.get('dish_name', 'unknown')
@@ -427,7 +428,9 @@ class ClientMealDraftConfirmView(APIView):
         if not client:
             return Response(status=status.HTTP_403_FORBIDDEN)
 
-        logger.info('[DRAFT CONFIRM VIEW] Starting: draft_id=%s client=%s', draft_id, client.pk)
+        # Получаем тип приёма пищи из запроса (выбор пользователя)
+        program_meal_type = request.data.get('program_meal_type', '')
+        logger.info('[DRAFT CONFIRM VIEW] Starting: draft_id=%s client=%s program_meal_type=%s', draft_id, client.pk, program_meal_type)
 
         try:
             draft = MealDraft.objects.get(pk=draft_id, client=client, status='pending')
@@ -446,7 +449,7 @@ class ClientMealDraftConfirmView(APIView):
         ai_response = ''
         try:
             from apps.meals.services import generate_meal_comment
-            ai_response = async_to_sync(generate_meal_comment)(client, meal)
+            ai_response = async_to_sync(generate_meal_comment)(client, meal, program_meal_type)
             logger.info('[DRAFT CONFIRM VIEW] AI comment generated: %d chars', len(ai_response))
         except Exception as comment_err:
             logger.warning('[DRAFT CONFIRM VIEW] Failed to generate AI comment: %s', comment_err)
@@ -457,9 +460,10 @@ class ClientMealDraftConfirmView(APIView):
         except Exception as notify_err:
             logger.warning('[DRAFT CONFIRM VIEW] Failed to notify coach: %s', notify_err)
 
-        # Add compliance feedback to response
+        # Compliance feedback теперь полностью генерируется контроллером в generate_meal_comment
+        # Просто проверяем статус для передачи в response (для UI)
         compliance_feedback = None
-        meal.refresh_from_db()  # Get updated program_check_status
+        meal.refresh_from_db()
         if meal.program_check_status:
             if meal.program_check_status == 'violation':
                 from apps.nutrition_programs.models import MealComplianceCheck
@@ -470,20 +474,12 @@ class ClientMealDraftConfirmView(APIView):
                         'found_forbidden': compliance_check.found_forbidden,
                         'ai_comment': compliance_check.ai_comment,
                     }
-                    if ai_response:
-                        ai_response += f'\n\n⚠️ {compliance_check.ai_comment}'
-                    else:
-                        ai_response = f'⚠️ {compliance_check.ai_comment}'
             elif meal.program_check_status == 'compliant':
                 compliance_feedback = {
                     'is_compliant': True,
                     'found_forbidden': [],
-                    'ai_comment': 'Отлично! Вы соблюдаете программу питания.',
+                    'ai_comment': '',
                 }
-                if ai_response:
-                    ai_response += '\n\n✅ Отлично! Вы соблюдаете программу питания.'
-                else:
-                    ai_response = '✅ Отлично! Вы соблюдаете программу питания.'
 
         return Response({
             'status': 'confirmed',

@@ -18,6 +18,8 @@ TELEGRAM_API = 'https://api.telegram.org'
 @shared_task(name='reports.generate_daily_reports', bind=True, max_retries=2)
 def generate_daily_reports(self):
     """Generate daily reports for all active clients (yesterday's data)."""
+    from django.db import IntegrityError
+
     yesterday = date.today() - timedelta(days=1)
     clients = Client.objects.filter(status='active').select_related('coach')
 
@@ -33,6 +35,9 @@ def generate_daily_reports(self):
             report = generate_report(client, 'daily', yesterday)
             send_report.delay(report.pk)
             count += 1
+        except IntegrityError:
+            # Report already created by another worker (race condition)
+            logger.info('Report already exists for client %s (race condition)', client.pk)
         except Exception as e:
             logger.exception('Failed to generate daily report for client %s: %s', client.pk, e)
 
@@ -42,6 +47,8 @@ def generate_daily_reports(self):
 @shared_task(name='reports.generate_weekly_reports', bind=True, max_retries=2)
 def generate_weekly_reports(self):
     """Generate weekly reports for all active clients (last week)."""
+    from django.db import IntegrityError
+
     last_monday = date.today() - timedelta(days=7)
     clients = Client.objects.filter(status='active').select_related('coach')
 
@@ -56,6 +63,9 @@ def generate_weekly_reports(self):
             report = generate_report(client, 'weekly', last_monday)
             send_report.delay(report.pk)
             count += 1
+        except IntegrityError:
+            # Report already created by another worker (race condition)
+            logger.info('Weekly report already exists for client %s (race condition)', client.pk)
         except Exception as e:
             logger.exception('Failed to generate weekly report for client %s: %s', client.pk, e)
 

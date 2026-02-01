@@ -2,8 +2,23 @@ from django.db import models
 
 
 class BotPersona(models.Model):
+    ROLE_CHOICES = [
+        ('main', 'Основная'),
+        ('controller', 'Контролёр'),
+    ]
+
     coach = models.ForeignKey('accounts.Coach', on_delete=models.CASCADE, related_name='bot_personas')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='main')
     is_default = models.BooleanField(default=False)
+    # Связь основной персоны с контролёром
+    controller = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='used_by_personas',
+        limit_choices_to={'role': 'controller'},
+    )
     name = models.CharField(max_length=100, default='\u0424\u0451\u0434\u043e\u0440')
     age = models.IntegerField(null=True, blank=True)
     city = models.CharField(max_length=100, blank=True)
@@ -12,20 +27,15 @@ class BotPersona(models.Model):
     food_response_prompt = models.TextField(blank=True)
     nutrition_program_prompt = models.TextField(
         blank=True,
-        default='''Ты — диетолог-консультант. Анализируй приёмы пищи клиента с учётом его программы питания.
-
-Сегодня клиенту:
-- МОЖНО: {allowed_ingredients}
-- НЕЛЬЗЯ: {forbidden_ingredients}
-
-Правила ответа:
-1. Если есть нарушения — вежливо укажи какие продукты не рекомендованы и почему
-2. Предложи альтернативы из разрешённых продуктов
-3. Если всё соответствует — кратко похвали за соблюдение программы
-4. Будь дружелюбным и поддерживающим
-5. Отвечай кратко, 1-3 предложения''',
+        default='',
         verbose_name='Промпт для программы питания',
-        help_text='Промпт для генерации комментариев по программе питания. Плейсхолдеры: {allowed_ingredients}, {forbidden_ingredients}',
+        help_text='Промпт для контролёра программы питания. Переменные: {program_info}, {program_history}, {planned_meal}, {actual_meal}, {next_meal}',
+    )
+    shopping_list_prompt = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Промпт для списка покупок',
+        help_text='Промпт для генерации списка покупок. Переменные: {meals_description}',
     )
     greeting_message = models.TextField(blank=True)
 

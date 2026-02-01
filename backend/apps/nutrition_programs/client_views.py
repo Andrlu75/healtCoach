@@ -225,6 +225,78 @@ class NutritionProgramSummaryView(APIView):
         })
 
 
+class ShoppingListView(APIView):
+    """GET /api/miniapp/nutrition-program/shopping-list/ — список продуктов для покупки (из базы)."""
+
+    def get(self, request):
+        from datetime import timedelta
+
+        client = get_client_from_token(request)
+        if not client:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        # Количество дней вперёд (по умолчанию 3)
+        try:
+            days_ahead = min(max(1, int(request.query_params.get('days', 3))), 14)
+        except (ValueError, TypeError):
+            days_ahead = 3
+
+        today = get_client_today(client)
+        program = get_active_program_for_client(client, today)
+
+        if not program:
+            return Response({'has_program': False, 'categories': [], 'items_count': 0})
+
+        # Получаем дни программы на указанный период
+        end_date = today + timedelta(days=days_ahead - 1)
+        program_days = NutritionProgramDay.objects.filter(
+            program=program,
+            date__gte=today,
+            date__lte=end_date,
+        ).order_by('date')
+
+        # Собираем продукты из shopping_list каждого дня
+        # Группируем по категориям
+        category_map = {
+            'vegetables': {'name': 'Овощи и фрукты', 'emoji': '🥬', 'items': set()},
+            'meat': {'name': 'Мясо и рыба', 'emoji': '🥩', 'items': set()},
+            'dairy': {'name': 'Молочные продукты', 'emoji': '🥛', 'items': set()},
+            'grains': {'name': 'Крупы и гарниры', 'emoji': '🌾', 'items': set()},
+            'other': {'name': 'Прочее', 'emoji': '🛒', 'items': set()},
+        }
+
+        for day in program_days:
+            for item in day.shopping_list:
+                if isinstance(item, dict) and item.get('name'):
+                    cat = item.get('category', 'other')
+                    if cat not in category_map:
+                        cat = 'other'
+                    category_map[cat]['items'].add(item['name'])
+
+        # Формируем список категорий (только непустые)
+        categories = []
+        for cat_key in ['vegetables', 'meat', 'dairy', 'grains', 'other']:
+            cat_data = category_map[cat_key]
+            if cat_data['items']:
+                categories.append({
+                    'name': cat_data['name'],
+                    'emoji': cat_data['emoji'],
+                    'items': sorted(list(cat_data['items'])),
+                })
+
+        total_items = sum(len(cat['items']) for cat in categories)
+
+        return Response({
+            'has_program': True,
+            'program_name': program.name,
+            'days_count': days_ahead,
+            'start_date': str(today),
+            'end_date': str(end_date),
+            'categories': categories,
+            'items_count': total_items,
+        })
+
+
 class MealReportCreateView(APIView):
     """POST /api/miniapp/nutrition-program/meal-report/ — загрузка фото-отчёта."""
 

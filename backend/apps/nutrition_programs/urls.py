@@ -25,4 +25,14 @@ urlpatterns = [
         NutritionProgramDayViewSet.as_view({'post': 'copy'}),
         name='program-days-copy',
     ),
+    path(
+        'programs/<int:program_pk>/days/<int:pk>/generate-shopping-list/',
+        NutritionProgramDayViewSet.as_view({'post': 'generate_shopping_list'}),
+        name='program-days-generate-shopping-list',
+    ),
+    path(
+        'programs/<int:program_pk>/days/<int:pk>/analyze-products/',
+        NutritionProgramDayViewSet.as_view({'post': 'analyze_products'}),
+        name='program-days-analyze-products',
+    ),
 ]

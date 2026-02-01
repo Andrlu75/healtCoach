@@ -156,6 +156,12 @@ class NutritionProgramDay(models.Model):
         verbose_name='Запрещённые ингредиенты',
         help_text='Список запрещённых ингредиентов [{"name": "сахар"}, ...]',
     )
+    shopping_list = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Список покупок',
+        help_text='Список продуктов для покупки [{"name": "Молоко", "category": "dairy"}, ...]',
+    )
     notes = models.TextField(blank=True, verbose_name='Заметки коуча')
 
     class Meta:

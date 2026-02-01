@@ -3,19 +3,38 @@ from .models import BotPersona, AIProviderConfig, AIModelConfig, AIUsageLog, Tel
 
 
 class BotPersonaSerializer(serializers.ModelSerializer):
+    controller_name = serializers.SerializerMethodField()
+    controller = serializers.PrimaryKeyRelatedField(
+        queryset=BotPersona.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    # Разрешаем пустые строки для текстовых полей (особенно для контролёров)
+    system_prompt = serializers.CharField(required=False, allow_blank=True)
+    food_response_prompt = serializers.CharField(required=False, allow_blank=True)
+    nutrition_program_prompt = serializers.CharField(required=False, allow_blank=True)
+    shopping_list_prompt = serializers.CharField(required=False, allow_blank=True)
+    greeting_message = serializers.CharField(required=False, allow_blank=True)
+    style_description = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = BotPersona
         fields = [
-            'id', 'name', 'age', 'city', 'is_default',
+            'id', 'name', 'age', 'city', 'is_default', 'role', 'controller', 'controller_name',
             'style_description', 'system_prompt', 'food_response_prompt',
-            'nutrition_program_prompt', 'greeting_message',
+            'nutrition_program_prompt', 'shopping_list_prompt', 'greeting_message',
             'text_provider', 'text_model',
             'vision_provider', 'vision_model',
             'voice_provider', 'voice_model',
             'temperature', 'max_tokens',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'controller_name']
+
+    def get_controller_name(self, obj):
+        if obj.controller:
+            return obj.controller.name
+        return None
 
 
 class AIProviderConfigSerializer(serializers.ModelSerializer):

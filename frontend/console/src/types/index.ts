@@ -54,12 +54,16 @@ export interface BotPersona {
   id: number
   name: string
   is_default: boolean
+  role: 'main' | 'controller'
+  controller: number | null
+  controller_name: string | null
   age: number | null
   city: string
   style_description: string
   system_prompt: string
   food_response_prompt: string
   nutrition_program_prompt: string
+  shopping_list_prompt: string
   greeting_message: string
   text_provider: string
   text_model: string

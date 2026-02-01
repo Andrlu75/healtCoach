@@ -14,6 +14,11 @@ export interface ProgramMeal {
   description: string
 }
 
+export interface ShoppingListItem {
+  name: string
+  category: 'vegetables' | 'meat' | 'dairy' | 'grains' | 'other'
+}
+
 export interface NutritionProgramDay {
   id: number
   day_number: number
@@ -22,6 +27,7 @@ export interface NutritionProgramDay {
   activity: string
   allowed_ingredients: Ingredient[]
   forbidden_ingredients: Ingredient[]
+  shopping_list: ShoppingListItem[]
   notes: string
 }
 
@@ -101,6 +107,7 @@ export interface NutritionProgramDayPayload {
   activity?: string
   allowed_ingredients: Ingredient[]
   forbidden_ingredients: Ingredient[]
+  shopping_list?: ShoppingListItem[]
   notes?: string
 }
 
@@ -110,4 +117,46 @@ export interface NutritionProgramUpdatePayload {
   general_notes?: string
   status?: NutritionProgramStatus
   days?: NutritionProgramDayPayload[]
+}
+
+// Detailed Report Types
+export interface ActualMealItem {
+  id: number
+  dish_name: string
+  photo_url: string
+  ingredients: Array<{ name: string } | string>
+  calories: number | null
+  proteins: number | null
+  fats: number | null
+  carbohydrates: number | null
+  is_compliant: boolean
+  program_check_status: string | null
+  created_at: string
+}
+
+export interface DetailedMeal {
+  type: string
+  time: string
+  name: string
+  description: string
+  actual_meals: ActualMealItem[]
+  has_meal: boolean
+}
+
+export interface DetailedDay {
+  day_number: number
+  date: string | null
+  meals: DetailedMeal[]
+  notes: string
+}
+
+export interface DetailedReport {
+  program_id: number
+  program_name: string
+  client_name: string
+  start_date: string
+  end_date: string
+  duration_days: number
+  status: NutritionProgramStatus
+  days: DetailedDay[]
 }

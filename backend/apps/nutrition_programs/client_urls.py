@@ -8,6 +8,7 @@ from .client_views import (
     NutritionProgramSummaryView,
     NutritionProgramTodayView,
     NutritionProgramViolationsView,
+    ShoppingListView,
 )
 
 urlpatterns = [
@@ -18,4 +19,5 @@ urlpatterns = [
     path('meal-report/', MealReportCreateView.as_view(), name='meal_report_create'),
     path('meal-report/<int:report_id>/photo/', MealReportPhotoView.as_view(), name='meal_report_photo'),
     path('meal-reports/', MealReportsListView.as_view(), name='meal_reports_list'),
+    path('shopping-list/', ShoppingListView.as_view(), name='shopping_list'),
 ]

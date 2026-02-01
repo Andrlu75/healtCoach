@@ -10,39 +10,42 @@ from django.utils import timezone
 from apps.accounts.models import Client
 from apps.bot.services import _build_client_context
 from apps.nutrition_programs.services import process_meal_compliance
-from apps.persona.models import AIProviderConfig, AIUsageLog, BotPersona, TelegramBot
+from apps.persona.models import AIProviderConfig, BotPersona, TelegramBot
 from core.ai.factory import get_ai_provider
+from core.ai.model_fetcher import log_ai_usage
+from core.ai.utils import strip_markdown_codeblock
 
 from .models import Meal
+from .schemas import parse_food_analysis, parse_smart_food_analysis
 
 logger = logging.getLogger(__name__)
 
 MEAL_CORRECTION_WINDOW_MINUTES = 5
 
 # Промпт по умолчанию для контролёра программы питания
-DEFAULT_NUTRITION_PROGRAM_CONTROLLER_PROMPT = """Ты — контролёр программы питания. Твоя задача — сравнить то, что съел клиент, с его планом питания, учитывая весь контекст программы.
+DEFAULT_NUTRITION_PROGRAM_CONTROLLER_PROMPT = """Ты — дружелюбный диетолог-консультант с чувством юмора.
 
-ПРОГРАММА ПИТАНИЯ:
+КОНТЕКСТ:
 {program_info}
-
-ИСТОРИЯ ВЫПОЛНЕНИЯ ПРОГРАММЫ:
 {program_history}
 
-СЕГОДНЯШНИЙ ДЕНЬ:
-- Запланировано: {planned_meal}
-- Запрещённые продукты: {forbidden_ingredients}
-- Рекомендуемые продукты: {allowed_ingredients}
+ТЕКУЩИЙ ПРИЁМ ПИЩИ:
+📋 По плану: {planned_meal}
+📸 По факту: {actual_meal}
 
-ФАКТ — ЧТО СЪЕЛ КЛИЕНТ:
-{actual_meal}
+СЛЕДУЮЩИЙ ПРИЁМ ПИЩИ ПО ПРОГРАММЕ:
+{next_meal}
 
-Дай краткую оценку (2-4 предложения):
-1. Насколько блюдо соответствует плану
-2. Как этот приём пищи вписывается в общий прогресс по программе
-3. Если есть отклонения — дай конкретный совет
-4. Если клиент хорошо справляется — похвали и мотивируй
+ИНСТРУКЦИЯ:
+1. Начни с краткого контекста дня и ободряющей фразы (можно с юмором)
+2. Сравни ПЛАН и ФАКТ для этого приёма пищи:
+   - Совпадает → похвали
+   - Есть отклонения → мягко отметь это. ВАЖНО: не говори что альтернатива тоже хороша или ничего страшного. План составлен не просто так, и важно его придерживаться. Поддержи клиента, но дай понять что следование плану — приоритет.
+3. Напомни что по программе на следующий приём пищи
+4. Заверши мотивирующей фразой о важности программы
 
-Будь дружелюбным, конкретным и учитывай прогресс клиента."""
+СТИЛЬ: Дружелюбный, поддерживающий, с уместным юмором. Без нравоучений, но чёткий акцент на плане.
+ОБЪЁМ: 3-5 предложений. НЕ пиши про калории и КБЖУ."""
 
 CLASSIFY_CORRECTION_PROMPT = """Пользователь ранее отправил фото еды, которое было распознано как: "{dish_name}" ({calories} ккал, Б:{proteins} Ж:{fats} У:{carbs}).
 
@@ -327,6 +330,76 @@ async def _get_program_history(program, current_day_number: int) -> str:
         return f'День {current_day_number} из {program.duration_days}.'
 
 
+def _get_current_meal_type_by_time(all_meals: list, current_time_str: str) -> tuple[dict | None, int]:
+    """Определяет текущий приём пищи по времени из программы.
+
+    Args:
+        all_meals: Отсортированный список приёмов пищи из программы
+        current_time_str: Текущее время в формате "HH:MM"
+
+    Returns:
+        Кортеж (текущий приём пищи, его индекс) или (None, -1)
+    """
+    if not all_meals:
+        return None, -1
+
+    # Парсим текущее время
+    try:
+        current_hour, current_min = map(int, current_time_str.split(':'))
+        current_minutes = current_hour * 60 + current_min
+    except (ValueError, AttributeError):
+        return None, -1
+
+    # Создаём список приёмов с временем в минутах
+    meals_with_time = []
+    for i, meal in enumerate(all_meals):
+        meal_time = meal.get('time', '')
+        if meal_time:
+            try:
+                h, m = map(int, meal_time.split(':'))
+                meals_with_time.append((i, meal, h * 60 + m))
+            except (ValueError, AttributeError):
+                # Если время не указано, используем типичное время по типу
+                default_times = {
+                    'breakfast': 8 * 60,
+                    'snack1': 11 * 60,
+                    'lunch': 13 * 60,
+                    'snack2': 16 * 60,
+                    'dinner': 19 * 60,
+                }
+                default_time = default_times.get(meal.get('type', ''), 12 * 60)
+                meals_with_time.append((i, meal, default_time))
+        else:
+            # Время не указано — используем типичное
+            default_times = {
+                'breakfast': 8 * 60,
+                'snack1': 11 * 60,
+                'lunch': 13 * 60,
+                'snack2': 16 * 60,
+                'dinner': 19 * 60,
+            }
+            default_time = default_times.get(meal.get('type', ''), 12 * 60)
+            meals_with_time.append((i, meal, default_time))
+
+    if not meals_with_time:
+        return None, -1
+
+    # Находим текущий приём пищи — последний, время которого уже наступило
+    current_meal = None
+    current_idx = -1
+
+    for i, meal, meal_minutes in meals_with_time:
+        if current_minutes >= meal_minutes:
+            current_meal = meal
+            current_idx = i
+
+    # Если время раньше первого приёма, возвращаем первый
+    if current_meal is None and meals_with_time:
+        current_idx, current_meal, _ = meals_with_time[0]
+
+    return current_meal, current_idx
+
+
 async def get_program_controller_feedback(
     client: Client,
     meal_data: dict,
@@ -337,7 +410,7 @@ async def get_program_controller_feedback(
     Args:
         client: Клиент
         meal_data: Данные о блюде (dish_name, ingredients, calories и т.д.)
-        program_meal_type: Тип приёма пищи из программы (breakfast, lunch, etc.)
+        program_meal_type: Тип приёма пищи (breakfast, lunch, dinner, snack1, snack2) — выбирает пользователь
 
     Returns:
         Текст рекомендации от контролёра или None если нет активной программы
@@ -348,8 +421,6 @@ async def get_program_controller_feedback(
         get_client_today,
         get_program_day,
     )
-    from core.ai.model_fetcher import get_cached_pricing
-    from decimal import Decimal
 
     logger.info('[PROGRAM_CONTROLLER] Starting for client=%s meal_type=%s', client.pk, program_meal_type)
 
@@ -372,46 +443,151 @@ async def get_program_controller_feedback(
 
         # Получаем запланированное блюдо
         planned_meal_info = 'Не указано'
+        next_meal_info = 'Не указано'
+
+        # Маппинг русских названий в английские (dish_type может прийти на русском)
+        ru_to_en_meal_type = {
+            'завтрак': 'breakfast',
+            'обед': 'lunch',
+            'перекус': 'snack',
+            'ужин': 'dinner',
+        }
+
+        # Маппинг типов в русские названия
+        meal_type_to_ru = {
+            'breakfast': 'Завтрак',
+            'snack1': 'Перекус',
+            'lunch': 'Обед',
+            'snack2': 'Перекус',
+            'snack': 'Перекус',
+            'dinner': 'Ужин',
+        }
+
+        # Получаем отсортированный список приёмов пищи из программы
+        all_meals = program_day.get_meals_list()
+        logger.info('[PROGRAM_CONTROLLER] Program day has %d meals: %s', len(all_meals), [m.get('type') for m in all_meals])
+
         if program_meal_type:
-            planned_meal = program_day.get_meal_by_type(program_meal_type)
+            # Нормализуем тип приёма пищи в английский
+            program_meal_type_normalized = ru_to_en_meal_type.get(program_meal_type.lower(), program_meal_type)
+            logger.info('[PROGRAM_CONTROLLER] meal_type raw=%s normalized=%s', program_meal_type, program_meal_type_normalized)
+
+            # Название текущего приёма пищи на русском
+            current_meal_type_ru = meal_type_to_ru.get(program_meal_type_normalized, program_meal_type)
+
+            # Ищем запланированный приём пищи — сначала точное совпадение, потом по базовому типу
+            planned_meal = program_day.get_meal_by_type(program_meal_type_normalized)
+            # Если не найден и тип "snack" — пробуем snack1 или snack2
+            if not planned_meal and program_meal_type_normalized == 'snack':
+                planned_meal = program_day.get_meal_by_type('snack1') or program_day.get_meal_by_type('snack2')
+
             if planned_meal:
                 planned_name = planned_meal.get('name', '')
                 planned_desc = planned_meal.get('description', '')
                 planned_time = planned_meal.get('time', '')
-                planned_meal_info = f'{planned_name}'
+                planned_meal_info = f'{current_meal_type_ru}: {planned_name}'
                 if planned_desc:
-                    planned_meal_info += f': {planned_desc}'
+                    planned_meal_info += f'\nОписание: {planned_desc}'
                 if planned_time:
-                    planned_meal_info += f' ({planned_time})'
+                    planned_meal_info += f'\nВремя: {planned_time}'
+
+                # Добавляем разрешённые/запрещённые ингредиенты дня для контекста
+                allowed = program_day.allowed_ingredients_list[:10]
+                forbidden = program_day.forbidden_ingredients_list[:10]
+                if allowed:
+                    planned_meal_info += f'\nРазрешённые продукты: {", ".join(allowed)}'
+                if forbidden:
+                    planned_meal_info += f'\nЗапрещённые продукты: {", ".join(forbidden)}'
+            else:
+                planned_meal_info = f'{current_meal_type_ru}: не указано в программе'
+
+            # Определяем следующий приём пищи из списка приёмов в программе
+            # Находим индекс текущего приёма и берём следующий
+            current_idx = -1
+            for i, meal in enumerate(all_meals):
+                meal_type = meal.get('type', '')
+                # Проверяем совпадение с текущим типом (учитывая что snack может быть snack1/snack2)
+                if meal_type == program_meal_type_normalized:
+                    current_idx = i
+                    break
+                if program_meal_type_normalized == 'snack' and meal_type in ('snack1', 'snack2'):
+                    current_idx = i
+                    break
+                # Также проверяем если lunch совпадает с обедом (обед на русском нормализуется в lunch)
+                if program_meal_type_normalized == 'lunch' and meal_type == 'lunch':
+                    current_idx = i
+                    break
+
+            logger.info('[PROGRAM_CONTROLLER] current_idx=%d for type=%s', current_idx, program_meal_type_normalized)
+
+            if current_idx >= 0 and current_idx + 1 < len(all_meals):
+                # Есть следующий приём пищи сегодня
+                next_meal = all_meals[current_idx + 1]
+                next_meal_type = next_meal.get('type', '')
+                next_name = next_meal.get('name', '')
+                next_desc = next_meal.get('description', '')
+                next_time = next_meal.get('time', '')
+
+                meal_type_ru = meal_type_to_ru.get(next_meal_type, next_meal_type)
+                next_meal_info = f'{meal_type_ru}: {next_name}'
+                if next_desc:
+                    next_meal_info += f' — {next_desc}'
+                if next_time:
+                    next_meal_info += f' ({next_time})'
+
+                logger.info('[PROGRAM_CONTROLLER] next_meal found: %s', next_meal_info)
+            elif current_idx >= 0:
+                # Это был последний приём сегодня
+                next_meal_info = 'Это последний приём пищи на сегодня. Завтра — новый день программы!'
+                logger.info('[PROGRAM_CONTROLLER] No more meals today')
+            else:
+                # Не нашли текущий приём — показываем первый доступный из программы
+                if all_meals:
+                    first_meal = all_meals[0]
+                    first_type_ru = meal_type_to_ru.get(first_meal.get('type', ''), '')
+                    first_name = first_meal.get('name', '')
+                    next_meal_info = f'По программе: {first_type_ru} — {first_name}'
+                    logger.info('[PROGRAM_CONTROLLER] Could not find current meal, showing first: %s', next_meal_info)
+                else:
+                    next_meal_info = 'В программе не указаны приёмы пищи на сегодня'
+                    logger.info('[PROGRAM_CONTROLLER] No meals in program')
 
         # Формируем информацию о программе
-        program_info = f'Программа: {program.name}\nДень: {program_day.day_number} из {program.duration_days}'
-        if program.general_notes:
-            program_info += f'\nОписание: {program.general_notes[:200]}'
-        if program_day.notes:
-            program_info += f'\nЗаметки на день: {program_day.notes}'
+        program_info = f'🗓 Программа: {program.name} (день {program_day.day_number} из {program.duration_days})'
 
-        # Списки продуктов
-        allowed = program_day.allowed_ingredients_list[:15]
-        forbidden = program_day.forbidden_ingredients_list[:15]
-
-        allowed_str = ', '.join(allowed) if allowed else 'не указано'
-        forbidden_str = ', '.join(forbidden) if forbidden else 'не указано'
-
-        # Информация о съеденном
+        # Информация о съеденном — полный контекст для сравнения
         dish_name = meal_data.get('dish_name', 'Неизвестное блюдо')
+        # Используем program_meal_type (выбор пользователя), а не dish_type от AI
+        # program_meal_type_normalized определяется выше только если program_meal_type задан
+        if program_meal_type:
+            actual_meal_type = program_meal_type_normalized
+        else:
+            actual_meal_type = meal_data.get('dish_type', '')
+        calories = meal_data.get('calories', 0)
+        proteins = meal_data.get('proteins', 0)
+        fats = meal_data.get('fats', 0)
+        carbs = meal_data.get('carbohydrates', 0)
         ingredients = meal_data.get('ingredients', [])
+
+        # Форматируем тип приёма пищи — из выбора пользователя, не от AI
+        dish_type_ru = meal_type_to_ru.get(actual_meal_type, actual_meal_type).lower()
+
+        # Собираем описание блюда
+        actual_parts = [f'Блюдо: {dish_name}']
+        if dish_type_ru:
+            actual_parts.append(f'Тип: {dish_type_ru}')
+        if calories:
+            actual_parts.append(f'КБЖУ: {calories} ккал, Б:{proteins}г Ж:{fats}г У:{carbs}г')
+
         if isinstance(ingredients, list) and ingredients:
             if isinstance(ingredients[0], dict):
                 ingredients_str = ', '.join(i.get('name', '') for i in ingredients if i.get('name'))
             else:
                 ingredients_str = ', '.join(str(i) for i in ingredients)
-        else:
-            ingredients_str = 'не определены'
+            if ingredients_str:
+                actual_parts.append(f'Ингредиенты: {ingredients_str}')
 
-        actual_meal = f'{dish_name}\nИнгредиенты: {ingredients_str}'
-        if meal_data.get('calories'):
-            actual_meal += f'\nКБЖУ: {meal_data.get("calories", 0)} ккал, Б:{meal_data.get("proteins", 0)} Ж:{meal_data.get("fats", 0)} У:{meal_data.get("carbohydrates", 0)}'
+        actual_meal = '\n'.join(actual_parts)
 
         # Получаем провайдер и персону
         bot = await sync_to_async(
@@ -424,15 +600,44 @@ async def get_program_controller_feedback(
         persona = await sync_to_async(lambda: client.persona)()
         if not persona:
             persona = await sync_to_async(
-                lambda: BotPersona.objects.filter(coach=bot.coach).first()
+                lambda: BotPersona.objects.filter(coach=bot.coach, role='main').first()
             )()
 
         if not persona:
             logger.warning('[PROGRAM_CONTROLLER] No persona for coach=%s', client.coach_id)
             return None
 
-        # Используем промпт из персоны или дефолтный
-        prompt_template = persona.nutrition_program_prompt or DEFAULT_NUTRITION_PROGRAM_CONTROLLER_PROMPT
+        # Определяем источник промпта контролёра
+        prompt_template = None
+        controller_persona = None
+
+        # Вариант 1: Персона клиента сама является контролёром
+        if persona.role == 'controller':
+            controller_persona = persona
+            prompt_template = persona.nutrition_program_prompt
+            logger.info('[PROGRAM_CONTROLLER] Client persona IS controller=%s (%s)', persona.pk, persona.name)
+
+        # Вариант 2: У основной персоны есть связанный контролёр
+        elif persona.controller_id:
+            controller = await sync_to_async(lambda: persona.controller)()
+            if controller:
+                controller_persona = controller
+                prompt_template = controller.nutrition_program_prompt
+                logger.info('[PROGRAM_CONTROLLER] Using linked controller=%s (%s)', controller.pk, controller.name)
+
+        # Вариант 3: У персоны заполнен nutrition_program_prompt
+        elif persona.nutrition_program_prompt:
+            prompt_template = persona.nutrition_program_prompt
+            logger.info('[PROGRAM_CONTROLLER] Using persona nutrition_program_prompt')
+
+        # Fallback на дефолтный промпт
+        if not prompt_template:
+            prompt_template = DEFAULT_NUTRITION_PROGRAM_CONTROLLER_PROMPT
+            logger.info('[PROGRAM_CONTROLLER] Using default prompt')
+
+        # Добавляем стиль контролёра в промпт
+        if controller_persona and controller_persona.style_description and '{program_info}' in prompt_template:
+            prompt_template = f'Твой характер: {controller_persona.style_description}\n\n' + prompt_template
 
         # Подставляем переменные (с безопасным fallback для отсутствующих плейсхолдеров)
         try:
@@ -441,8 +646,7 @@ async def get_program_controller_feedback(
                 program_history=program_history,
                 planned_meal=planned_meal_info,
                 actual_meal=actual_meal,
-                forbidden_ingredients=forbidden_str,
-                allowed_ingredients=allowed_str,
+                next_meal=next_meal_info,
             )
         except KeyError:
             # Если в кастомном промпте нет всех плейсхолдеров - используем дефолтный
@@ -451,8 +655,7 @@ async def get_program_controller_feedback(
                 program_history=program_history,
                 planned_meal=planned_meal_info,
                 actual_meal=actual_meal,
-                forbidden_ingredients=forbidden_str,
-                allowed_ingredients=allowed_str,
+                next_meal=next_meal_info,
             )
 
         # Получаем text provider
@@ -481,26 +684,8 @@ async def get_program_controller_feedback(
             model=model,
         )
 
-        # Логируем использование
-        model_used = response.model or model or ''
-        input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
-        output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
-
-        cost_usd = Decimal('0')
-        pricing = get_cached_pricing(provider_name, model_used)
-        if pricing and (input_tokens or output_tokens):
-            price_in, price_out = pricing
-            cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
-
-        await sync_to_async(AIUsageLog.objects.create)(
-            coach=client.coach,
-            provider=provider_name,
-            model=model_used,
-            task_type='text',
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            cost_usd=cost_usd,
-        )
+        # Log usage
+        await log_ai_usage(client.coach, provider_name, model, response, task_type='text', client=client)
 
         logger.info(
             '[PROGRAM_CONTROLLER] Generated feedback for client=%s: %d chars',
@@ -523,31 +708,12 @@ async def classify_image(bot: TelegramBot, image_data: bytes) -> str:
         prompt=CLASSIFY_PROMPT,
         max_tokens=10,
         model=model,
+        temperature=0.0,  # Детерминированный результат для классификации
     )
 
     # Log usage
-    from core.ai.model_fetcher import get_cached_pricing
-    from decimal import Decimal
-
-    model_used = response.model or model or ''
-    input_tokens = response.usage.get('input_tokens') or response.usage.get('prompt_tokens') or 0
-    output_tokens = response.usage.get('output_tokens') or response.usage.get('completion_tokens') or 0
-
-    cost_usd = Decimal('0')
-    pricing = get_cached_pricing(provider_name, model_used)
-    if pricing and (input_tokens or output_tokens):
-        price_in, price_out = pricing
-        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
-
-    await sync_to_async(AIUsageLog.objects.create)(
-        coach=bot.coach,
-        provider=provider_name,
-        model=model_used,
-        task_type='vision',
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cost_usd=cost_usd,
-    )
+    from core.ai.model_fetcher import log_ai_usage
+    await log_ai_usage(bot.coach, provider_name, model, response, task_type='vision')
 
     result = response.content.strip().lower()
 
@@ -575,39 +741,15 @@ async def classify_and_analyze(bot: TelegramBot, image_data: bytes, caption: str
         prompt=prompt,
         max_tokens=500,
         model=model,
+        temperature=0.2,  # Низкая температура для стабильного JSON
+        json_mode=True,
     )
 
-    # Log usage with cost calculation
-    from core.ai.model_fetcher import get_cached_pricing
-    from decimal import Decimal
-
-    model_used = response.model or model or ''
-    input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
-    output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
-
-    cost_usd = Decimal('0')
-    pricing = get_cached_pricing(provider_name, model_used)
-    if pricing and (input_tokens or output_tokens):
-        price_in, price_out = pricing
-        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
-
-    await sync_to_async(AIUsageLog.objects.create)(
-        coach=bot.coach,
-        provider=provider_name,
-        model=model_used,
-        task_type='vision',
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cost_usd=cost_usd,
-    )
+    # Log usage
+    await log_ai_usage(bot.coach, provider_name, model, response, task_type='vision')
 
     # Parse JSON from response
     content = response.content.strip()
-    if content.startswith('```'):
-        content = content.split('\n', 1)[1] if '\n' in content else content[3:]
-        if content.endswith('```'):
-            content = content[:-3]
-        content = content.strip()
 
     try:
         data = json.loads(content)
@@ -644,51 +786,30 @@ async def analyze_food(bot: TelegramBot, image_data: bytes, caption: str = '') -
         prompt=prompt,
         max_tokens=500,
         model=model,
+        temperature=0.2,  # Низкая температура для стабильного JSON
+        json_mode=True,
     )
 
-    # Log usage with cost calculation
-    from core.ai.model_fetcher import get_cached_pricing
-    from decimal import Decimal
-
-    model_used = response.model or model or ''
-    input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
-    output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
-
-    cost_usd = Decimal('0')
-    pricing = get_cached_pricing(provider_name, model_used)
-    if pricing and (input_tokens or output_tokens):
-        price_in, price_out = pricing
-        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
-
-    await sync_to_async(AIUsageLog.objects.create)(
-        coach=bot.coach,
-        provider=provider_name,
-        model=model_used,
-        task_type='vision',
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cost_usd=cost_usd,
-    )
+    # Log usage
+    await log_ai_usage(bot.coach, provider_name, model, response, task_type='vision')
 
     # Parse JSON from response
     content = response.content.strip()
-    # Strip markdown code block if present
-    if content.startswith('```'):
-        content = content.split('\n', 1)[1] if '\n' in content else content[3:]
-        if content.endswith('```'):
-            content = content[:-3]
-        content = content.strip()
 
     try:
-        data = json.loads(content)
+        raw_data = json.loads(content)
+        # Валидация и нормализация данных
+        validated = parse_food_analysis(raw_data)
+        data = validated.model_dump()
     except json.JSONDecodeError:
         logger.error('Failed to parse food analysis JSON: %s', content)
         data = {
             'dish_name': 'Неизвестное блюдо',
-            'calories': 0,
-            'proteins': 0,
-            'fats': 0,
-            'carbohydrates': 0,
+            'calories': None,
+            'proteins': None,
+            'fats': None,
+            'carbohydrates': None,
+            'parse_error': True,
         }
 
     data['_meta'] = {
@@ -784,8 +905,6 @@ async def _generate_ai_compliance_feedback(
     """
     from apps.nutrition_programs.models import MealComplianceCheck
     from core.ai.factory import get_ai_provider
-    from core.ai.model_fetcher import get_cached_pricing
-    from decimal import Decimal
 
     try:
         # Получаем клиента
@@ -854,25 +973,7 @@ async def _generate_ai_compliance_feedback(
         )
 
         # Log usage
-        model_used = response.model or model or ''
-        input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
-        output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
-
-        cost_usd = Decimal('0')
-        pricing = get_cached_pricing(provider_name, model_used)
-        if pricing and (input_tokens or output_tokens):
-            price_in, price_out = pricing
-            cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
-
-        await sync_to_async(AIUsageLog.objects.create)(
-            coach=client.coach,
-            provider=provider_name,
-            model=model_used,
-            task_type='text',
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            cost_usd=cost_usd,
-        )
+        await log_ai_usage(client.coach, provider_name, model, response, task_type='text', client=client)
 
         logger.info('[COMPLIANCE AI] Generated feedback for meal=%s', meal.pk)
         return response.content
@@ -1022,47 +1123,30 @@ async def is_meal_correction(bot: TelegramBot, meal: Meal, user_text: str) -> bo
     )
 
     # Log usage
-    from core.ai.model_fetcher import get_cached_pricing
-    from decimal import Decimal
-
-    model_used = response.model or model or ''
-    input_tokens = response.usage.get('input_tokens') or response.usage.get('prompt_tokens') or 0
-    output_tokens = response.usage.get('output_tokens') or response.usage.get('completion_tokens') or 0
-
-    cost_usd = Decimal('0')
-    pricing = get_cached_pricing(provider_name, model_used)
-    if pricing and (input_tokens or output_tokens):
-        price_in, price_out = pricing
-        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
-
-    await sync_to_async(AIUsageLog.objects.create)(
-        coach=bot.coach,
-        provider=provider_name,
-        model=model_used,
-        task_type='text',
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cost_usd=cost_usd,
-    )
+    await log_ai_usage(bot.coach, provider_name, model, response, task_type='text')
 
     return 'yes' in response.content.strip().lower()
 
 
-async def analyze_food_for_client(client: Client, image_data: bytes, caption: str = '') -> dict:
+async def analyze_food_for_client(client: Client, image_data: bytes, caption: str = '', program_meal_type: str = '') -> dict:
     """Analyze food photo for miniapp client.
 
     Gets vision provider through client's coach and returns nutrition data + AI response text.
+
+    Args:
+        client: Клиент
+        image_data: Данные изображения
+        caption: Подпись от пользователя
+        program_meal_type: Тип приёма пищи из программы (breakfast, lunch, dinner и т.д.) — выбирает пользователь
     """
     import time
     from apps.chat.models import InteractionLog
     from apps.nutrition_programs.services import get_active_program_for_client, get_client_today, get_program_day
     from core.ai.factory import get_ai_provider
-    from core.ai.model_fetcher import get_cached_pricing
-    from decimal import Decimal
 
     start_time = time.time()
 
-    logger.info('[ANALYZE] Starting for client=%s coach=%s', client.pk, client.coach_id)
+    logger.info('[ANALYZE] Starting for client=%s coach=%s program_meal_type="%s"', client.pk, client.coach_id, program_meal_type)
 
     # Get client's bot/coach to access AI provider
     bot = await sync_to_async(
@@ -1110,50 +1194,33 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
         prompt=prompt,
         max_tokens=500,
         model=model,
+        temperature=0.2,  # Низкая температура для стабильного JSON
+        json_mode=True,
     )
 
     logger.info('[ANALYZE] AI response received, content length=%d', len(response.content or ''))
 
-    # Log usage with cost calculation
-    model_used = response.model or model or ''
-    input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
-    output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
-
-    cost_usd = Decimal('0')
-    pricing = get_cached_pricing(provider_name, model_used)
-    if pricing and (input_tokens or output_tokens):
-        price_in, price_out = pricing
-        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
-
-    await sync_to_async(AIUsageLog.objects.create)(
-        coach=client.coach,
-        provider=provider_name,
-        model=model_used,
-        task_type='vision',
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cost_usd=cost_usd,
-    )
+    # Log usage
+    await log_ai_usage(client.coach, provider_name, model, response, task_type='vision', client=client)
 
     # Parse JSON from response
     content = response.content.strip()
-    if content.startswith('```'):
-        content = content.split('\n', 1)[1] if '\n' in content else content[3:]
-        if content.endswith('```'):
-            content = content[:-3]
-        content = content.strip()
 
     try:
-        data = json.loads(content)
+        raw_data = json.loads(content)
+        # Валидация и нормализация данных
+        validated = parse_food_analysis(raw_data)
+        data = validated.model_dump()
     except json.JSONDecodeError:
         logger.error('Failed to parse food analysis JSON for client: %s', content)
         data = {
             'dish_name': 'Неизвестное блюдо',
             'dish_type': 'snack',
-            'calories': 0,
-            'proteins': 0,
-            'fats': 0,
-            'carbohydrates': 0,
+            'calories': None,
+            'proteins': None,
+            'fats': None,
+            'carbohydrates': None,
+            'parse_error': True,
         }
 
     # Generate AI response text with recommendations (like in Telegram)
@@ -1203,25 +1270,7 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
             )
 
             # Log text generation usage
-            text_model_used = text_response.model or text_model or ''
-            text_input = text_response.usage.get('input_tokens', 0) or text_response.usage.get('prompt_tokens', 0)
-            text_output = text_response.usage.get('output_tokens', 0) or text_response.usage.get('completion_tokens', 0)
-
-            text_cost = Decimal('0')
-            text_pricing = get_cached_pricing(text_provider_name, text_model_used)
-            if text_pricing and (text_input or text_output):
-                price_in, price_out = text_pricing
-                text_cost = Decimal(str((text_input * price_in + text_output * price_out) / 1_000_000))
-
-            await sync_to_async(AIUsageLog.objects.create)(
-                coach=client.coach,
-                provider=text_provider_name,
-                model=text_model_used,
-                task_type='text',
-                input_tokens=text_input,
-                output_tokens=text_output,
-                cost_usd=text_cost,
-            )
+            await log_ai_usage(client.coach, text_provider_name, text_model, text_response, task_type='text', client=client)
 
             data['ai_response'] = text_response.content
         else:
@@ -1231,7 +1280,12 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
             )
 
     # Вызываем контролёр программы питания (если есть активная программа)
-    program_feedback = await get_program_controller_feedback(client, data)
+    # Используем program_meal_type из параметра (выбор пользователя), если передан
+    # Иначе fallback на AI-определённый тип (менее надёжно)
+    actual_meal_type = program_meal_type or data.get('dish_type', '')
+    logger.info('[ANALYZE] Using meal type for controller: %s (from param: %s, from AI: %s)',
+                actual_meal_type, program_meal_type, data.get('dish_type', ''))
+    program_feedback = await get_program_controller_feedback(client, data, actual_meal_type)
     if program_feedback:
         # Добавляем рекомендацию контролёра к основному ответу
         if data.get('ai_response'):
@@ -1277,8 +1331,6 @@ async def recalculate_meal_for_client(client: Client, previous_analysis: dict, c
     import time
     from apps.chat.models import InteractionLog
     from core.ai.factory import get_ai_provider
-    from core.ai.model_fetcher import get_cached_pricing
-    from decimal import Decimal
 
     start_time = time.time()
 
@@ -1336,40 +1388,18 @@ async def recalculate_meal_for_client(client: Client, previous_analysis: dict, c
         messages=[{'role': 'user', 'content': prompt}],
         system_prompt='Верни только JSON.',
         max_tokens=300,
-        temperature=0.2,
+        temperature=0.0,  # Детерминированный результат для пересчёта КБЖУ
         model=model,
+        json_mode=True,
     )
 
     logger.info('[RECALCULATE] AI raw response: %s', response.content)
 
     # Log usage
-    model_used = response.model or model or ''
-    input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
-    output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
-
-    cost_usd = Decimal('0')
-    pricing = get_cached_pricing(provider_name, model_used)
-    if pricing and (input_tokens or output_tokens):
-        price_in, price_out = pricing
-        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
-
-    await sync_to_async(AIUsageLog.objects.create)(
-        coach=client.coach,
-        provider=provider_name,
-        model=model_used,
-        task_type='text',
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cost_usd=cost_usd,
-    )
+    await log_ai_usage(client.coach, provider_name, model, response, task_type='text', client=client)
 
     # Parse JSON
     content = response.content.strip()
-    if content.startswith('```'):
-        content = content.split('\n', 1)[1] if '\n' in content else content[3:]
-        if content.endswith('```'):
-            content = content[:-3]
-        content = content.strip()
 
     try:
         data = json.loads(content)
@@ -1418,25 +1448,7 @@ async def recalculate_meal_for_client(client: Client, previous_analysis: dict, c
             )
 
             # Log text generation usage
-            text_model_used = text_response.model or text_model or ''
-            text_input = text_response.usage.get('input_tokens', 0) or text_response.usage.get('prompt_tokens', 0)
-            text_output = text_response.usage.get('output_tokens', 0) or text_response.usage.get('completion_tokens', 0)
-
-            text_cost = Decimal('0')
-            text_pricing = get_cached_pricing(text_provider_name, text_model_used)
-            if text_pricing and (text_input or text_output):
-                price_in, price_out = text_pricing
-                text_cost = Decimal(str((text_input * price_in + text_output * price_out) / 1_000_000))
-
-            await sync_to_async(AIUsageLog.objects.create)(
-                coach=client.coach,
-                provider=text_provider_name,
-                model=text_model_used,
-                task_type='text',
-                input_tokens=text_input,
-                output_tokens=text_output,
-                cost_usd=text_cost,
-            )
+            await log_ai_usage(client.coach, text_provider_name, text_model, text_response, task_type='text', client=client)
 
             data['ai_response'] = text_response.content
 
@@ -1489,46 +1501,16 @@ async def recalculate_meal(bot: TelegramBot, meal: Meal, user_text: str) -> dict
         messages=[{'role': 'user', 'content': prompt}],
         system_prompt='Верни только JSON.',
         max_tokens=200,
-        temperature=0.2,
+        temperature=0.0,  # Детерминированный результат для пересчёта КБЖУ
         model=model,
+        json_mode=True,
     )
 
     # Log usage
-    from core.ai.model_fetcher import get_cached_pricing
-    from decimal import Decimal
-
-    model_used = response.model or model or ''
-    input_tokens = response.usage.get('input_tokens') or response.usage.get('prompt_tokens') or 0
-    output_tokens = response.usage.get('output_tokens') or response.usage.get('completion_tokens') or 0
-
-    cost_usd = Decimal('0')
-    pricing = get_cached_pricing(provider_name, model_used)
-    if pricing and (input_tokens or output_tokens):
-        price_in, price_out = pricing
-        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
-    elif input_tokens or output_tokens:
-        logger.warning(
-            '[RECALCULATE] Missing pricing for provider=%s model=%s tokens_in=%s tokens_out=%s',
-            provider_name, model_used, input_tokens, output_tokens
-        )
-
-    await sync_to_async(AIUsageLog.objects.create)(
-        coach=bot.coach,
-        provider=provider_name,
-        model=model_used,
-        task_type='text',
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cost_usd=cost_usd,
-    )
+    await log_ai_usage(bot.coach, provider_name, model, response, task_type='text')
 
     # Parse JSON
-    content = response.content.strip()
-    if content.startswith('```'):
-        content = content.split('\n', 1)[1] if '\n' in content else content[3:]
-        if content.endswith('```'):
-            content = content[:-3]
-        content = content.strip()
+    content = strip_markdown_codeblock(response.content)
 
     try:
         data = json.loads(content)
@@ -1556,8 +1538,6 @@ async def analyze_food_smart(client: Client, image_data: bytes, caption: str = '
     Создаёт MealDraft со статусом 'pending' для подтверждения пользователем.
     """
     from .models import MealDraft
-    from core.ai.model_fetcher import get_cached_pricing
-    from decimal import Decimal
 
     logger.info('[SMART] Starting analysis for client=%s', client.pk)
 
@@ -1585,38 +1565,11 @@ async def analyze_food_smart(client: Client, image_data: bytes, caption: str = '
     )
 
     # Log usage
-    model_used = response.model or model or ''
-    input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
-    output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
-
-    cost_usd = Decimal('0')
-    pricing = get_cached_pricing(provider_name, model_used)
-    if pricing and (input_tokens or output_tokens):
-        price_in, price_out = pricing
-        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
-
-    await sync_to_async(AIUsageLog.objects.create)(
-        coach=client.coach,
-        provider=provider_name,
-        model=model_used,
-        task_type='vision',
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cost_usd=cost_usd,
-    )
+    await log_ai_usage(client.coach, provider_name, model, response, task_type='vision', client=client)
 
     # Parse JSON
-    content = response.content.strip()
-    logger.info('[SMART] Raw AI response (first 500 chars): %s', content[:500])
-
-    if content.startswith('```'):
-        # Remove markdown code block
-        lines = content.split('\n')
-        if lines[0].startswith('```'):
-            lines = lines[1:]
-        if lines and lines[-1].strip() == '```':
-            lines = lines[:-1]
-        content = '\n'.join(lines).strip()
+    logger.info('[SMART] Raw AI response (first 500 chars): %s', response.content[:500])
+    content = strip_markdown_codeblock(response.content)
 
     # Also try to extract JSON if there's text before/after
     if not content.startswith('{'):
@@ -1627,7 +1580,10 @@ async def analyze_food_smart(client: Client, image_data: bytes, caption: str = '
                 content = content[start:end+1]
 
     try:
-        data = json.loads(content)
+        raw_data = json.loads(content)
+        # Валидация и нормализация данных
+        validated = parse_smart_food_analysis(raw_data)
+        data = validated.model_dump()
         logger.info('[SMART] Parsed successfully: dish=%s, ingredients=%d',
                     data.get('dish_name'), len(data.get('ingredients', [])))
     except json.JSONDecodeError as e:
@@ -1635,13 +1591,14 @@ async def analyze_food_smart(client: Client, image_data: bytes, caption: str = '
         data = {
             'dish_name': 'Неизвестное блюдо',
             'dish_type': 'snack',
-            'estimated_weight': 0,
+            'estimated_weight': None,
             'ingredients': [],
-            'calories': 0,
-            'proteins': 0,
-            'fats': 0,
-            'carbohydrates': 0,
-            'confidence': 0,
+            'calories': None,
+            'proteins': None,
+            'fats': None,
+            'carbohydrates': None,
+            'confidence': None,
+            'parse_error': True,
         }
 
     # Нормализуем ингредиенты - добавляем is_ai_detected
@@ -1688,8 +1645,6 @@ async def add_ingredient_to_draft(draft: 'MealDraft', ingredient_name: str) -> d
     Returns: добавленный ингредиент с КБЖУ
     """
     from .models import MealDraft
-    from core.ai.model_fetcher import get_cached_pricing
-    from decimal import Decimal
 
     client = await sync_to_async(lambda: draft.client)()
 
@@ -1723,36 +1678,14 @@ async def add_ingredient_to_draft(draft: 'MealDraft', ingredient_name: str) -> d
         max_tokens=150,
         temperature=0.2,
         model=model,
+        json_mode=True,
     )
 
     # Log usage
-    model_used = response.model or model or ''
-    input_tokens = response.usage.get('input_tokens', 0) or response.usage.get('prompt_tokens', 0)
-    output_tokens = response.usage.get('output_tokens', 0) or response.usage.get('completion_tokens', 0)
-
-    cost_usd = Decimal('0')
-    pricing = get_cached_pricing(provider_name, model_used)
-    if pricing and (input_tokens or output_tokens):
-        price_in, price_out = pricing
-        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
-
-    await sync_to_async(AIUsageLog.objects.create)(
-        coach=client.coach,
-        provider=provider_name,
-        model=model_used,
-        task_type='text',
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cost_usd=cost_usd,
-    )
+    await log_ai_usage(client.coach, provider_name, model, response, task_type='text', client=client)
 
     # Parse JSON
     content = response.content.strip()
-    if content.startswith('```'):
-        content = content.split('\n', 1)[1] if '\n' in content else content[3:]
-        if content.endswith('```'):
-            content = content[:-3]
-        content = content.strip()
 
     try:
         ing_data = json.loads(content)
@@ -1871,17 +1804,39 @@ async def cancel_draft(draft: 'MealDraft') -> None:
     logger.info('[SMART] Cancelled draft=%s', draft.pk)
 
 
-async def generate_meal_comment(client: Client, meal: Meal) -> str:
+async def generate_meal_comment(client: Client, meal: Meal, program_meal_type: str = '') -> str:
     """Генерация AI комментария к приёму пищи (как в обычном режиме).
 
     Использует persona.food_response_prompt для генерации рекомендаций.
+
+    Args:
+        client: Клиент
+        meal: Сохранённый приём пищи
+        program_meal_type: Тип приёма пищи из программы (выбор пользователя)
     """
     from apps.nutrition_programs.services import get_active_program_for_client, get_client_today, get_program_day
     from core.ai.factory import get_ai_provider
-    from core.ai.model_fetcher import get_cached_pricing
-    from decimal import Decimal
 
-    logger.info('[MEAL COMMENT] Generating for client=%s meal=%s', client.pk, meal.pk)
+    logger.info('[MEAL COMMENT] Generating for client=%s meal=%s program_meal_type=%s', client.pk, meal.pk, program_meal_type)
+
+    # Build meal data
+    meal_data = {
+        'dish_name': meal.dish_name,
+        'dish_type': meal.dish_type,
+        'calories': meal.calories,
+        'proteins': meal.proteins,
+        'fats': meal.fats,
+        'carbohydrates': meal.carbohydrates,
+        'ingredients': meal.ingredients,
+    }
+
+    # ПЕРВЫМ ДЕЛОМ: вызываем контролёр программы питания (если есть активная программа)
+    # Контроллер работает НЕЗАВИСИМО от food_response_prompt персоны
+    actual_meal_type = program_meal_type or meal_data.get('dish_type', '')
+    logger.info('[MEAL COMMENT] Using meal type: %s (param: %s, dish_type: %s)', actual_meal_type, program_meal_type, meal_data.get('dish_type', ''))
+    program_feedback = await get_program_controller_feedback(client, meal_data, actual_meal_type)
+    if program_feedback:
+        logger.info('[MEAL COMMENT] Got program controller feedback: %d chars', len(program_feedback))
 
     # Get bot and persona
     bot = await sync_to_async(
@@ -1889,6 +1844,9 @@ async def generate_meal_comment(client: Client, meal: Meal) -> str:
     )()
     if not bot:
         logger.warning('[MEAL COMMENT] No bot for coach=%s', client.coach_id)
+        # Даже без бота возвращаем feedback контроллера, если есть
+        if program_feedback:
+            return '📋 *Программа питания:*\n' + program_feedback
         return ''
 
     persona = await sync_to_async(lambda: client.persona)()
@@ -1896,8 +1854,12 @@ async def generate_meal_comment(client: Client, meal: Meal) -> str:
         persona = await sync_to_async(
             lambda: BotPersona.objects.filter(coach=bot.coach).first()
         )()
+
+    # Если нет персоны или food_response_prompt - возвращаем только контроллер
     if not persona or not persona.food_response_prompt:
-        logger.warning('[MEAL COMMENT] No persona or food_response_prompt')
+        logger.info('[MEAL COMMENT] No persona or food_response_prompt, using controller only')
+        if program_feedback:
+            return '📋 *Программа питания:*\n' + program_feedback
         return ''
 
     # Get text provider
@@ -1911,6 +1873,9 @@ async def generate_meal_comment(client: Client, meal: Meal) -> str:
     )()
     if not config:
         logger.warning('[MEAL COMMENT] No API config for provider %s', text_provider_name)
+        # Возвращаем только контроллер, если есть
+        if program_feedback:
+            return '📋 *Программа питания:*\n' + program_feedback
         return ''
 
     text_provider = get_ai_provider(text_provider_name, config.api_key)
@@ -1936,17 +1901,6 @@ async def generate_meal_comment(client: Client, meal: Meal) -> str:
                 logger.info('[MEAL COMMENT] Added program context for program=%s', program.pk)
     except Exception as e:
         logger.warning('[MEAL COMMENT] Could not get program context: %s', e)
-
-    # Build meal data
-    meal_data = {
-        'dish_name': meal.dish_name,
-        'dish_type': meal.dish_type,
-        'calories': meal.calories,
-        'proteins': meal.proteins,
-        'fats': meal.fats,
-        'carbohydrates': meal.carbohydrates,
-        'ingredients': meal.ingredients,
-    }
 
     user_message = (
         f'Данные анализа еды:\n'
@@ -1974,38 +1928,22 @@ async def generate_meal_comment(client: Client, meal: Meal) -> str:
         )
 
         # Log usage
-        text_model_used = text_response.model or text_model or ''
-        text_input = text_response.usage.get('input_tokens', 0) or text_response.usage.get('prompt_tokens', 0)
-        text_output = text_response.usage.get('output_tokens', 0) or text_response.usage.get('completion_tokens', 0)
-
-        text_cost = Decimal('0')
-        text_pricing = get_cached_pricing(text_provider_name, text_model_used)
-        if text_pricing and (text_input or text_output):
-            price_in, price_out = text_pricing
-            text_cost = Decimal(str((text_input * price_in + text_output * price_out) / 1_000_000))
-
-        await sync_to_async(AIUsageLog.objects.create)(
-            coach=client.coach,
-            provider=text_provider_name,
-            model=text_model_used,
-            task_type='text',
-            input_tokens=text_input,
-            output_tokens=text_output,
-            cost_usd=text_cost,
-        )
+        await log_ai_usage(client.coach, text_provider_name, text_model, text_response, task_type='text', client=client)
 
         base_comment = text_response.content
-        logger.info('[MEAL COMMENT] Generated %d chars', len(base_comment))
+        logger.info('[MEAL COMMENT] Generated %d chars from persona', len(base_comment))
 
-        # Добавляем рекомендацию от контролёра программы питания
-        program_feedback = await get_program_controller_feedback(client, meal_data)
+        # Добавляем рекомендацию от контролёра (уже получили выше)
         if program_feedback:
             full_comment = base_comment + '\n\n📋 *Программа питания:*\n' + program_feedback
-            logger.info('[MEAL COMMENT] Added program controller feedback')
+            logger.info('[MEAL COMMENT] Combined persona + controller response')
             return full_comment
 
         return base_comment
 
     except Exception as e:
         logger.exception('[MEAL COMMENT] Error generating comment: %s', e)
+        # При ошибке возвращаем хотя бы контроллер
+        if program_feedback:
+            return '📋 *Программа питания:*\n' + program_feedback
         return ''

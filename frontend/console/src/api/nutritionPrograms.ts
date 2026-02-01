@@ -1,12 +1,14 @@
 import api from './client'
 import type {
   ComplianceStats,
+  DetailedReport,
   MealComplianceCheck,
   NutritionProgram,
   NutritionProgramCreatePayload,
   NutritionProgramDay,
   NutritionProgramListItem,
   NutritionProgramUpdatePayload,
+  ShoppingListItem,
 } from '../types/nutrition'
 
 interface PaginatedResponse<T> {
@@ -38,6 +40,9 @@ export const nutritionProgramsApi = {
   copy: (id: number, data: { client?: number; start_date: string; name?: string }) =>
     api.post<NutritionProgram>(`/nutrition/programs/${id}/copy/`, data),
 
+  getDetailedReport: (id: number) =>
+    api.get<DetailedReport>(`/nutrition/programs/${id}/detailed-report/`),
+
   // Days
   getDays: (programId: number) =>
     api.get<NutritionProgramDay[]>(`/nutrition/programs/${programId}/days/`),
@@ -49,6 +54,16 @@ export const nutritionProgramsApi = {
     api.post<NutritionProgramDay>(`/nutrition/programs/${programId}/days/${dayId}/copy/`, {
       source_day_id: sourceDayId,
     }),
+
+  generateShoppingList: (programId: number, dayId: number) =>
+    api.post<{ shopping_list: ShoppingListItem[]; message: string }>(
+      `/nutrition/programs/${programId}/days/${dayId}/generate-shopping-list/`
+    ),
+
+  analyzeProducts: (programId: number, dayId: number) =>
+    api.post<{ mapping: Record<string, string[]> }>(
+      `/nutrition/programs/${programId}/days/${dayId}/analyze-products/`
+    ),
 
   // Stats
   getStats: (params?: { program_id?: number; client_id?: number }) =>

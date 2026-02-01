@@ -105,26 +105,8 @@ def generate_ai_summary(client: Client, content: dict, report_type: str) -> str:
             temperature=0.7,
         )
         # Log usage/cost
-        usage = response.usage or {}
-        input_tokens = usage.get('input_tokens') or usage.get('prompt_tokens') or 0
-        output_tokens = usage.get('output_tokens') or usage.get('completion_tokens') or 0
-
-        cost_usd = Decimal('0')
-        pricing = get_cached_pricing(provider_name, response.model or '')
-        if pricing and (input_tokens or output_tokens):
-            price_in, price_out = pricing
-            cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
-
-        AIUsageLog.objects.create(
-            coach=client.coach,
-            client=client,
-            provider=provider_name,
-            model=response.model or '',
-            task_type='text',
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            cost_usd=cost_usd,
-        )
+        from core.ai.model_fetcher import log_ai_usage_sync
+        log_ai_usage_sync(client.coach, provider_name, '', response, task_type='text', client=client)
 
         return response.content.strip()
     except Exception as e:

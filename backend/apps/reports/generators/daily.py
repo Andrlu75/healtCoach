@@ -14,11 +14,16 @@ def collect_daily_data(client: Client, target_date: date) -> dict:
     day_end = timezone.make_aware(datetime.combine(target_date, time.max))
 
     # Meals
-    meals = list(Meal.objects.filter(
+    meals_qs = Meal.objects.filter(
         client=client,
         image_type='food',
         meal_time__range=(day_start, day_end),
-    ).values('dish_name', 'calories', 'proteins', 'fats', 'carbohydrates', 'meal_time'))
+    ).values('dish_name', 'calories', 'proteins', 'fats', 'carbohydrates', 'meal_time')
+    # Convert meal_time to string for JSON serialization
+    meals = [
+        {**m, 'meal_time': m['meal_time'].isoformat() if m['meal_time'] else None}
+        for m in meals_qs
+    ]
 
     total_calories = sum(m['calories'] or 0 for m in meals)
     total_proteins = sum(m['proteins'] or 0 for m in meals)

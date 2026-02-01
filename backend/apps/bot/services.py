@@ -8,6 +8,7 @@ from apps.accounts.models import Client
 from apps.chat.models import ChatMessage, InteractionLog
 from apps.persona.models import AIProviderConfig, AIUsageLog, BotPersona, TelegramBot
 from core.ai.factory import get_ai_provider
+from core.ai.tokens import trim_messages_to_token_limit
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +147,23 @@ async def _save_message(client: Client, role: str, content: str, message_type: s
     )
 
 
-async def _get_context_messages(client: Client, limit: int = 20) -> list[dict]:
+async def _get_context_messages(
+    client: Client,
+    limit: int = 50,
+    model: str = 'gpt-4o',
+    max_tokens: int | None = None,
+) -> list[dict]:
+    """Получить контекст сообщений для клиента с учётом лимита токенов.
+
+    Args:
+        client: Клиент
+        limit: Максимальное количество сообщений для загрузки
+        model: Модель AI (для подсчёта токенов)
+        max_tokens: Максимум токенов (по умолчанию — лимит модели)
+
+    Returns:
+        Список сообщений, обрезанный по токенам
+    """
     messages = await sync_to_async(
         lambda: list(
             ChatMessage.objects.filter(client=client)
@@ -154,7 +171,10 @@ async def _get_context_messages(client: Client, limit: int = 20) -> list[dict]:
         )
     )()
     messages.reverse()
-    return [{'role': msg.role, 'content': msg.content} for msg in messages]
+    message_dicts = [{'role': msg.role, 'content': msg.content} for msg in messages]
+
+    # Обрезаем по токенам
+    return trim_messages_to_token_limit(message_dicts, max_tokens=max_tokens, model=model)
 
 
 async def _log_usage(coach, client, provider_name: str, model: str, task_type: str, usage: dict):
@@ -196,15 +216,15 @@ async def get_ai_text_response(bot: TelegramBot, client: Client, text: str) -> s
     # Save user message
     await _save_message(client, 'user', text, 'text')
 
-    # Load context
-    context = await _get_context_messages(client)
+    # Get AI provider config
+    provider_name = persona.text_provider or 'openai'
+    model = persona.text_model or 'gpt-4o-mini'
+
+    # Load context with token limit
+    context = await _get_context_messages(client, model=model)
 
     # Build system prompt with client context (including gender)
     system_prompt = _build_system_prompt(persona.system_prompt, client)
-
-    # Get AI provider
-    provider_name = persona.text_provider or 'openai'
-    model = persona.text_model or None
     api_key = await _get_api_key(bot.coach, provider_name)
     provider = get_ai_provider(provider_name, api_key)
 

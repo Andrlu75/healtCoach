@@ -22,18 +22,29 @@ class DeepSeekProvider(AbstractAIProvider):
         max_tokens: int = 600,
         temperature: float = 0.7,
         model: Optional[str] = None,
+        json_mode: bool = False,
     ) -> AIResponse:
         model = model or 'deepseek-chat'
         input_messages = [{'role': 'system', 'content': system_prompt}] + messages
 
-        response = await self.client.chat.completions.create(
-            model=model,
-            messages=input_messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
+        kwargs = {
+            'model': model,
+            'messages': input_messages,
+            'max_tokens': max_tokens,
+            'temperature': temperature,
+        }
 
-        content = response.choices[0].message.content or ''
+        # JSON mode для гарантированного JSON ответа (DeepSeek совместим с OpenAI API)
+        if json_mode:
+            kwargs['response_format'] = {'type': 'json_object'}
+
+        response = await self.client.chat.completions.create(**kwargs)
+
+        choice = response.choices[0]
+        content = choice.message.content or ''
+        finish_reason = getattr(choice, 'finish_reason', None) or 'unknown'
+        is_truncated = finish_reason == 'length'
+
         usage = {}
         if response.usage:
             usage = {
@@ -45,6 +56,8 @@ class DeepSeekProvider(AbstractAIProvider):
             content=content,
             model=response.model,
             usage=usage,
+            finish_reason=finish_reason,
+            is_truncated=is_truncated,
         )
 
     async def analyze_image(
@@ -83,7 +96,11 @@ class DeepSeekProvider(AbstractAIProvider):
             temperature=temperature,
         )
 
-        content = response.choices[0].message.content or ''
+        choice = response.choices[0]
+        content = choice.message.content or ''
+        finish_reason = getattr(choice, 'finish_reason', None) or 'unknown'
+        is_truncated = finish_reason == 'length'
+
         usage = {}
         if response.usage:
             usage = {
@@ -95,6 +112,8 @@ class DeepSeekProvider(AbstractAIProvider):
             content=content,
             model=response.model,
             usage=usage,
+            finish_reason=finish_reason,
+            is_truncated=is_truncated,
         )
 
     async def transcribe_audio(

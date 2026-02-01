@@ -1,13 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, CheckCircle, AlertCircle } from 'lucide-react'
-import {
-  getNutritionProgramToday,
-  getNutritionProgramMealReports,
-  getMealReportPhoto,
-} from '../../api/endpoints'
+import { ShoppingCart, X, Check } from 'lucide-react'
+import { getNutritionProgramToday, getShoppingList } from '../../api/endpoints'
 import { Card, CardContent } from '../../shared/components/ui'
 import { Skeleton } from '../../shared/components/feedback'
 
@@ -16,20 +12,6 @@ interface Meal {
   time: string
   name: string
   description: string
-}
-
-interface MealReport {
-  id: number
-  meal_type: string
-  meal_type_display?: string
-  is_compliant: boolean
-  compliance_score: number
-  photo_url?: string
-  photo_file_id?: string
-  ai_analysis?: string
-  planned_description?: string
-  recognized_ingredients?: Array<{ name: string }>
-  created_at?: string
 }
 
 const MEAL_ICONS: Record<string, string> = {
@@ -48,62 +30,63 @@ const MEAL_COLORS: Record<string, { bg: string; border: string }> = {
   dinner: { bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-200 dark:border-indigo-800' },
 }
 
-function useMealReportPhoto(report: MealReport) {
-  return useQuery({
-    queryKey: ['mealReportPhoto', report.id],
-    queryFn: async () => {
-      // Если есть photo_url, используем его напрямую
-      if (report.photo_url) {
-        return report.photo_url
-      }
-      // Иначе загружаем через API
-      const response = await getMealReportPhoto(report.id)
-      return URL.createObjectURL(response.data)
-    },
-    enabled: !!(report.photo_url || report.photo_file_id),
-    staleTime: 5 * 60 * 1000, // 5 минут кэша
+// Хук для управления чеклистом (сохранение в localStorage)
+function useShoppingChecklist(programId: number | undefined) {
+  const storageKey = `shopping-checklist-${programId}`
+
+  const [checkedItems, setCheckedItems] = useState<Set<string>>(() => {
+    if (!programId) return new Set()
+    try {
+      const saved = localStorage.getItem(storageKey)
+      return saved ? new Set(JSON.parse(saved)) : new Set()
+    } catch {
+      return new Set()
+    }
   })
-}
 
-function MealReportImage({ report, onClick }: { report: MealReport; onClick?: () => void }) {
-  const { data: photoUrl, isLoading } = useMealReportPhoto(report)
+  useEffect(() => {
+    if (programId) {
+      localStorage.setItem(storageKey, JSON.stringify([...checkedItems]))
+    }
+  }, [checkedItems, storageKey, programId])
 
-  if (isLoading) {
-    return (
-      <div className="w-full h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
+  const toggleItem = (item: string) => {
+    setCheckedItems(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(item)) {
+        newSet.delete(item)
+      } else {
+        newSet.add(item)
+      }
+      return newSet
+    })
   }
 
-  if (photoUrl) {
-    return (
-      <img
-        src={photoUrl}
-        alt="Фото еды"
-        className="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-        onClick={onClick}
-      />
-    )
-  }
+  const clearAll = () => setCheckedItems(new Set())
 
-  return (
-    <div className="w-full h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-      <span className="text-gray-400">Фото недоступно</span>
-    </div>
-  )
+  return { checkedItems, toggleItem, clearAll }
 }
 
-function ReportDetailModal({
-  report,
-  meal,
+function ShoppingListModal({
+  programId,
   onClose,
 }: {
-  report: MealReport
-  meal: Meal
+  programId: number
   onClose: () => void
 }) {
-  const { data: photoUrl } = useMealReportPhoto(report)
+  const { data, isLoading } = useQuery({
+    queryKey: ['shoppingList', programId],
+    queryFn: async () => {
+      const { data } = await getShoppingList({ days: 3 })
+      return data
+    },
+  })
+
+  const { checkedItems, toggleItem, clearAll } = useShoppingChecklist(programId)
+
+  const categories = data?.categories || []
+  const totalItems = data?.items_count || 0
+  const checkedCount = [...checkedItems].length
 
   return (
     <motion.div
@@ -118,97 +101,145 @@ function ReportDetailModal({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-t-3xl max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-t-3xl max-h-[85vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Фото */}
-        {photoUrl && (
-          <div className="relative">
-            <img
-              src={photoUrl}
-              alt="Фото еды"
-              className="w-full h-64 object-cover"
-            />
-            <button
-              onClick={onClose}
-              className="absolute top-3 right-3 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center"
-            >
-              <X size={18} className="text-white" />
-            </button>
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg">
+              <ShoppingCart size={24} className="text-white" />
+            </div>
+            <div>
+              <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100">
+                Список покупок
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                На {data?.days_count || 3} дня • {totalItems} продуктов
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          >
+            <X size={18} className="text-gray-500" />
+          </button>
+        </div>
+
+        {/* Progress */}
+        {totalItems > 0 && (
+          <div className="px-4 py-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                Куплено: {checkedCount} из {totalItems}
+              </span>
+              {checkedCount > 0 && (
+                <button
+                  onClick={clearAll}
+                  className="text-xs font-medium text-green-600 dark:text-green-400 hover:underline"
+                >
+                  Сбросить
+                </button>
+              )}
+            </div>
+            <div className="h-2.5 bg-white/50 dark:bg-gray-800/50 rounded-full overflow-hidden shadow-inner">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${totalItems > 0 ? (checkedCount / totalItems) * 100 : 0}%` }}
+                className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full"
+                transition={{ duration: 0.5 }}
+              />
+            </div>
           </div>
         )}
 
-        <div className="p-4 space-y-4">
-          {/* Статус соответствия */}
-          <div className={`flex items-center gap-3 p-3 rounded-xl ${
-            report.is_compliant
-              ? 'bg-green-50 dark:bg-green-900/20'
-              : 'bg-amber-50 dark:bg-amber-900/20'
-          }`}>
-            {report.is_compliant ? (
-              <CheckCircle size={24} className="text-green-600" />
-            ) : (
-              <AlertCircle size={24} className="text-amber-600" />
-            )}
-            <div className="flex-1">
-              <p className={`font-medium ${
-                report.is_compliant
-                  ? 'text-green-700 dark:text-green-300'
-                  : 'text-amber-700 dark:text-amber-300'
-              }`}>
-                {report.is_compliant ? 'Соответствует программе' : 'Есть отклонения'}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Оценка: {report.compliance_score}%
-              </p>
+        {/* Categories list */}
+        <div className="flex-1 overflow-y-auto">
+          {isLoading ? (
+            <div className="p-4 space-y-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ))}
             </div>
-          </div>
-
-          {/* Что по плану */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-              По плану ({meal.name})
-            </h3>
-            <p className="text-sm text-gray-900 dark:text-gray-100">
-              {meal.description}
-            </p>
-          </div>
-
-          {/* Распознанные ингредиенты */}
-          {report.recognized_ingredients && report.recognized_ingredients.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                Распознано на фото
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {report.recognized_ingredients.map((ing, idx) => (
-                  <span
-                    key={idx}
-                    className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-full text-xs text-gray-700 dark:text-gray-300"
-                  >
-                    {ing.name}
-                  </span>
-                ))}
+          ) : categories.length > 0 ? (
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {categories.map((category) => (
+                <div key={category.name} className="p-4">
+                  {/* Category header */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xl">{category.emoji}</span>
+                    <h3 className="font-semibold text-gray-800 dark:text-gray-200">
+                      {category.name}
+                    </h3>
+                    <span className="ml-auto text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                      {category.items.length}
+                    </span>
+                  </div>
+                  {/* Items */}
+                  <div className="space-y-1.5">
+                    {category.items.map((item) => {
+                      const isChecked = checkedItems.has(item)
+                      return (
+                        <motion.button
+                          key={item}
+                          onClick={() => toggleItem(item)}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+                            isChecked
+                              ? 'bg-green-100 dark:bg-green-900/30'
+                              : 'bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800'
+                          }`}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <div
+                            className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                              isChecked
+                                ? 'bg-green-500 border-green-500'
+                                : 'border-gray-300 dark:border-gray-600'
+                            }`}
+                          >
+                            {isChecked && <Check size={12} className="text-white" />}
+                          </div>
+                          <span
+                            className={`flex-1 text-left text-sm transition-all ${
+                              isChecked
+                                ? 'text-gray-400 dark:text-gray-500 line-through'
+                                : 'text-gray-700 dark:text-gray-200'
+                            }`}
+                          >
+                            {item}
+                          </span>
+                        </motion.button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 px-4">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center">
+                <span className="text-4xl">🛒</span>
               </div>
-            </div>
-          )}
-
-          {/* AI анализ */}
-          {report.ai_analysis && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Анализ
-              </h3>
-              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                {report.ai_analysis}
+              <p className="text-gray-600 dark:text-gray-300 font-medium">
+                Список пуст
+              </p>
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                Добавьте блюда в программу питания
               </p>
             </div>
           )}
+        </div>
 
-          {/* Кнопка закрытия */}
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
           <button
             onClick={onClose}
-            className="w-full py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-medium"
+            className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold shadow-lg shadow-green-500/20 hover:shadow-green-500/30 transition-shadow"
           >
             Закрыть
           </button>
@@ -218,24 +249,9 @@ function ReportDetailModal({
   )
 }
 
-function MealCard({
-  meal,
-  reports,
-  onReportClick,
-}: {
-  meal: Meal
-  reports: MealReport[]
-  onReportClick: (report: MealReport) => void
-}) {
+function MealCard({ meal }: { meal: Meal }) {
   const colors = MEAL_COLORS[meal.type] || MEAL_COLORS.lunch
   const icon = MEAL_ICONS[meal.type] || '🍽️'
-
-  // Вычисляем общий статус по всем отчётам
-  const hasReports = reports.length > 0
-  const avgScore = hasReports
-    ? Math.round(reports.reduce((sum, r) => sum + r.compliance_score, 0) / reports.length)
-    : 0
-  const allCompliant = hasReports && reports.every((r) => r.is_compliant)
 
   return (
     <motion.div
@@ -256,51 +272,11 @@ function MealCard({
               </span>
             </div>
           </div>
-          {hasReports && (
-            <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-              allCompliant
-                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
-            }`}>
-              {allCompliant ? '✓' : '!'} {avgScore}%
-            </div>
-          )}
         </div>
 
         <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
           {meal.description}
         </p>
-
-        {/* Показываем загруженные фото (если есть) */}
-        {reports.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-              Фото отчёты (нажмите для деталей)
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {reports.map((report) => (
-                <div key={report.id} className="relative">
-                  <MealReportImage
-                    report={report}
-                    onClick={() => onReportClick(report)}
-                  />
-                  {/* Индикатор соответствия */}
-                  <div className={`absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center ${
-                    report.is_compliant
-                      ? 'bg-green-500'
-                      : 'bg-amber-500'
-                  }`}>
-                    {report.is_compliant ? (
-                      <CheckCircle size={12} className="text-white" />
-                    ) : (
-                      <AlertCircle size={12} className="text-white" />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </motion.div>
   )
@@ -309,7 +285,7 @@ function MealCard({
 function NutritionProgram() {
   const navigate = useNavigate()
   const [showNotes, setShowNotes] = useState(false)
-  const [selectedReport, setSelectedReport] = useState<{ report: MealReport; meal: Meal } | null>(null)
+  const [showShoppingList, setShowShoppingList] = useState(false)
 
   const { data: todayData, isLoading, isError, refetch } = useQuery({
     queryKey: ['nutritionProgramToday'],
@@ -317,15 +293,6 @@ function NutritionProgram() {
       const { data } = await getNutritionProgramToday()
       return data
     },
-  })
-
-  const { data: reportsData } = useQuery({
-    queryKey: ['nutritionProgramMealReports'],
-    queryFn: async () => {
-      const { data } = await getNutritionProgramMealReports()
-      return data
-    },
-    enabled: !!todayData?.has_program,
   })
 
   if (isError) {
@@ -384,27 +351,27 @@ function NutritionProgram() {
 
   const progress = Math.round((todayData.day_number / todayData.total_days) * 100)
   const meals: Meal[] = todayData.meals || []
-  const reports: MealReport[] = reportsData?.reports || []
-
-  // Create a map of reports by meal type (array of reports for each type)
-  const reportsByType: Record<string, MealReport[]> = {}
-  reports.forEach((r) => {
-    if (!reportsByType[r.meal_type]) {
-      reportsByType[r.meal_type] = []
-    }
-    reportsByType[r.meal_type].push(r)
-  })
 
   return (
     <div className="p-4 space-y-4 pb-20">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          Программа питания
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          День {todayData.day_number} из {todayData.total_days} • {todayData.program_name}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+            Программа питания
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            День {todayData.day_number} из {todayData.total_days} • {todayData.program_name}
+          </p>
+        </div>
+        {/* Кнопка списка покупок */}
+        <button
+          onClick={() => setShowShoppingList(true)}
+          className="flex items-center gap-2 px-3 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-xl hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+        >
+          <ShoppingCart size={18} />
+          <span className="text-sm font-medium">Купить</span>
+        </button>
       </div>
 
       {/* Progress bar */}
@@ -453,12 +420,7 @@ function NutritionProgram() {
         </h2>
         {meals.length > 0 ? (
           meals.map((meal, index) => (
-            <MealCard
-              key={`${meal.type}-${index}`}
-              meal={meal}
-              reports={reportsByType[meal.type] || []}
-              onReportClick={(report) => setSelectedReport({ report, meal })}
-            />
+            <MealCard key={`${meal.type}-${index}`} meal={meal} />
           ))
         ) : (
           <Card variant="elevated">
@@ -527,13 +489,12 @@ function NutritionProgram() {
         История программы <span>→</span>
       </button>
 
-      {/* Модальное окно деталей отчёта */}
+      {/* Модальное окно списка покупок */}
       <AnimatePresence>
-        {selectedReport && (
-          <ReportDetailModal
-            report={selectedReport.report}
-            meal={selectedReport.meal}
-            onClose={() => setSelectedReport(null)}
+        {showShoppingList && todayData.program_id && (
+          <ShoppingListModal
+            programId={todayData.program_id}
+            onClose={() => setShowShoppingList(false)}
           />
         )}
       </AnimatePresence>

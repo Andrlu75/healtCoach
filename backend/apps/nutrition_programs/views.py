@@ -2,6 +2,8 @@ import csv
 from collections import Counter
 from io import StringIO
 
+from core.ai.utils import strip_markdown_codeblock
+
 from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
@@ -19,7 +21,7 @@ class ViolationsPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 100
 
-from .models import MealComplianceCheck, NutritionProgram, NutritionProgramDay
+from .models import MealComplianceCheck, MealReport, NutritionProgram, NutritionProgramDay
 from .serializers import (
     ComplianceStatsSerializer,
     MealComplianceCheckSerializer,
@@ -185,6 +187,121 @@ class NutritionProgramViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    @action(detail=True, methods=['get'], url_path='detailed-report')
+    def detailed_report(self, request, pk=None):
+        """Подробный отчёт по программе: план vs факт по дням."""
+        from apps.meals.models import Meal
+        from datetime import datetime, timedelta
+
+        program = self.get_object()
+
+        # Маппинг типов приёмов пищи (русский → английский и обратно)
+        ru_to_en = {
+            'завтрак': 'breakfast',
+            'перекус': 'snack',
+            'обед': 'lunch',
+            'ужин': 'dinner',
+        }
+        en_to_types = {
+            'breakfast': ['breakfast', 'завтрак'],
+            'snack1': ['snack1', 'snack', 'перекус'],
+            'snack2': ['snack2', 'snack', 'перекус'],
+            'lunch': ['lunch', 'обед'],
+            'dinner': ['dinner', 'ужин'],
+        }
+
+        # Получаем все приёмы пищи клиента за период программы
+        all_meals = Meal.objects.filter(
+            client=program.client,
+            meal_time__date__gte=program.start_date,
+            meal_time__date__lte=program.end_date,
+        ).order_by('meal_time')
+
+        # Группируем приёмы пищи по дате
+        meals_by_date = {}
+        for meal in all_meals:
+            date_key = meal.meal_time.date()
+            if date_key not in meals_by_date:
+                meals_by_date[date_key] = []
+            meals_by_date[date_key].append(meal)
+
+        # Получаем все дни программы
+        days_data = []
+        for day in program.days.all().order_by('day_number'):
+            # Получаем приёмы пищи для этого дня
+            day_meals = meals_by_date.get(day.date, [])
+
+            # Группируем по типу приёма пищи
+            meals_by_type = {}
+            for meal in day_meals:
+                dish_type = meal.dish_type.lower() if meal.dish_type else ''
+                # Нормализуем тип
+                normalized_type = ru_to_en.get(dish_type, dish_type)
+                if normalized_type not in meals_by_type:
+                    meals_by_type[normalized_type] = []
+                meals_by_type[normalized_type].append(meal)
+
+            # Формируем данные по каждому приёму пищи из программы
+            meals_list = day.get_meals_list()
+            meals_data = []
+            for program_meal in meals_list:
+                meal_type = program_meal.get('type', '')
+                # Ищем соответствующие приёмы пищи
+                matching_meals = []
+                for type_variant in en_to_types.get(meal_type, [meal_type]):
+                    matching_meals.extend(meals_by_type.get(type_variant, []))
+
+                # Формируем данные о фактических приёмах
+                actual_meals = []
+                for meal in matching_meals:
+                    # Формируем URL фото
+                    photo_url = ''
+                    if meal.image:
+                        photo_url = request.build_absolute_uri(meal.image.url) if meal.image else ''
+                    elif meal.thumbnail:
+                        photo_url = request.build_absolute_uri(meal.thumbnail.url) if meal.thumbnail else ''
+
+                    actual_meals.append({
+                        'id': meal.id,
+                        'dish_name': meal.dish_name,
+                        'photo_url': photo_url,
+                        'ingredients': meal.ingredients or [],
+                        'calories': meal.calories,
+                        'proteins': meal.proteins,
+                        'fats': meal.fats,
+                        'carbohydrates': meal.carbohydrates,
+                        'is_compliant': meal.program_check_status == 'compliant',
+                        'program_check_status': meal.program_check_status,
+                        'created_at': meal.created_at.isoformat(),
+                    })
+
+                meals_data.append({
+                    'type': meal_type,
+                    'time': program_meal.get('time', ''),
+                    'name': program_meal.get('name', ''),
+                    'description': program_meal.get('description', ''),
+                    'actual_meals': actual_meals,
+                    'has_meal': len(actual_meals) > 0,
+                })
+
+            days_data.append({
+                'day_number': day.day_number,
+                'date': day.date.isoformat() if day.date else None,
+                'meals': meals_data,
+                'notes': day.notes,
+            })
+
+        return Response({
+            'program_id': program.id,
+            'program_name': program.name,
+            'client_name': f'{program.client.first_name} {program.client.last_name}'.strip(),
+            'start_date': program.start_date.isoformat(),
+            'end_date': program.end_date.isoformat(),
+            'duration_days': program.duration_days,
+            'status': program.status,
+            'days': days_data,
+        })
+
 
 class NutritionProgramDayViewSet(viewsets.ModelViewSet):
     """ViewSet для дней программы питания."""
@@ -233,6 +350,207 @@ class NutritionProgramDayViewSet(viewsets.ModelViewSet):
         target_day.save()
 
         return Response(NutritionProgramDaySerializer(target_day).data)
+
+    @action(detail=True, methods=['post'], url_path='generate-shopping-list')
+    def generate_shopping_list(self, request, program_pk=None, pk=None):
+        """Сгенерировать список покупок для дня через AI."""
+        import json as json_module
+        import logging
+
+        from asgiref.sync import async_to_sync
+
+        from apps.persona.models import AIProviderConfig, BotPersona
+        from core.ai.factory import get_ai_provider
+
+        logger = logging.getLogger(__name__)
+        day = self.get_object()
+        coach = self.request.user.coach_profile
+
+        # Собираем описания блюд
+        meal_descriptions = []
+        for meal in day.meals:
+            if isinstance(meal, dict):
+                name = meal.get('name', '')
+                desc = meal.get('description', '')
+                if name or desc:
+                    meal_descriptions.append(f"{name}: {desc}" if desc else name)
+
+        if not meal_descriptions:
+            return Response({
+                'shopping_list': [],
+                'message': 'Нет блюд для анализа',
+            })
+
+        # Получаем AI провайдер
+        config = AIProviderConfig.objects.filter(
+            coach=coach, provider='openai', is_active=True
+        ).first()
+        if not config:
+            return Response(
+                {'error': 'Не настроен AI провайдер'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        provider = get_ai_provider('openai', config.api_key)
+
+        meals_text = "\n".join(f"- {m}" for m in meal_descriptions)
+
+        # Получаем промпт из персоны коуча
+        persona = BotPersona.objects.filter(coach=coach, is_default=True).first()
+        custom_prompt = persona.shopping_list_prompt if persona and persona.shopping_list_prompt else None
+
+        if custom_prompt:
+            # Используем кастомный промпт с подстановкой переменных
+            prompt = custom_prompt.replace('{meals_description}', meals_text)
+        else:
+            # Дефолтный промпт
+            prompt = f"""Проанализируй меню на день и составь список продуктов для покупки.
+
+Меню:
+{meals_text}
+
+Выведи список в формате JSON массива:
+[
+  {{"name": "Куриная грудка", "category": "meat"}},
+  {{"name": "Помидоры", "category": "vegetables"}},
+  {{"name": "Гречка", "category": "grains"}}
+]
+
+Категории: vegetables (овощи/фрукты), meat (мясо/рыба), dairy (молочные), grains (крупы/гарниры), other (прочее).
+
+Правила:
+- Объединяй похожие продукты
+- Каждый продукт с заглавной буквы
+- Не добавляй количество
+- Выведи ТОЛЬКО JSON массив, без комментариев"""
+
+        try:
+            response = async_to_sync(provider.complete)(
+                messages=[{'role': 'user', 'content': prompt}],
+                system_prompt='Ты помощник по составлению списка покупок. Отвечай только валидным JSON.',
+                max_tokens=500,
+                temperature=0.3,
+                json_mode=True,
+            )
+            content = strip_markdown_codeblock(response.content)
+            shopping_list = json_module.loads(content)
+
+            # Сохраняем в модель
+            day.shopping_list = shopping_list
+            day.save(update_fields=['shopping_list'])
+
+            return Response({
+                'shopping_list': shopping_list,
+                'message': f'Сгенерировано {len(shopping_list)} продуктов',
+            })
+
+        except Exception as e:
+            logger.exception('Failed to generate shopping list: %s', e)
+            return Response(
+                {'error': f'Ошибка генерации: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(detail=True, methods=['post'], url_path='analyze-products')
+    def analyze_products(self, request, program_pk=None, pk=None):
+        """Проанализировать связь между продуктами и текстами блюд с помощью AI."""
+        import json as json_module
+        import logging
+
+        from asgiref.sync import async_to_sync
+
+        from apps.persona.models import AIProviderConfig
+        from core.ai.factory import get_ai_provider
+
+        logger = logging.getLogger(__name__)
+        day = self.get_object()
+        coach = self.request.user.coach_profile
+
+        # Собираем продукты из списка покупок
+        products = []
+        if day.shopping_list:
+            for item in day.shopping_list:
+                if isinstance(item, dict) and item.get('name'):
+                    products.append(item['name'])
+
+        if not products:
+            return Response({'mapping': {}})
+
+        # Собираем тексты блюд
+        meal_texts = []
+        for meal in day.meals:
+            if isinstance(meal, dict):
+                name = meal.get('name', '')
+                desc = meal.get('description', '')
+                if desc:
+                    meal_texts.append(desc)
+                if name:
+                    meal_texts.append(name)
+
+        if not meal_texts:
+            return Response({'mapping': {}})
+
+        all_text = '\n'.join(meal_texts)
+        products_list = '\n'.join(f'- {p}' for p in products)
+
+        # Получаем AI провайдер
+        config = AIProviderConfig.objects.filter(
+            coach=coach, provider='openai', is_active=True
+        ).first()
+        if not config:
+            return Response(
+                {'error': 'Не настроен AI провайдер'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        provider = get_ai_provider('openai', config.api_key)
+
+        prompt = f"""Проанализируй связь между списком продуктов и текстом меню.
+
+Список продуктов:
+{products_list}
+
+Текст меню:
+{all_text}
+
+Для КАЖДОГО продукта найди ВСЕ слова и фразы в тексте, которые к нему относятся.
+Выведи JSON объект где ключ - название продукта, значение - массив найденных слов/фраз ТОЧНО как они написаны в тексте:
+
+{{
+  "Гречка": ["гречневая каша", "гречневую"],
+  "Яйца": ["яйцо", "яичница", "яйца"],
+  "Курица": ["куриное филе", "курицу"]
+}}
+
+Правила:
+- Ищи однокоренные слова (гречка → гречневая, гречку)
+- Ищи синонимы и связанные понятия
+- Ищи все формы слова
+- Слова в массиве - ТОЧНО как в тексте
+- Если для продукта ничего не найдено - пустой массив []
+- Выведи ТОЛЬКО JSON объект"""
+
+        try:
+            response = async_to_sync(provider.complete)(
+                messages=[{'role': 'user', 'content': prompt}],
+                system_prompt='Ты помощник по анализу продуктов. Отвечай только валидным JSON.',
+                max_tokens=1000,
+                temperature=0.1,
+                json_mode=True,
+            )
+            content = strip_markdown_codeblock(response.content)
+            mapping = json_module.loads(content)
+            if not isinstance(mapping, dict):
+                mapping = {}
+
+            return Response({'mapping': mapping})
+
+        except Exception as e:
+            logger.exception('Failed to analyze products: %s', e)
+            return Response(
+                {'error': f'Ошибка анализа: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class ComplianceStatsViewSet(viewsets.GenericViewSet):

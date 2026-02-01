@@ -16,6 +16,7 @@ class NutritionProgramDaySerializer(serializers.ModelSerializer):
             'activity',
             'allowed_ingredients',
             'forbidden_ingredients',
+            'shopping_list',
             'notes',
         ]
         read_only_fields = ['id']
@@ -228,6 +229,7 @@ class NutritionProgramDayUpdateSerializer(serializers.ModelSerializer):
             'activity',
             'allowed_ingredients',
             'forbidden_ingredients',
+            'shopping_list',
             'notes',
         ]
 

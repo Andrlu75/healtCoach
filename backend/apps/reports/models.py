@@ -21,6 +21,12 @@ class Report(models.Model):
     class Meta:
         db_table = 'reports'
         ordering = ['-period_end']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['client', 'report_type', 'period_start'],
+                name='unique_client_report_per_period'
+            )
+        ]
 
     def __str__(self):
         return f'{self.report_type} {self.period_start} - {self.period_end} ({self.client})'

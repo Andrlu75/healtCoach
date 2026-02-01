@@ -106,6 +106,8 @@ function AddMeal() {
       const formData = new FormData()
       formData.append('image', file)
       if (caption) formData.append('caption', caption)
+      // Передаём тип приёма пищи из программы (если есть)
+      if (programMealType) formData.append('program_meal_type', programMealType)
       const response = await analyzeMealPhoto(formData)
       return response.data
     },

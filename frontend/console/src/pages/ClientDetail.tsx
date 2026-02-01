@@ -1538,7 +1538,7 @@ function SettingsTab({
             <option value="">По умолчанию</option>
             {personas.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}{p.is_default ? ' (по умолч.)' : ''}
+                {p.name}{p.role === 'controller' ? ' [контролёр]' : ''}{p.is_default ? ' (по умолч.)' : ''}
               </option>
             ))}
           </select>

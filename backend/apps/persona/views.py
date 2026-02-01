@@ -59,6 +59,7 @@ class BotPersonaView(APIView):
         """Update a persona by id (passed in body)."""
         coach = request.user.coach_profile
         persona_id = request.data.get('id')
+        logger.info('[PERSONA PUT] data=%s', request.data)
         if not persona_id:
             return Response({'error': 'id обязателен'}, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -66,6 +67,8 @@ class BotPersonaView(APIView):
         except BotPersona.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
         serializer = BotPersonaSerializer(persona, data=request.data, partial=True)
+        if not serializer.is_valid():
+            logger.error('[PERSONA PUT] Validation errors: %s', serializer.errors)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
@@ -542,26 +545,8 @@ class AITestView(APIView):
             loop.close()
 
             # Записать usage в лог
-            from core.ai.model_fetcher import get_cached_pricing
-
-            input_tokens = result.usage.get('input_tokens', 0) or result.usage.get('prompt_tokens', 0)
-            output_tokens = result.usage.get('output_tokens', 0) or result.usage.get('completion_tokens', 0)
-            if input_tokens or output_tokens:
-                cost_usd = 0
-                pricing = get_cached_pricing(provider_name, model_id)
-                if pricing:
-                    price_in, price_out = pricing
-                    cost_usd = (input_tokens * price_in + output_tokens * price_out) / 1_000_000
-
-                AIUsageLog.objects.create(
-                    coach=coach,
-                    provider=provider_name,
-                    model=model_id,
-                    task_type=task_type,
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                    cost_usd=cost_usd,
-                )
+            from core.ai.model_fetcher import log_ai_usage_sync
+            log_ai_usage_sync(coach, provider_name, model_id, result, task_type=task_type)
 
             return Response({
                 'response': result.content,

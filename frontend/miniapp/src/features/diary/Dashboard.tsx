@@ -318,7 +318,7 @@ function Dashboard() {
                         </span>
                       </div>
                       {meal.description && (
-                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                           {meal.description}
                         </p>
                       )}

@@ -20,6 +20,7 @@ class GeminiProvider(AbstractAIProvider):
         max_tokens: int = 600,
         temperature: float = 0.7,
         model: Optional[str] = None,
+        json_mode: bool = False,
     ) -> AIResponse:
         model = model or 'gemini-2.0-flash'
 
@@ -35,6 +36,7 @@ class GeminiProvider(AbstractAIProvider):
             system_instruction=system_prompt,
             max_output_tokens=max_tokens,
             temperature=temperature,
+            response_mime_type='application/json' if json_mode else None,
         )
 
         response = await self.client.aio.models.generate_content(
@@ -44,6 +46,15 @@ class GeminiProvider(AbstractAIProvider):
         )
 
         content = response.text or ''
+
+        # Gemini finish_reason: STOP, MAX_TOKENS, SAFETY, RECITATION, OTHER
+        finish_reason = None
+        is_truncated = False
+        if response.candidates:
+            candidate = response.candidates[0]
+            finish_reason = str(candidate.finish_reason) if candidate.finish_reason else None
+            is_truncated = finish_reason == 'MAX_TOKENS'
+
         usage = {}
         if response.usage_metadata:
             usage = {
@@ -55,6 +66,8 @@ class GeminiProvider(AbstractAIProvider):
             content=content,
             model=model,
             usage=usage,
+            finish_reason=finish_reason,
+            is_truncated=is_truncated,
         )
 
     async def analyze_image(
@@ -77,6 +90,7 @@ class GeminiProvider(AbstractAIProvider):
         config = types.GenerateContentConfig(
             max_output_tokens=max_tokens,
             temperature=temperature,
+            response_mime_type='application/json' if json_mode else None,
         )
 
         response = await self.client.aio.models.generate_content(
@@ -86,6 +100,14 @@ class GeminiProvider(AbstractAIProvider):
         )
 
         content = response.text or ''
+
+        finish_reason = None
+        is_truncated = False
+        if response.candidates:
+            candidate = response.candidates[0]
+            finish_reason = str(candidate.finish_reason) if candidate.finish_reason else None
+            is_truncated = finish_reason == 'MAX_TOKENS'
+
         usage = {}
         if response.usage_metadata:
             usage = {
@@ -97,6 +119,8 @@ class GeminiProvider(AbstractAIProvider):
             content=content,
             model=model,
             usage=usage,
+            finish_reason=finish_reason,
+            is_truncated=is_truncated,
         )
 
     async def transcribe_audio(

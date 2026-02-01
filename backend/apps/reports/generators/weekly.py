@@ -59,11 +59,16 @@ def collect_weekly_data(client: Client, week_start: date) -> dict:
         weight_change = round(weight_metrics[-1] - weight_metrics[0], 1)
 
     # All metrics summary
-    metrics = list(HealthMetric.objects.filter(
+    metrics_qs = HealthMetric.objects.filter(
         client=client,
         recorded_at__date__gte=week_start,
         recorded_at__date__lte=week_end,
-    ).values('metric_type', 'value', 'unit', 'recorded_at'))
+    ).values('metric_type', 'value', 'unit', 'recorded_at')
+    # Convert recorded_at to string for JSON serialization
+    metrics = [
+        {**m, 'recorded_at': m['recorded_at'].isoformat() if m['recorded_at'] else None}
+        for m in metrics_qs
+    ]
 
     return {
         'period_start': week_start.isoformat(),

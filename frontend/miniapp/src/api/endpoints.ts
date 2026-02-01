@@ -100,9 +100,10 @@ export const updateMealDraft = (draftId: string, data: Partial<{
   estimated_weight: number
 }>) => api.patch<MealDraft>(`/miniapp/meals/drafts/${draftId}/`, data)
 
-export const confirmMealDraft = (draftId: string) =>
+export const confirmMealDraft = (draftId: string, programMealType?: string) =>
   api.post<{ status: string; meal_id: number; meal: MealAnalysisResult; ai_response?: string }>(
-    `/miniapp/meals/drafts/${draftId}/confirm/`
+    `/miniapp/meals/drafts/${draftId}/confirm/`,
+    programMealType ? { program_meal_type: programMealType } : {}
   )
 
 export const cancelMealDraft = (draftId: string) =>
@@ -224,6 +225,26 @@ export const getNutritionProgramViolations = (params?: { limit?: number }) =>
 
 export const getNutritionProgramSummary = () =>
   api.get<NutritionProgramSummary & { has_program: boolean }>('/miniapp/nutrition-program/summary/')
+
+// Shopping List
+export interface ShoppingCategory {
+  name: string
+  emoji: string
+  items: string[]
+}
+
+export interface ShoppingList {
+  has_program: boolean
+  program_name?: string
+  days_count?: number
+  start_date?: string
+  end_date?: string
+  categories: ShoppingCategory[]
+  items_count: number
+}
+
+export const getShoppingList = (params?: { days?: number }) =>
+  api.get<ShoppingList>('/miniapp/nutrition-program/shopping-list/', { params })
 
 // Meal Reports
 export interface MealReport {

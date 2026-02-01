@@ -82,6 +82,8 @@ function AddMealSmart() {
       const formData = new FormData()
       formData.append('image', file)
       if (caption) formData.append('caption', caption)
+      // Передаём тип приёма пищи из программы (если есть)
+      if (programMealType) formData.append('program_meal_type', programMealType)
       const response = await analyzeSmartMealPhoto(formData)
       return response.data
     },
@@ -189,7 +191,8 @@ function AddMealSmart() {
   // Подтверждение
   const confirmMutation = useMutation({
     mutationFn: async (draftId: string) => {
-      const response = await confirmMealDraft(draftId)
+      // Передаём programMealType для контролёра программы питания
+      const response = await confirmMealDraft(draftId, programMealType || undefined)
 
       // Если есть programMealType, также создаём отчёт в программу
       if (programMealType && photoFile) {

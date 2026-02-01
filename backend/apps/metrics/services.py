@@ -1,14 +1,13 @@
 import json
 import logging
-from decimal import Decimal
 
 from asgiref.sync import sync_to_async
 from django.utils import timezone
 
 from apps.accounts.models import Client
-from apps.persona.models import AIProviderConfig, AIUsageLog, BotPersona, TelegramBot
+from apps.persona.models import AIProviderConfig, BotPersona, TelegramBot
 from core.ai.factory import get_ai_provider
-from core.ai.model_fetcher import get_cached_pricing
+from core.ai.utils import strip_markdown_codeblock
 
 from .models import HealthMetric
 
@@ -72,36 +71,15 @@ async def parse_metrics_from_photo(bot: TelegramBot, image_data: bytes, client: 
         prompt=PARSE_METRICS_PROMPT,
         max_tokens=500,
         model=model,
+        temperature=0.0,  # Детерминированный результат для парсинга метрик
     )
 
     # Log usage
-    usage = response.usage or {}
-    input_tokens = usage.get('input_tokens') or usage.get('prompt_tokens') or 0
-    output_tokens = usage.get('output_tokens') or usage.get('completion_tokens') or 0
-
-    cost_usd = Decimal('0')
-    pricing = get_cached_pricing(provider_name, response.model or model or '')
-    if pricing and (input_tokens or output_tokens):
-        price_in, price_out = pricing
-        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
-
-    await sync_to_async(AIUsageLog.objects.create)(
-        coach=bot.coach,
-        provider=provider_name,
-        model=response.model or model or '',
-        task_type='vision',
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cost_usd=cost_usd,
-    )
+    from core.ai.model_fetcher import log_ai_usage
+    await log_ai_usage(bot.coach, provider_name, model, response, task_type='vision')
 
     # Parse JSON
-    content = response.content.strip()
-    if content.startswith('```'):
-        content = content.split('\n', 1)[1] if '\n' in content else content[3:]
-        if content.endswith('```'):
-            content = content[:-3]
-        content = content.strip()
+    content = strip_markdown_codeblock(response.content)
 
     try:
         metrics = json.loads(content)

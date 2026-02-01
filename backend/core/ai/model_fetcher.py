@@ -254,3 +254,94 @@ async def _fetch_deepseek_models(api_key: str) -> list[dict]:
 
     models.sort(key=lambda x: x['id'])
     return models
+
+
+async def log_ai_usage(
+    coach,
+    provider_name: str,
+    model: str,
+    response,
+    task_type: str = 'text',
+    client=None,
+) -> None:
+    """Логирование использования AI с расчётом стоимости.
+
+    Args:
+        coach: Coach instance
+        provider_name: Название провайдера ('openai', 'anthropic', etc.)
+        model: ID модели (может быть перезаписан из response.model)
+        response: AIResponse объект с usage
+        task_type: Тип задачи ('text', 'vision', 'voice')
+        client: Optional Client instance
+    """
+    from decimal import Decimal
+    from asgiref.sync import sync_to_async
+    from apps.persona.models import AIUsageLog
+
+    model_used = response.model or model or ''
+    usage = response.usage or {}
+
+    input_tokens = usage.get('input_tokens', 0) or usage.get('prompt_tokens', 0)
+    output_tokens = usage.get('output_tokens', 0) or usage.get('completion_tokens', 0)
+
+    cost_usd = Decimal('0')
+    pricing = get_cached_pricing(provider_name, model_used)
+    if pricing and (input_tokens or output_tokens):
+        price_in, price_out = pricing
+        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
+    await sync_to_async(AIUsageLog.objects.create)(
+        coach=coach,
+        client=client,
+        provider=provider_name,
+        model=model_used,
+        task_type=task_type,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=cost_usd,
+    )
+
+
+def log_ai_usage_sync(
+    coach,
+    provider_name: str,
+    model: str,
+    response,
+    task_type: str = 'text',
+    client=None,
+) -> None:
+    """Синхронная версия логирования использования AI.
+
+    Args:
+        coach: Coach instance
+        provider_name: Название провайдера ('openai', 'anthropic', etc.)
+        model: ID модели (может быть перезаписан из response.model)
+        response: AIResponse объект с usage
+        task_type: Тип задачи ('text', 'vision', 'voice')
+        client: Optional Client instance
+    """
+    from decimal import Decimal
+    from apps.persona.models import AIUsageLog
+
+    model_used = response.model or model or ''
+    usage = response.usage or {}
+
+    input_tokens = usage.get('input_tokens', 0) or usage.get('prompt_tokens', 0)
+    output_tokens = usage.get('output_tokens', 0) or usage.get('completion_tokens', 0)
+
+    cost_usd = Decimal('0')
+    pricing = get_cached_pricing(provider_name, model_used)
+    if pricing and (input_tokens or output_tokens):
+        price_in, price_out = pricing
+        cost_usd = Decimal(str((input_tokens * price_in + output_tokens * price_out) / 1_000_000))
+
+    AIUsageLog.objects.create(
+        coach=coach,
+        client=client,
+        provider=provider_name,
+        model=model_used,
+        task_type=task_type,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=cost_usd,
+    )

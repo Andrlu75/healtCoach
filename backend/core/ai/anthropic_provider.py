@@ -19,6 +19,7 @@ class AnthropicProvider(AbstractAIProvider):
         max_tokens: int = 600,
         temperature: float = 0.7,
         model: Optional[str] = None,
+        json_mode: bool = False,
     ) -> AIResponse:
         model = model or 'claude-sonnet-4-20250514'
 
@@ -35,6 +36,10 @@ class AnthropicProvider(AbstractAIProvider):
             if block.type == 'text':
                 content += block.text
 
+        # Anthropic stop_reason: 'end_turn', 'max_tokens', 'stop_sequence'
+        stop_reason = response.stop_reason
+        is_truncated = stop_reason == 'max_tokens'
+
         return AIResponse(
             content=content,
             response_id=response.id,
@@ -43,6 +48,8 @@ class AnthropicProvider(AbstractAIProvider):
                 'input_tokens': response.usage.input_tokens,
                 'output_tokens': response.usage.output_tokens,
             },
+            finish_reason=stop_reason,
+            is_truncated=is_truncated,
         )
 
     async def analyze_image(
@@ -87,6 +94,9 @@ class AnthropicProvider(AbstractAIProvider):
             if block.type == 'text':
                 content += block.text
 
+        stop_reason = response.stop_reason
+        is_truncated = stop_reason == 'max_tokens'
+
         return AIResponse(
             content=content,
             model=response.model,
@@ -94,6 +104,8 @@ class AnthropicProvider(AbstractAIProvider):
                 'input_tokens': response.usage.input_tokens,
                 'output_tokens': response.usage.output_tokens,
             },
+            finish_reason=stop_reason,
+            is_truncated=is_truncated,
         )
 
     async def transcribe_audio(
