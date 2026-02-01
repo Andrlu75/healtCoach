@@ -35,10 +35,13 @@ interface Exercise {
   reps: number
   rest_seconds: number
   weight_kg: number | null
+  duration_seconds: number | null
+  distance_meters: number | null
   exercise: {
     id: string
     name: string
     muscle_group: string
+    category: string
   }
 }
 
@@ -137,10 +140,12 @@ export default function WorkoutDetail() {
           id: String(we.exercise.id),
           name: we.exercise.name || 'Упражнение',
           muscle_group: we.exercise.muscle_group || '',
+          category: we.exercise.category || 'strength',
         } : {
           id: String(we.exercise_id),
           name: 'Упражнение',
           muscle_group: '',
+          category: 'strength',
         }
 
         return {
@@ -150,6 +155,8 @@ export default function WorkoutDetail() {
           reps: we.reps,
           rest_seconds: we.rest_seconds,
           weight_kg: we.weight_kg,
+          duration_seconds: we.duration_seconds || null,
+          distance_meters: we.distance_meters || null,
           exercise: exerciseDetails,
         } as Exercise
       })
@@ -374,13 +381,30 @@ export default function WorkoutDetail() {
                             {ex.exercise.muscle_group}
                           </span>
                         )}
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {ex.sets} × {ex.reps}
-                        </span>
-                        {ex.weight_kg && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            · {ex.weight_kg} кг
-                          </span>
+                        {['cardio', 'warmup', 'cooldown', 'flexibility'].includes(ex.exercise.category) ? (
+                          <>
+                            {ex.duration_seconds && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {Math.round(ex.duration_seconds / 60)} мин
+                              </span>
+                            )}
+                            {ex.distance_meters && ex.distance_meters > 0 && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                · {(ex.distance_meters / 1000).toFixed(1)} км
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {ex.sets} × {ex.reps}
+                            </span>
+                            {ex.weight_kg && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                · {ex.weight_kg} кг
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

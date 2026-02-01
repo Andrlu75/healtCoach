@@ -12,11 +12,14 @@ interface Exercise {
   reps: number
   rest_seconds: number
   weight_kg: number | null
+  duration_seconds: number | null
+  distance_meters: number | null
   exercise: {
     id: string
     name: string
     muscle_group: string
     description: string | null
+    category: string
   }
 }
 
@@ -142,11 +145,13 @@ export default function WorkoutRun() {
           name: we.exercise.name || 'Упражнение',
           muscle_group: we.exercise.muscle_group || '',
           description: we.exercise.description || null,
+          category: we.exercise.category || 'strength',
         } : {
           id: String(we.exercise_id),
           name: 'Упражнение',
           muscle_group: '',
           description: null as string | null,
+          category: 'strength',
         }
 
         return {
@@ -156,6 +161,8 @@ export default function WorkoutRun() {
           reps: we.reps,
           rest_seconds: we.rest_seconds,
           weight_kg: we.weight_kg,
+          duration_seconds: we.duration_seconds || null,
+          distance_meters: we.distance_meters || null,
           exercise: exerciseDetails,
         } as Exercise
       })
@@ -597,19 +604,38 @@ export default function WorkoutRun() {
               </div>
 
               <div className="flex gap-4 mb-4">
-                <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedExercise.sets}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">подходов</p>
-                </div>
-                <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedExercise.reps}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">повторений</p>
-                </div>
-                {selectedExercise.weight_kg && (
-                  <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-3 text-center">
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedExercise.weight_kg}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">кг</p>
-                  </div>
+                {['cardio', 'warmup', 'cooldown', 'flexibility'].includes(selectedExercise.exercise.category) ? (
+                  <>
+                    {selectedExercise.duration_seconds && (
+                      <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{Math.round(selectedExercise.duration_seconds / 60)}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">минут</p>
+                      </div>
+                    )}
+                    {selectedExercise.distance_meters && selectedExercise.distance_meters > 0 && (
+                      <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{(selectedExercise.distance_meters / 1000).toFixed(1)}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">км</p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-3 text-center">
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedExercise.sets}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">подходов</p>
+                    </div>
+                    <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-3 text-center">
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedExercise.reps}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">повторений</p>
+                    </div>
+                    {selectedExercise.weight_kg && (
+                      <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedExercise.weight_kg}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">кг</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -1011,8 +1037,17 @@ export default function WorkoutRun() {
           <div className="mb-4">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">{currentExercise.exercise.name}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {currentExercise.sets} × {currentExercise.reps} повт
-              {currentExercise.weight_kg && ` · ${currentExercise.weight_kg} кг`}
+              {['cardio', 'warmup', 'cooldown', 'flexibility'].includes(currentExercise.exercise.category) ? (
+                <>
+                  {currentExercise.duration_seconds && `${Math.round(currentExercise.duration_seconds / 60)} мин`}
+                  {currentExercise.distance_meters && currentExercise.distance_meters > 0 && ` · ${(currentExercise.distance_meters / 1000).toFixed(1)} км`}
+                </>
+              ) : (
+                <>
+                  {currentExercise.sets} × {currentExercise.reps} повт
+                  {currentExercise.weight_kg && ` · ${currentExercise.weight_kg} кг`}
+                </>
+              )}
             </p>
           </div>
 
