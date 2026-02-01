@@ -14,6 +14,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog'
 
 interface Workout {
@@ -799,6 +800,9 @@ export default function WorkoutScheduler() {
                 </span>
               </div>
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Редактирование упражнений назначенной тренировки
+            </DialogDescription>
 
             {/* Сводка по тренировке */}
             {!editingLoading && editingExercises.length > 0 && (() => {
@@ -1206,6 +1210,9 @@ export default function WorkoutScheduler() {
         <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-b">
             <DialogTitle className="text-xl">Добавить упражнение</DialogTitle>
+            <DialogDescription className="sr-only">
+              Поиск и добавление упражнения в тренировку
+            </DialogDescription>
           </DialogHeader>
 
           <div className="px-6 pt-4">
@@ -1276,6 +1283,9 @@ export default function WorkoutScheduler() {
                 </span>
               </div>
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Управление тегами шаблона тренировки
+            </DialogDescription>
           </DialogHeader>
 
           <div className="p-6 space-y-4">
