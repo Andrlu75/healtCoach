@@ -251,3 +251,7 @@ ENCRYPTION_KEY = config('ENCRYPTION_KEY', default='zV6OM0v6JUcS7pGN_-oP8XxWJZxVl
 
 # File upload limits
 MAX_IMAGE_UPLOAD_SIZE = config('MAX_IMAGE_UPLOAD_SIZE', default=10 * 1024 * 1024, cast=int)  # 10 MB
+
+# SECURITY: Ограничение размера request body для защиты от DoS
+# Django default = 2.5 MB, устанавливаем явно для безопасности
+DATA_UPLOAD_MAX_MEMORY_SIZE = config('DATA_UPLOAD_MAX_MEMORY_SIZE', default=5 * 1024 * 1024, cast=int)  # 5 MB

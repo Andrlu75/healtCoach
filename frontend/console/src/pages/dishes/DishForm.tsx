@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { ArrowLeft, Loader2, Save, ImagePlus, X, Plus, Trash2, Sparkles } from 'lucide-react'
 import { useDishesStore } from '@/stores/dishes'
 import { dishesAiApi } from '@/api/dishes'
@@ -17,10 +17,21 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/use-toast'
 import { ShoppingLinksInput } from '@/components/dishes/ShoppingLinksInput'
 
+// Тип данных для предзаполнения из программы питания
+interface PrefillData {
+  name?: string
+  description?: string
+  meal_type?: MealType
+}
+
 export default function DishForm() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const isEditing = !!id
+
+  // Данные для предзаполнения из программы питания (location.state)
+  const prefillData = location.state as PrefillData | undefined
 
   const {
     selectedDish,
@@ -68,6 +79,18 @@ export default function DishForm() {
       fetchDish(parseInt(id, 10))
     }
   }, [id, isEditing, fetchDish, fetchTags])
+
+  // Предзаполнение формы из программы питания (только для нового блюда)
+  useEffect(() => {
+    if (!isEditing && prefillData) {
+      setFormData((prev) => ({
+        ...prev,
+        name: prefillData.name || prev.name,
+        description: prefillData.description || prev.description,
+        meal_types: prefillData.meal_type ? [prefillData.meal_type] : prev.meal_types,
+      }))
+    }
+  }, [isEditing, prefillData])
 
   // Заполнение формы при редактировании
   useEffect(() => {
