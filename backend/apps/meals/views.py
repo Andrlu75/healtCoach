@@ -2,13 +2,23 @@ from datetime import date
 import zoneinfo
 
 from asgiref.sync import async_to_sync
+from django.db.models import Q
 from django.utils import timezone
-from rest_framework import status
+from rest_framework import status, viewsets, filters
+from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Meal, MealDraft
-from .serializers import MealSerializer, MealDraftSerializer
+from .models import Dish, DishTag, Meal, MealDraft, Product
+from .serializers import (
+    DishDetailSerializer,
+    DishListSerializer,
+    DishTagSerializer,
+    MealDraftSerializer,
+    MealSerializer,
+    ProductSerializer,
+)
 from apps.accounts.models import Client
 
 
@@ -334,3 +344,226 @@ class MealDraftRemoveIngredientView(APIView):
             'status': 'removed',
             'draft': MealDraftSerializer(draft).data,
         })
+
+
+# ============================================================================
+# PAGINATION CLASSES
+# ============================================================================
+
+class ProductPagination(PageNumberPagination):
+    """Пагинация для списка продуктов."""
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+class DishPagination(PageNumberPagination):
+    """Пагинация для списка блюд."""
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+# ============================================================================
+# PRODUCT VIEWSET
+# ============================================================================
+
+class ProductViewSet(viewsets.ModelViewSet):
+    """ViewSet для CRUD операций с продуктами коуча.
+
+    Endpoints:
+    - GET /api/products/ — список продуктов
+    - POST /api/products/ — создать продукт
+    - GET /api/products/{id}/ — получить продукт
+    - PUT/PATCH /api/products/{id}/ — обновить продукт
+    - DELETE /api/products/{id}/ — удалить продукт
+    - GET /api/products/search/?q=... — поиск для автокомплита
+    """
+
+    serializer_class = ProductSerializer
+    pagination_class = ProductPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name']
+    ordering_fields = ['name', 'category', 'created_at']
+    ordering = ['name']
+
+    def get_queryset(self):
+        """Возвращает продукты текущего коуча."""
+        coach = self.request.user.coach_profile
+        queryset = Product.objects.filter(coach=coach)
+
+        # Фильтрация по категории
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category=category)
+
+        # Фильтрация по is_verified
+        is_verified = self.request.query_params.get('is_verified')
+        if is_verified is not None:
+            queryset = queryset.filter(is_verified=is_verified.lower() == 'true')
+
+        return queryset
+
+    def perform_create(self, serializer):
+        """Устанавливает coach при создании продукта."""
+        serializer.save(coach=self.request.user.coach_profile)
+
+    @action(detail=False, methods=['get'])
+    def search(self, request):
+        """Поиск продуктов для автокомплита.
+
+        GET /api/products/search/?q=молоко
+        Возвращает до 10 продуктов, подходящих под запрос.
+        """
+        query = request.query_params.get('q', '').strip()
+        if len(query) < 2:
+            return Response([])
+
+        coach = request.user.coach_profile
+        products = Product.objects.filter(
+            coach=coach,
+            name__icontains=query,
+        )[:10]
+
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data)
+
+
+# ============================================================================
+# DISH TAG VIEWSET
+# ============================================================================
+
+class DishTagViewSet(viewsets.ModelViewSet):
+    """ViewSet для CRUD операций с тегами блюд.
+
+    Endpoints:
+    - GET /api/dish-tags/ — список тегов
+    - POST /api/dish-tags/ — создать тег
+    - GET /api/dish-tags/{id}/ — получить тег
+    - PUT/PATCH /api/dish-tags/{id}/ — обновить тег
+    - DELETE /api/dish-tags/{id}/ — удалить тег
+    """
+
+    serializer_class = DishTagSerializer
+    filter_backends = [filters.OrderingFilter]
+    ordering = ['name']
+
+    def get_queryset(self):
+        """Возвращает теги текущего коуча."""
+        coach = self.request.user.coach_profile
+        return DishTag.objects.filter(coach=coach)
+
+    def perform_create(self, serializer):
+        """Устанавливает coach при создании тега."""
+        serializer.save(coach=self.request.user.coach_profile)
+
+
+# ============================================================================
+# DISH VIEWSET
+# ============================================================================
+
+class DishViewSet(viewsets.ModelViewSet):
+    """ViewSet для CRUD операций с блюдами.
+
+    Endpoints:
+    - GET /api/dishes/ — список блюд
+    - POST /api/dishes/ — создать блюдо
+    - GET /api/dishes/{id}/ — получить блюдо
+    - PUT/PATCH /api/dishes/{id}/ — обновить блюдо
+    - DELETE /api/dishes/{id}/ — удалить блюдо
+    - POST /api/dishes/{id}/duplicate/ — дублировать блюдо
+    - POST /api/dishes/{id}/archive/ — архивировать блюдо
+    """
+
+    pagination_class = DishPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'description']
+    ordering_fields = ['updated_at', 'name', 'calories', 'created_at']
+    ordering = ['-updated_at']
+
+    def get_queryset(self):
+        """Возвращает блюда текущего коуча с фильтрацией."""
+        coach = self.request.user.coach_profile
+        queryset = Dish.objects.filter(coach=coach)
+
+        # По умолчанию показываем только активные блюда в списке
+        if self.action == 'list':
+            show_archived = self.request.query_params.get('show_archived', 'false')
+            if show_archived.lower() != 'true':
+                queryset = queryset.filter(is_active=True)
+
+        # Фильтрация по типу приёма пищи
+        meal_type = self.request.query_params.get('meal_type')
+        if meal_type:
+            queryset = queryset.filter(meal_types__contains=[meal_type])
+
+        # Фильтрация по тегам
+        tag_ids = self.request.query_params.get('tags')
+        if tag_ids:
+            tag_id_list = [int(t) for t in tag_ids.split(',') if t.isdigit()]
+            if tag_id_list:
+                queryset = queryset.filter(tags__id__in=tag_id_list).distinct()
+
+        # Фильтрация по is_active
+        is_active = self.request.query_params.get('is_active')
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+
+        return queryset.prefetch_related('tags')
+
+    def get_serializer_class(self):
+        """Возвращает соответствующий сериализатор."""
+        if self.action == 'list':
+            return DishListSerializer
+        return DishDetailSerializer
+
+    def perform_create(self, serializer):
+        """Устанавливает coach при создании блюда."""
+        serializer.save(coach=self.request.user.coach_profile)
+
+    @action(detail=True, methods=['post'])
+    def duplicate(self, request, pk=None):
+        """Дублировать блюдо.
+
+        POST /api/dishes/{id}/duplicate/
+        Создаёт копию блюда с суффиксом " (копия)".
+        """
+        dish = self.get_object()
+
+        # Создаём копию
+        new_dish = Dish.objects.create(
+            coach=dish.coach,
+            name=f'{dish.name} (копия)',
+            description=dish.description,
+            recipe=dish.recipe,
+            portion_weight=dish.portion_weight,
+            calories=dish.calories,
+            proteins=dish.proteins,
+            fats=dish.fats,
+            carbohydrates=dish.carbohydrates,
+            cooking_time=dish.cooking_time,
+            video_url=dish.video_url,
+            ingredients=dish.ingredients.copy() if dish.ingredients else [],
+            shopping_links=dish.shopping_links.copy() if dish.shopping_links else [],
+            meal_types=dish.meal_types.copy() if dish.meal_types else [],
+            is_active=True,
+        )
+
+        # Копируем теги
+        new_dish.tags.set(dish.tags.all())
+
+        serializer = DishDetailSerializer(new_dish, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def archive(self, request, pk=None):
+        """Архивировать блюдо.
+
+        POST /api/dishes/{id}/archive/
+        Устанавливает is_active=False.
+        """
+        dish = self.get_object()
+        dish.is_active = False
+        dish.save(update_fields=['is_active', 'updated_at'])
+
+        return Response({'status': 'archived', 'id': dish.id})

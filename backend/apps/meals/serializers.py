@@ -1,7 +1,10 @@
+import re
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from core.validators import validate_uploaded_image
-from .models import Meal, MealDraft
+from .models import Dish, DishTag, Meal, MealDraft, Product, MEAL_TYPES
 
 
 class IngredientSerializer(serializers.Serializer):
@@ -96,3 +99,232 @@ class MealCreateSerializer(serializers.ModelSerializer):
         if value:
             validate_uploaded_image(value)
         return value
+
+
+# ============================================================================
+# PRODUCT SERIALIZERS
+# ============================================================================
+
+class ProductSerializer(serializers.ModelSerializer):
+    """Сериализатор для модели Product.
+
+    Используется для CRUD операций с продуктами коуча.
+    """
+
+    class Meta:
+        model = Product
+        fields = [
+            'id',
+            'name',
+            'calories_per_100g',
+            'proteins_per_100g',
+            'fats_per_100g',
+            'carbs_per_100g',
+            'category',
+            'is_verified',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_calories_per_100g(self, value: Decimal) -> Decimal:
+        """Валидация калорий."""
+        if value < 0:
+            raise serializers.ValidationError('Калории не могут быть отрицательными.')
+        return value
+
+    def validate_proteins_per_100g(self, value: Decimal) -> Decimal:
+        """Валидация белков."""
+        if value < 0:
+            raise serializers.ValidationError('Белки не могут быть отрицательными.')
+        return value
+
+    def validate_fats_per_100g(self, value: Decimal) -> Decimal:
+        """Валидация жиров."""
+        if value < 0:
+            raise serializers.ValidationError('Жиры не могут быть отрицательными.')
+        return value
+
+    def validate_carbs_per_100g(self, value: Decimal) -> Decimal:
+        """Валидация углеводов."""
+        if value < 0:
+            raise serializers.ValidationError('Углеводы не могут быть отрицательными.')
+        return value
+
+
+# ============================================================================
+# DISH TAG SERIALIZERS
+# ============================================================================
+
+class DishTagSerializer(serializers.ModelSerializer):
+    """Сериализатор для модели DishTag."""
+
+    class Meta:
+        model = DishTag
+        fields = ['id', 'name', 'color', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+    def validate_color(self, value: str) -> str:
+        """Валидация HEX цвета."""
+        if not re.match(r'^#[0-9A-Fa-f]{6}$', value):
+            raise serializers.ValidationError(
+                'Цвет должен быть в формате HEX (#RRGGBB).'
+            )
+        return value.upper()
+
+
+# ============================================================================
+# DISH SERIALIZERS
+# ============================================================================
+
+class DishIngredientSerializer(serializers.Serializer):
+    """Сериализатор для ингредиента в блюде."""
+
+    product_id = serializers.IntegerField(required=False, allow_null=True)
+    name = serializers.CharField(max_length=255)
+    weight = serializers.IntegerField(min_value=0)
+    calories = serializers.DecimalField(max_digits=7, decimal_places=2, min_value=0)
+    proteins = serializers.DecimalField(max_digits=6, decimal_places=2, min_value=0)
+    fats = serializers.DecimalField(max_digits=6, decimal_places=2, min_value=0)
+    carbohydrates = serializers.DecimalField(max_digits=6, decimal_places=2, min_value=0)
+
+
+class ShoppingLinkSerializer(serializers.Serializer):
+    """Сериализатор для ссылки на покупку."""
+
+    title = serializers.CharField(max_length=255)
+    url = serializers.URLField()
+
+
+class DishListSerializer(serializers.ModelSerializer):
+    """Компактный сериализатор для списка блюд."""
+
+    tags = DishTagSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Dish
+        fields = [
+            'id',
+            'name',
+            'photo',
+            'calories',
+            'proteins',
+            'fats',
+            'carbohydrates',
+            'portion_weight',
+            'meal_types',
+            'tags',
+            'cooking_time',
+            'updated_at',
+        ]
+        read_only_fields = fields
+
+
+class DishDetailSerializer(serializers.ModelSerializer):
+    """Полный сериализатор для детального просмотра и редактирования блюда."""
+
+    tags = DishTagSerializer(many=True, read_only=True)
+    tag_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+        help_text='Список ID тегов для привязки к блюду',
+    )
+
+    class Meta:
+        model = Dish
+        fields = [
+            'id',
+            'name',
+            'description',
+            'recipe',
+            'portion_weight',
+            'calories',
+            'proteins',
+            'fats',
+            'carbohydrates',
+            'cooking_time',
+            'photo',
+            'video_url',
+            'ingredients',
+            'shopping_links',
+            'meal_types',
+            'tags',
+            'tag_ids',
+            'is_active',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_ingredients(self, value: list) -> list:
+        """Валидация структуры ингредиентов."""
+        if not isinstance(value, list):
+            raise serializers.ValidationError('Ингредиенты должны быть списком.')
+
+        serializer = DishIngredientSerializer(data=value, many=True)
+        serializer.is_valid(raise_exception=True)
+        return value
+
+    def validate_shopping_links(self, value: list) -> list:
+        """Валидация структуры ссылок на покупку."""
+        if not isinstance(value, list):
+            raise serializers.ValidationError('Ссылки должны быть списком.')
+
+        serializer = ShoppingLinkSerializer(data=value, many=True)
+        serializer.is_valid(raise_exception=True)
+        return value
+
+    def validate_meal_types(self, value: list) -> list:
+        """Валидация типов приёмов пищи."""
+        if not isinstance(value, list):
+            raise serializers.ValidationError('Типы приёмов пищи должны быть списком.')
+
+        valid_types = {mt[0] for mt in MEAL_TYPES}
+        for meal_type in value:
+            if meal_type not in valid_types:
+                raise serializers.ValidationError(
+                    f'Недопустимый тип приёма пищи: {meal_type}. '
+                    f'Допустимые значения: {", ".join(valid_types)}.'
+                )
+        return value
+
+    def create(self, validated_data: dict) -> Dish:
+        """Создание блюда с привязкой тегов."""
+        tag_ids = validated_data.pop('tag_ids', [])
+        request = self.context.get('request')
+
+        # Устанавливаем coach из request
+        if request and hasattr(request, 'user') and hasattr(request.user, 'coach_profile'):
+            validated_data['coach'] = request.user.coach_profile
+
+        dish = Dish.objects.create(**validated_data)
+
+        # Привязываем теги
+        if tag_ids:
+            tags = DishTag.objects.filter(
+                id__in=tag_ids,
+                coach=dish.coach,
+            )
+            dish.tags.set(tags)
+
+        return dish
+
+    def update(self, instance: Dish, validated_data: dict) -> Dish:
+        """Обновление блюда с обработкой тегов."""
+        tag_ids = validated_data.pop('tag_ids', None)
+
+        # Обновляем поля
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Обновляем теги если переданы
+        if tag_ids is not None:
+            tags = DishTag.objects.filter(
+                id__in=tag_ids,
+                coach=instance.coach,
+            )
+            instance.tags.set(tags)
+
+        return instance
