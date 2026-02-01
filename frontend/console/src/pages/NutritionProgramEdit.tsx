@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { ChevronRight, Save, Play, X, Copy, Plus, Check, Loader2, ShoppingCart, Sparkles, ArrowLeft } from 'lucide-react'
+import { ChevronRight, Save, Play, X, Copy, Plus, Check, Loader2, ShoppingCart, Sparkles, ArrowLeft, ChefHat } from 'lucide-react'
 import { nutritionProgramsApi } from '../api/nutritionPrograms'
+import { DishSelector } from '../components/dishes/DishSelector'
+import type { DishListItem, MealType as DishMealType } from '../types/dishes'
 import { clientsApi } from '../api/clients'
 import type {
   NutritionProgram,
@@ -904,6 +906,8 @@ function DayEditor({
 }: DayEditorProps) {
   const [newMealType, setNewMealType] = useState<MealType>('breakfast')
   const [showMealForm, setShowMealForm] = useState(false)
+  const [dishSelectorOpen, setDishSelectorOpen] = useState(false)
+  const [dishSelectorMealType, setDishSelectorMealType] = useState<MealType>('breakfast')
   const [generatingList, setGeneratingList] = useState(false)
   const [analyzingProducts, setAnalyzingProducts] = useState(false)
   const [productMapping, setProductMapping] = useState<Record<string, string[]>>({})
@@ -928,6 +932,31 @@ function DayEditor({
     })
     setShowMealForm(false)
     setNewMealType('breakfast')
+  }
+
+  const handleOpenDishSelector = (mealType: MealType) => {
+    setDishSelectorMealType(mealType)
+    setDishSelectorOpen(true)
+  }
+
+  const handleDishSelected = (dish: DishListItem) => {
+    const mealConfig = MEAL_TYPES.find((m) => m.type === dishSelectorMealType)
+    if (!mealConfig) return
+
+    // Формируем описание из КБЖУ
+    const description = `${dish.portion_weight > 0 ? `Порция: ${dish.portion_weight}г. ` : ''}` +
+      `Калории: ${Math.round(dish.calories)} ккал, ` +
+      `Б: ${Math.round(dish.proteins)}г, ` +
+      `Ж: ${Math.round(dish.fats)}г, ` +
+      `У: ${Math.round(dish.carbohydrates)}г`
+
+    onAddMeal({
+      id: crypto.randomUUID(),
+      type: dishSelectorMealType,
+      time: mealConfig.defaultTime,
+      name: dish.name,
+      description,
+    })
   }
 
   const handleGenerateShoppingList = async () => {
@@ -1156,14 +1185,24 @@ function DayEditor({
               </button>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => setShowMealForm(true)}
-              className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80"
-            >
-              <Plus size={14} />
-              Добавить приём пищи
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowMealForm(true)}
+                className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80"
+              >
+                <Plus size={14} />
+                Добавить приём пищи
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenDishSelector('breakfast')}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <ChefHat size={14} />
+                Из базы блюд
+              </button>
+            </div>
           )}
 
           {/* Activity & Notes */}
@@ -1411,6 +1450,14 @@ function DayEditor({
           </div>
         </div>
       </div>
+
+      {/* Модал выбора блюда из базы */}
+      <DishSelector
+        isOpen={dishSelectorOpen}
+        onClose={() => setDishSelectorOpen(false)}
+        onSelect={handleDishSelected}
+        mealType={dishSelectorMealType as DishMealType}
+      />
     </div>
   )
 }
