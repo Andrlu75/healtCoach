@@ -558,7 +558,14 @@ export default function WorkoutRun() {
                   {ex.exercise.name}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {completedSets}/{sets.length} подходов
+                  {['cardio', 'warmup', 'cooldown', 'flexibility'].includes(ex.exercise.category) ? (
+                    <>
+                      {ex.duration_seconds ? `${Math.round(ex.duration_seconds / 60)} мин` : ''}
+                      {ex.distance_meters && ex.distance_meters > 0 ? ` · ${(ex.distance_meters / 1000).toFixed(1)} км` : ''}
+                    </>
+                  ) : (
+                    `${completedSets}/${sets.length} подходов`
+                  )}
                 </p>
               </motion.div>
             )

@@ -194,6 +194,12 @@ export default function WorkoutDetail() {
   }
 
   const totalTime = exercises.reduce((acc, ex) => {
+    const isTimeBased = ['cardio', 'warmup', 'cooldown', 'flexibility'].includes(ex.exercise.category)
+    if (isTimeBased) {
+      // Для кардио используем duration_seconds
+      return acc + (ex.duration_seconds || 0)
+    }
+    // Для силовых: ~45 сек на подход + отдых
     return acc + (ex.sets * 45) + (ex.sets * ex.rest_seconds)
   }, 0)
 
