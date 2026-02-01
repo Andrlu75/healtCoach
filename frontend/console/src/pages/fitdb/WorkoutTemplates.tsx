@@ -36,7 +36,8 @@ const WorkoutTemplates = () => {
 
   const fetchTemplates = async () => {
     try {
-      const data = await workoutsApi.list({ ordering: '-created_at' });
+      // Загружаем только шаблоны (не персонализированные копии)
+      const data = await workoutsApi.list({ ordering: '-created_at', is_template: true });
 
       // Exercise count is now included in the response - no extra API calls needed
       const mapped: TemplateListItem[] = (data || []).map((w: any) => ({
