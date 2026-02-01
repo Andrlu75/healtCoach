@@ -2,6 +2,7 @@
  * Компонент автокомплита для поиска и выбора продуктов.
  *
  * Debounced поиск через API с отображением КБЖУ.
+ * Включает встроенное модальное окно для быстрого создания продукта.
  */
 
 import { useState, useEffect, useRef } from 'react'
@@ -12,13 +13,14 @@ import { productsApi } from '@/api/dishes'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
+import { ProductQuickAdd } from './ProductQuickAdd'
 
 interface ProductAutocompleteProps {
   /** Выбранный продукт или null */
   value: Product | null
   /** Callback при выборе продукта */
   onChange: (product: Product | null) => void
-  /** Callback при клике "Создать новый" */
+  /** Callback при клике "Создать новый" (если не указан, используется встроенное модальное окно) */
   onCreateNew?: (searchQuery: string) => void
   /** Placeholder */
   placeholder?: string
@@ -40,6 +42,8 @@ export function ProductAutocomplete({
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [results, setResults] = useState<Product[]>([])
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false)
+  const [quickAddInitialName, setQuickAddInitialName] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -99,8 +103,21 @@ export function ProductAutocomplete({
   }
 
   const handleCreateNew = () => {
-    onCreateNew?.(query)
+    if (onCreateNew) {
+      // Используем внешний обработчик если передан
+      onCreateNew(query)
+    } else {
+      // Открываем встроенное модальное окно
+      setQuickAddInitialName(query)
+      setIsQuickAddOpen(true)
+    }
     setIsOpen(false)
+  }
+
+  const handleProductCreated = (product: Product) => {
+    onChange(product)
+    setQuery('')
+    setIsQuickAddOpen(false)
   }
 
   return (
@@ -178,17 +195,15 @@ export function ProductAutocomplete({
               <p className="text-sm text-muted-foreground mb-2">
                 Продукты не найдены
               </p>
-              {onCreateNew && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCreateNew}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Создать "{query}"
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCreateNew}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Создать "{query}"
+              </Button>
             </div>
           ) : query.length < 2 ? (
             <div className="p-3 text-center text-sm text-muted-foreground">
@@ -197,6 +212,14 @@ export function ProductAutocomplete({
           ) : null}
         </div>
       )}
+
+      {/* Модальное окно быстрого создания продукта */}
+      <ProductQuickAdd
+        isOpen={isQuickAddOpen}
+        onClose={() => setIsQuickAddOpen(false)}
+        onProductCreated={handleProductCreated}
+        initialName={quickAddInitialName}
+      />
     </div>
   )
 }
