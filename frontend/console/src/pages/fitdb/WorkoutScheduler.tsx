@@ -4,7 +4,7 @@ import { DndContext, DragOverlay, useDroppable, useDraggable } from '@dnd-kit/co
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { ArrowLeft, ChevronLeft, ChevronRight, Dumbbell, Loader2, X, Calendar, GripVertical, Plus, Minus, Trash2, Search, Save, Edit3, Tag, Check } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Dumbbell, Loader2, X, Calendar, GripVertical, Plus, Minus, Trash2, Search, Save, Edit3, Tag, Check, Clock, Zap, Heart, Target, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
@@ -59,7 +59,15 @@ interface WorkoutExerciseItem {
 }
 
 // Draggable workout card - красивая плашка
-function DraggableWorkout({ workout, onEditTags }: { workout: Workout; onEditTags: (workout: Workout) => void }) {
+function DraggableWorkout({
+  workout,
+  onEditTags,
+  onEditTemplate
+}: {
+  workout: Workout
+  onEditTags: (workout: Workout) => void
+  onEditTemplate: (workoutId: string) => void
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `workout-${workout.id}`,
     data: { workout },
@@ -76,42 +84,70 @@ function DraggableWorkout({ workout, onEditTags }: { workout: Workout; onEditTag
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-gradient-to-br from-card to-muted/30 border border-border rounded-xl p-4 cursor-grab active:cursor-grabbing hover:border-primary/50 hover:shadow-md transition-all group"
+      className="bg-gradient-to-br from-card to-muted/20 border border-border rounded-2xl overflow-hidden hover:border-primary/50 hover:shadow-lg transition-all group"
     >
-      <div className="flex items-start gap-3" {...listeners} {...attributes}>
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-          <Dumbbell size={18} className="text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-foreground leading-tight mb-1">{workout.name}</p>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="bg-muted px-2 py-0.5 rounded-full">{workout.exerciseCount} упр.</span>
+      {/* Drag area */}
+      <div
+        className="p-4 cursor-grab active:cursor-grabbing"
+        {...listeners}
+        {...attributes}
+      >
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Dumbbell size={22} className="text-primary" />
           </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-foreground leading-snug mb-2">{workout.name}</p>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Target size={14} />
+                {workout.exerciseCount} упр.
+              </span>
+            </div>
+          </div>
+          <GripVertical size={20} className="text-muted-foreground/40 shrink-0 mt-1" />
         </div>
-        <GripVertical size={18} className="text-muted-foreground/50 shrink-0 mt-1" />
       </div>
-      {/* Теги */}
-      <div className="mt-3 flex items-center gap-1.5 flex-wrap">
-        {workout.tags && workout.tags.length > 0 ? (
-          workout.tags.map((tag) => (
-            <span
-              key={tag}
-              className="text-[10px] font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full"
-            >
-              {tag}
-            </span>
-          ))
-        ) : null}
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onEditTags(workout)
-          }}
-          className="w-5 h-5 rounded-full bg-muted hover:bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          title="Редактировать теги"
-        >
-          <Tag size={10} className="text-muted-foreground" />
-        </button>
+
+      {/* Footer with tags and actions */}
+      <div className="px-4 pb-3 pt-1">
+        {/* Теги */}
+        {workout.tags && workout.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {workout.tags.map((tag) => (
+              <span
+                key={tag}
+                className="text-[11px] font-medium bg-primary/10 text-primary px-2.5 py-1 rounded-full"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onEditTemplate(workout.id)
+            }}
+            className="flex-1 h-8 rounded-lg bg-muted hover:bg-primary/10 flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Pencil size={12} />
+            Редактировать
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onEditTags(workout)
+            }}
+            className="h-8 px-3 rounded-lg bg-muted hover:bg-primary/10 flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Tag size={12} />
+            Теги
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -643,34 +679,39 @@ export default function WorkoutScheduler() {
             </div>
 
             {/* Right: Workouts panel */}
-            <div className="w-96 shrink-0">
+            <div className="w-[420px] shrink-0">
               <div className="sticky top-20">
-                <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
                   {/* Заголовок и кнопка добавления */}
-                  <div className="p-4 border-b border-border/50 bg-muted/30">
-                    <div className="flex items-center justify-between mb-3">
-                      <h2 className="font-semibold text-foreground flex items-center gap-2">
-                        <Dumbbell size={18} className="text-primary" />
+                  <div className="p-5 border-b border-border/50 bg-gradient-to-b from-muted/50 to-transparent">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Dumbbell size={16} className="text-primary" />
+                        </div>
                         Шаблоны тренировок
+                        <span className="text-sm font-normal text-muted-foreground">
+                          ({filteredWorkouts.length})
+                        </span>
                       </h2>
                       <Button
                         size="sm"
                         onClick={() => navigate('/fitdb/templates/new')}
-                        className="h-8"
+                        className="h-9 shadow-sm"
                       >
-                        <Plus size={14} className="mr-1" />
-                        Добавить
+                        <Plus size={16} className="mr-1.5" />
+                        Создать
                       </Button>
                     </div>
 
                     {/* Фильтр по тегам */}
                     {allTags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => setSelectedTag(null)}
-                          className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                          className={`text-xs px-3 py-1.5 rounded-lg transition-colors font-medium ${
                             selectedTag === null
-                              ? 'bg-primary text-primary-foreground'
+                              ? 'bg-primary text-primary-foreground shadow-sm'
                               : 'bg-muted hover:bg-muted/80 text-muted-foreground'
                           }`}
                         >
@@ -680,9 +721,9 @@ export default function WorkoutScheduler() {
                           <button
                             key={tag}
                             onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-                            className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                            className={`text-xs px-3 py-1.5 rounded-lg transition-colors font-medium ${
                               selectedTag === tag
-                                ? 'bg-primary text-primary-foreground'
+                                ? 'bg-primary text-primary-foreground shadow-sm'
                                 : 'bg-muted hover:bg-muted/80 text-muted-foreground'
                             }`}
                           >
@@ -694,19 +735,22 @@ export default function WorkoutScheduler() {
                   </div>
 
                   {/* Список тренировок */}
-                  <div className="p-3 space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                  <div className="p-4 space-y-4 max-h-[calc(100vh-320px)] overflow-y-auto">
                     {filteredWorkouts.length > 0 ? (
                       filteredWorkouts.map((workout) => (
                         <DraggableWorkout
                           key={workout.id}
                           workout={workout}
                           onEditTags={setEditingTagsWorkout}
+                          onEditTemplate={(id) => navigate(`/fitdb/templates/${id}`)}
                         />
                       ))
                     ) : (
-                      <div className="text-center py-12">
-                        <Dumbbell className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
-                        <p className="text-sm text-muted-foreground mb-3">
+                      <div className="text-center py-16">
+                        <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                          <Dumbbell className="w-8 h-8 text-muted-foreground/50" />
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-4">
                           {selectedTag ? 'Нет тренировок с этим тегом' : 'Нет шаблонов тренировок'}
                         </p>
                         <Button
@@ -722,8 +766,9 @@ export default function WorkoutScheduler() {
                   </div>
 
                   {/* Подсказка */}
-                  <div className="p-3 border-t border-border/50 bg-muted/20">
-                    <p className="text-[11px] text-muted-foreground text-center">
+                  <div className="p-4 border-t border-border/50 bg-gradient-to-t from-muted/30 to-transparent">
+                    <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-2">
+                      <GripVertical size={14} />
                       Перетащите тренировку на день в календаре
                     </p>
                   </div>
@@ -742,18 +787,117 @@ export default function WorkoutScheduler() {
       {/* Диалог редактирования назначенной тренировки */}
       <Dialog open={!!editingAssignment} onOpenChange={(open) => !open && setEditingAssignment(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/30">
-            <DialogTitle className="flex items-center gap-3 text-xl">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Dumbbell className="w-5 h-5 text-primary" />
+          <DialogHeader className="px-6 pt-6 pb-0 bg-muted/30">
+            <DialogTitle className="flex items-center gap-4 text-xl mb-4">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Dumbbell className="w-6 h-6 text-primary" />
               </div>
-              <div>
-                <span className="block">{editingAssignment?.workoutName}</span>
+              <div className="flex-1 min-w-0">
+                <span className="block font-bold">{editingAssignment?.workoutName}</span>
                 <span className="text-sm font-normal text-muted-foreground">
-                  {editingExercises.length} упражнений
+                  Назначено на {editingAssignment?.dueDate && format(new Date(editingAssignment.dueDate), 'd MMMM yyyy', { locale: ru })}
                 </span>
               </div>
             </DialogTitle>
+
+            {/* Сводка по тренировке */}
+            {!editingLoading && editingExercises.length > 0 && (() => {
+              const timeBasedCategories = ['cardio', 'warmup', 'cooldown', 'flexibility']
+
+              // Подсчёт статистики
+              const strengthCount = editingExercises.filter(ex => !timeBasedCategories.includes(ex.exercise.category || '')).length
+              const cardioCount = editingExercises.filter(ex => ex.exercise.category === 'cardio').length
+              const warmupCount = editingExercises.filter(ex => ex.exercise.category === 'warmup').length
+              const cooldownCount = editingExercises.filter(ex => ex.exercise.category === 'cooldown').length
+              const flexibilityCount = editingExercises.filter(ex => ex.exercise.category === 'flexibility').length
+
+              // Расчёт времени
+              let totalTime = 0
+              editingExercises.forEach(ex => {
+                if (timeBasedCategories.includes(ex.exercise.category || '')) {
+                  totalTime += ex.durationSeconds || 0
+                } else {
+                  // Силовые: примерно 45 сек на подход + отдых
+                  totalTime += (ex.sets * 45) + ((ex.sets - 1) * ex.restSeconds)
+                }
+              })
+              const totalMinutes = Math.round(totalTime / 60)
+
+              // Общее количество подходов
+              const totalSets = editingExercises.reduce((acc, ex) => {
+                if (!timeBasedCategories.includes(ex.exercise.category || '')) {
+                  return acc + ex.sets
+                }
+                return acc
+              }, 0)
+
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pb-4 border-b border-border/50">
+                  {/* Время */}
+                  <div className="bg-violet-500/10 rounded-xl p-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5 mb-1">
+                      <Clock size={16} className="text-violet-500" />
+                      <span className="text-xl font-bold text-foreground">{totalMinutes}</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground font-medium">минут</p>
+                  </div>
+
+                  {/* Упражнений */}
+                  <div className="bg-blue-500/10 rounded-xl p-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5 mb-1">
+                      <Target size={16} className="text-blue-500" />
+                      <span className="text-xl font-bold text-foreground">{editingExercises.length}</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground font-medium">упражнений</p>
+                  </div>
+
+                  {/* Подходов */}
+                  {totalSets > 0 && (
+                    <div className="bg-orange-500/10 rounded-xl p-3 text-center">
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <Zap size={16} className="text-orange-500" />
+                        <span className="text-xl font-bold text-foreground">{totalSets}</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground font-medium">подходов</p>
+                    </div>
+                  )}
+
+                  {/* Тип тренировки */}
+                  <div className="bg-green-500/10 rounded-xl p-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5 mb-1">
+                      <Heart size={16} className="text-green-500" />
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-1">
+                      {strengthCount > 0 && (
+                        <span className="text-[10px] bg-orange-500/20 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded">
+                          💪{strengthCount}
+                        </span>
+                      )}
+                      {cardioCount > 0 && (
+                        <span className="text-[10px] bg-red-500/20 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded">
+                          🏃{cardioCount}
+                        </span>
+                      )}
+                      {warmupCount > 0 && (
+                        <span className="text-[10px] bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 px-1.5 py-0.5 rounded">
+                          🔥{warmupCount}
+                        </span>
+                      )}
+                      {cooldownCount > 0 && (
+                        <span className="text-[10px] bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 px-1.5 py-0.5 rounded">
+                          ❄️{cooldownCount}
+                        </span>
+                      )}
+                      {flexibilityCount > 0 && (
+                        <span className="text-[10px] bg-purple-500/20 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded">
+                          🧘{flexibilityCount}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
           </DialogHeader>
 
           {editingLoading ? (
