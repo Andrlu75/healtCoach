@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Plus, Copy, X, Trash2, FileText, CheckCircle, XCircle, ImageOff } from 'lucide-react'
+import { Search, Plus, Copy, X, Trash2, CheckCircle, XCircle, ImageOff, Pencil } from 'lucide-react'
 import { nutritionProgramsApi } from '../api/nutritionPrograms'
 import { clientsApi } from '../api/clients'
 import type { NutritionProgramListItem, Client, DetailedReport } from '../types'
@@ -227,7 +227,7 @@ export default function NutritionPrograms() {
             {programs.map((program) => (
               <div
                 key={program.id}
-                onClick={() => navigate(`/nutrition-programs/${program.id}`)}
+                onClick={(e) => openReportModal(e, program.id)}
                 className="bg-card rounded-xl border border-border p-4 cursor-pointer active:bg-muted"
               >
                 <div className="flex items-start justify-between mb-2">
@@ -265,6 +265,16 @@ export default function NutritionPrograms() {
                   </div>
                 )}
                 <div className="flex gap-2 pt-2 border-t border-border">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/nutrition-programs/${program.id}`)
+                    }}
+                    className="text-xs px-3 py-1.5 bg-primary/20 rounded-lg text-primary flex items-center gap-1"
+                  >
+                    <Pencil size={12} />
+                    Редактировать
+                  </button>
                   <button
                     onClick={(e) => openCopyModal(e, program)}
                     className="text-xs px-3 py-1.5 bg-secondary rounded-lg text-secondary-foreground flex items-center gap-1"
@@ -333,7 +343,7 @@ export default function NutritionPrograms() {
                 {programs.map((program) => (
                   <tr
                     key={program.id}
-                    onClick={() => navigate(`/nutrition-programs/${program.id}`)}
+                    onClick={(e) => openReportModal(e, program.id)}
                     className="border-b border-border/50 hover:bg-muted cursor-pointer"
                   >
                     <td className="px-4 py-3 text-sm font-medium text-foreground">
@@ -382,11 +392,14 @@ export default function NutritionPrograms() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button
-                          onClick={(e) => openReportModal(e, program.id)}
-                          className="text-xs px-2 py-1 bg-blue-500/20 rounded text-blue-400 hover:bg-blue-500/30 flex items-center gap-1"
-                          title="Подробный отчёт"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`/nutrition-programs/${program.id}`)
+                          }}
+                          className="text-xs px-2 py-1 bg-primary/20 rounded text-primary hover:bg-primary/30 flex items-center gap-1"
+                          title="Редактировать"
                         >
-                          <FileText size={12} />
+                          <Pencil size={12} />
                         </button>
                         <button
                           onClick={(e) => openCopyModal(e, program)}
