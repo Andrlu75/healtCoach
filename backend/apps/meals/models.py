@@ -1,9 +1,351 @@
 import uuid
+from decimal import Decimal
 from io import BytesIO
+from typing import TYPE_CHECKING
 
 from django.core.files.base import ContentFile
 from django.db import models
+from django.core.validators import MinValueValidator
 from PIL import Image
+
+if TYPE_CHECKING:
+    from apps.accounts.models import Coach
+
+
+# ============================================================================
+# PRODUCT CATEGORIES
+# ============================================================================
+
+PRODUCT_CATEGORIES = [
+    ('dairy', 'Молочные продукты'),
+    ('meat', 'Мясо'),
+    ('fish', 'Рыба и морепродукты'),
+    ('vegetables', 'Овощи'),
+    ('fruits', 'Фрукты'),
+    ('grains', 'Крупы и злаки'),
+    ('nuts', 'Орехи и семена'),
+    ('oils', 'Масла и жиры'),
+    ('spices', 'Специи и приправы'),
+    ('other', 'Прочее'),
+]
+
+
+# ============================================================================
+# PRODUCT MODEL
+# ============================================================================
+
+class Product(models.Model):
+    """База продуктов коуча с КБЖУ на 100г.
+
+    Продукты переиспользуются в разных блюдах как ингредиенты.
+    Каждый коуч имеет свою базу продуктов.
+    """
+
+    coach: 'models.ForeignKey[Coach]' = models.ForeignKey(
+        'accounts.Coach',
+        on_delete=models.CASCADE,
+        related_name='products',
+        verbose_name='Коуч',
+    )
+    name = models.CharField(
+        max_length=255,
+        verbose_name='Название продукта',
+    )
+
+    # КБЖУ на 100 грамм
+    calories_per_100g = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Калории на 100г',
+    )
+    proteins_per_100g = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Белки на 100г',
+    )
+    fats_per_100g = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Жиры на 100г',
+    )
+    carbs_per_100g = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Углеводы на 100г',
+    )
+
+    category = models.CharField(
+        max_length=50,
+        choices=PRODUCT_CATEGORIES,
+        default='other',
+        verbose_name='Категория',
+    )
+    is_verified = models.BooleanField(
+        default=False,
+        verbose_name='Проверено',
+        help_text='Подтверждено коучем после AI-подсказки',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создано')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
+
+    class Meta:
+        db_table = 'products'
+        unique_together = ['coach', 'name']
+        ordering = ['name']
+        verbose_name = 'Продукт'
+        verbose_name_plural = 'Продукты'
+        indexes = [
+            models.Index(fields=['coach', 'name']),
+            models.Index(fields=['category']),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+
+    def get_nutrition_for_weight(self, weight_grams: int) -> dict[str, Decimal]:
+        """Рассчитать КБЖУ для заданного веса в граммах.
+
+        Args:
+            weight_grams: Вес порции в граммах.
+
+        Returns:
+            Словарь с КБЖУ для указанного веса.
+        """
+        multiplier = Decimal(weight_grams) / Decimal('100')
+        return {
+            'calories': round(self.calories_per_100g * multiplier, 2),
+            'proteins': round(self.proteins_per_100g * multiplier, 2),
+            'fats': round(self.fats_per_100g * multiplier, 2),
+            'carbohydrates': round(self.carbs_per_100g * multiplier, 2),
+        }
+
+
+# ============================================================================
+# DISH TAG MODEL
+# ============================================================================
+
+class DishTag(models.Model):
+    """Тег для категоризации блюд.
+
+    Коуч создаёт свои теги для удобной организации и фильтрации блюд.
+    Например: "Низкоуглеводные", "Веганские", "Быстрые рецепты".
+    """
+
+    coach: 'models.ForeignKey[Coach]' = models.ForeignKey(
+        'accounts.Coach',
+        on_delete=models.CASCADE,
+        related_name='dish_tags',
+        verbose_name='Коуч',
+    )
+    name = models.CharField(
+        max_length=50,
+        verbose_name='Название тега',
+    )
+    color = models.CharField(
+        max_length=7,
+        default='#3B82F6',
+        verbose_name='Цвет',
+        help_text='HEX-код цвета для отображения (например, #3B82F6)',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создано')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
+
+    class Meta:
+        db_table = 'dish_tags'
+        unique_together = ['coach', 'name']
+        ordering = ['name']
+        verbose_name = 'Тег блюда'
+        verbose_name_plural = 'Теги блюд'
+        indexes = [
+            models.Index(fields=['coach']),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+# ============================================================================
+# MEAL TYPES
+# ============================================================================
+
+MEAL_TYPES = [
+    ('breakfast', 'Завтрак'),
+    ('snack1', 'Перекус 1'),
+    ('lunch', 'Обед'),
+    ('snack2', 'Перекус 2'),
+    ('dinner', 'Ужин'),
+]
+
+
+# ============================================================================
+# DISH MODEL
+# ============================================================================
+
+class Dish(models.Model):
+    """Блюдо из базы данных коуча.
+
+    Блюда сохраняются в личной базе коуча и могут использоваться
+    при составлении программ питания для клиентов.
+    """
+
+    coach: 'models.ForeignKey[Coach]' = models.ForeignKey(
+        'accounts.Coach',
+        on_delete=models.CASCADE,
+        related_name='dishes',
+        verbose_name='Коуч',
+    )
+
+    # Основная информация
+    name = models.CharField(
+        max_length=255,
+        verbose_name='Название блюда',
+    )
+    description = models.TextField(
+        blank=True,
+        verbose_name='Описание',
+        help_text='Краткое описание блюда',
+    )
+    recipe = models.TextField(
+        blank=True,
+        verbose_name='Рецепт',
+        help_text='Пошаговый рецепт приготовления (поддерживает Markdown)',
+    )
+
+    # КБЖУ
+    portion_weight = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Вес порции (г)',
+    )
+    calories = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        default=Decimal('0'),
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Калории',
+    )
+    proteins = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=Decimal('0'),
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Белки',
+    )
+    fats = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=Decimal('0'),
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Жиры',
+    )
+    carbohydrates = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=Decimal('0'),
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Углеводы',
+    )
+
+    # Время приготовления
+    cooking_time = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Время приготовления (мин)',
+    )
+
+    # Медиа
+    photo = models.ImageField(
+        upload_to='dishes/%Y/%m/',
+        blank=True,
+        verbose_name='Фото блюда',
+    )
+    video_url = models.URLField(
+        blank=True,
+        verbose_name='Ссылка на видео',
+        help_text='Ссылка на видео-рецепт (YouTube, etc.)',
+    )
+
+    # JSON поля
+    ingredients = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Ингредиенты',
+        help_text='Список ингредиентов: [{product_id, name, weight, calories, proteins, fats, carbohydrates}]',
+    )
+    shopping_links = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Ссылки на покупку',
+        help_text='Ссылки на магазины: [{title, url}]',
+    )
+
+    # Категоризация
+    meal_types = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Типы приёмов пищи',
+        help_text='Для каких приёмов пищи подходит: ["breakfast", "lunch", ...]',
+    )
+    tags = models.ManyToManyField(
+        DishTag,
+        related_name='dishes',
+        blank=True,
+        verbose_name='Теги',
+    )
+
+    # Статус
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Активно',
+        help_text='Неактивные блюда не отображаются в списке',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создано')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
+
+    class Meta:
+        db_table = 'dishes'
+        ordering = ['-updated_at']
+        verbose_name = 'Блюдо'
+        verbose_name_plural = 'Блюда'
+        indexes = [
+            models.Index(fields=['coach', 'name']),
+            models.Index(fields=['coach', 'is_active']),
+            models.Index(fields=['-updated_at']),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+
+    def recalculate_nutrition(self) -> None:
+        """Пересчитать КБЖУ на основе ингредиентов.
+
+        Суммирует КБЖУ всех ингредиентов и обновляет поля блюда.
+        Также пересчитывает общий вес порции.
+        """
+        total_weight = Decimal('0')
+        total_calories = Decimal('0')
+        total_proteins = Decimal('0')
+        total_fats = Decimal('0')
+        total_carbs = Decimal('0')
+
+        for ing in self.ingredients:
+            total_weight += Decimal(str(ing.get('weight', 0)))
+            total_calories += Decimal(str(ing.get('calories', 0)))
+            total_proteins += Decimal(str(ing.get('proteins', 0)))
+            total_fats += Decimal(str(ing.get('fats', 0)))
+            total_carbs += Decimal(str(ing.get('carbohydrates', 0)))
+
+        self.portion_weight = int(total_weight)
+        self.calories = round(total_calories, 2)
+        self.proteins = round(total_proteins, 2)
+        self.fats = round(total_fats, 2)
+        self.carbohydrates = round(total_carbs, 2)
 
 
 class MealDraft(models.Model):
