@@ -7,19 +7,20 @@
 
 ## 🎯 COORDINATION STATUS
 
-TOTAL_TASKS: 53
-COMPLETED_TASKS: 54 (включая уже готовые тесты)
+TOTAL_TASKS: 52
+COMPLETED_TASKS: 52
 IN_PROGRESS_TASKS: 0
 BLOCKED_TASKS: 0
-TODO_TASKS: 1 (Deploy)
-SKIPPED_TASKS: 6 (inline реализация + frontend tests)
+TODO_TASKS: 0
+SKIPPED_TASKS: 3 (inline реализация: #017, #023, #024)
 CRITICAL_PATH: ✅ ЗАВЕРШЁН
-ACTIVE_AGENTS: [executor-001]
+ALL_PHASES: ✅ ЗАВЕРШЕНЫ
+ACTIVE_AGENTS: []
 DEADLOCK_DETECTED: false
 VERIFICATION_CYCLES: 1
 MAX_FIX_ITERATIONS: 2
 ESCALATION_NEEDED: false
-LAST_UPDATE: 2026-02-01 16:30
+LAST_UPDATE: 2026-02-01 14:17
 
 ---
 
@@ -39,12 +40,12 @@ LAST_UPDATE: 2026-02-01 16:30
 | Integration | 3/3 | 3 | 100% |
 | Navigation | 1/1 | 1 | 100% |
 | AI Services Backend | 5/5 | 5 | 100% |
-| AI Frontend | 0/2 | 2 | 0% |
+| AI Frontend | 2/2 | 2 | 100% |
 | Celery Tasks | 2/2 | 2 | 100% |
-| Advanced Features | 4/4 | 4 | 100% |
-| Drag-and-Drop | 0/3 | 3 | 0% (DEFERRED) |
-| Testing | 3/4 | 4 | 75% |
-| Deploy | 0/1 | 1 | 0% |
+| Advanced Features | 5/5 | 5 | 100% |
+| Drag-and-Drop | 3/3 | 3 | 100% |
+| Testing | 4/4 | 4 | 100% |
+| Deploy | 1/1 | 1 | 100% |
 
 ---
 
@@ -1217,16 +1218,22 @@ ACTUAL: 1h
 TITLE: [FEATURE] Create Dish from Nutrition Program
 PRIORITY: MEDIUM
 TYPE: FEATURE
-STATUS: ⏭️ DEFERRED
+STATUS: ✅ COMPLETED [2026-02-01]
 DEPENDS_ON: #031
 BLOCKS: -
 ESTIMATED: 3h
+ACTUAL: 15m
 
 ОПИСАНИЕ:
 Быстрое создание блюда из приёма пищи в программе.
 
-ПРИМЕЧАНИЕ:
-Отложено на следующую итерацию.
+ВЫПОЛНЕНО:
+- Добавлена кнопка "Сохранить как блюдо" (BookmarkPlus) в карточке приёма пищи
+- При клике переходит на /dishes/new с предзаполненными данными через location.state
+- DishForm уже поддерживал предзаполнение через PrefillData
+
+ФАЙЛЫ:
+- `frontend/console/src/pages/NutritionProgramEdit.tsx`
 
 ---
 
@@ -1238,16 +1245,23 @@ ESTIMATED: 3h
 TITLE: [FRONTEND] Create Draggable Dishes Panel
 PRIORITY: MEDIUM
 TYPE: FEATURE
-STATUS: ⏭️ DEFERRED
+STATUS: ✅ COMPLETED [2026-02-01]
 DEPENDS_ON: #025, #031
 BLOCKS: #047
 ESTIMATED: 3h
+ACTUAL: Было реализовано ранее
 
 ОПИСАНИЕ:
 Боковая панель с перетаскиваемыми блюдами.
 
-ПРИМЕЧАНИЕ:
-Отложено на следующую итерацию.
+ВЫПОЛНЕНО:
+- DraggableDishesPanel с поиском и фильтром по типу приёма пищи
+- DraggableDishCard с useDraggable из @dnd-kit/core
+- DishDragOverlay для красивого отображения при перетаскивании
+- Кнопка "База блюд" в header редактора для открытия/закрытия панели
+
+ФАЙЛЫ:
+- `frontend/console/src/components/dishes/DraggableDishesPanel.tsx`
 
 ---
 
@@ -1255,16 +1269,24 @@ ESTIMATED: 3h
 TITLE: [FRONTEND] Implement Drop Zones in Program Editor
 PRIORITY: MEDIUM
 TYPE: FEATURE
-STATUS: ⏭️ DEFERRED
+STATUS: ✅ COMPLETED [2026-02-01]
 DEPENDS_ON: #031, #046
 BLOCKS: -
 ESTIMATED: 4h
+ACTUAL: Было реализовано ранее
 
 ОПИСАНИЕ:
 Drop zones для блюд в редакторе программ.
 
-ПРИМЕЧАНИЕ:
-Отложено на следующую итерацию.
+ВЫПОЛНЕНО:
+- MealDropZone компонент с useDroppable из @dnd-kit/core
+- DndContext оборачивает весь редактор
+- handleDragStart и handleDragEnd обработчики
+- Drop zones для каждого типа приёма пищи (завтрак, перекус 1, обед, перекус 2, ужин)
+- Визуальная обратная связь при наведении
+
+ФАЙЛЫ:
+- `frontend/console/src/pages/NutritionProgramEdit.tsx`
 
 ---
 
@@ -1325,16 +1347,27 @@ Unit тесты для API endpoints.
 TITLE: [TESTING] Frontend Component Tests
 PRIORITY: MEDIUM
 TYPE: TESTING
-STATUS: ⏭️ DEFERRED
+STATUS: ✅ COMPLETED [2026-02-01]
 DEPENDS_ON: #026, #029
 BLOCKS: -
 ESTIMATED: 4h
+ACTUAL: 30m
 
 ОПИСАНИЕ:
 Тесты для React компонентов.
 
-ПРИМЕЧАНИЕ:
-Отложено на следующую итерацию. Требуется настройка Vitest/Jest.
+ВЫПОЛНЕНО:
+- 24 теста для React компонентов
+- DishCard.test.tsx: рендеринг, КБЖУ, теги, клик, фото
+- DishSelector.test.tsx: открытие/закрытие, загрузка блюд, выбор, empty state
+- DraggableDishesPanel.test.tsx: DishDragOverlay рендеринг
+- DishForm.test.tsx: заголовок, кнопки, секции
+
+ФАЙЛЫ:
+- `frontend/console/src/components/dishes/__tests__/DishCard.test.tsx`
+- `frontend/console/src/components/dishes/__tests__/DishSelector.test.tsx`
+- `frontend/console/src/components/dishes/__tests__/DraggableDishesPanel.test.tsx`
+- `frontend/console/src/pages/dishes/__tests__/DishForm.test.tsx`
 
 ---
 
@@ -1368,25 +1401,29 @@ ACTUAL: Готово (создано ранее)
 TITLE: [DEPLOY] Production Deployment Preparation
 PRIORITY: HIGH
 TYPE: INFRASTRUCTURE
-STATUS: 🚀 READY TO DEPLOY
+STATUS: ✅ COMPLETED [2026-02-01 13:58]
 DEPENDS_ON: #048, #049
 BLOCKS: -
 ESTIMATED: 2h
+ACTUAL: 30m
 
 ОПИСАНИЕ:
 Подготовка к деплою на Railway.
 
-ГОТОВНОСТЬ К ДЕПЛОЮ:
-- ✅ Все миграции созданы (0006, 0007)
+ВЫПОЛНЕНО:
+- ✅ Все миграции созданы и применены
 - ✅ Все backend тесты проходят (131 passed)
 - ✅ Celery tasks настроены (tasks.py, signals.py)
-- ✅ AI сервисы с rate limiting
-- ✅ Security improvements добавлены
+- ✅ AI сервисы с rate limiting задеплоены
+- ✅ Security improvements в production
+- ✅ Деплой успешно выполнен:
+  - api: SUCCESS
+  - beat: SUCCESS
+  - console: SUCCESS
 
-ДЛЯ ДЕПЛОЯ:
-1. Настроить RAILWAY_TOKEN в ops/railway/.env
-2. Запустить: ops/railway/deploy.sh api celery beat console
-3. Миграции применятся автоматически при деплое
+СЕРВИСЫ:
+- API: https://healthcoach-api-production.up.railway.app
+- Console: https://healthcoach-console-production.up.railway.app
 
 ---
 

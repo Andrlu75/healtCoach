@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { ChevronRight, Save, Play, X, Copy, Plus, Check, Loader2, ShoppingCart, Sparkles, ArrowLeft, ChefHat, ChevronLeft } from 'lucide-react'
+import { ChevronRight, Save, Play, X, Copy, Plus, Check, Loader2, ShoppingCart, Sparkles, ArrowLeft, ChefHat, ChevronLeft, BookmarkPlus } from 'lucide-react'
 import { DndContext, DragOverlay, pointerWithin, useDroppable } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { nutritionProgramsApi } from '../api/nutritionPrograms'
@@ -1022,6 +1022,7 @@ function DayEditor({
   onPrevDay,
   onNextDay,
 }: DayEditorProps) {
+  const navigate = useNavigate()
   const [newMealType, setNewMealType] = useState<MealType>('breakfast')
   const [showMealForm, setShowMealForm] = useState(false)
   const [dishSelectorOpen, setDishSelectorOpen] = useState(false)
@@ -1246,13 +1247,29 @@ function DayEditor({
                               onChange={(e) => onUpdateMeal(index, { time: e.target.value })}
                               className="text-xs px-1.5 py-0.5 bg-background text-foreground border border-border rounded outline-none"
                             />
-                            <button
-                              type="button"
-                              onClick={() => onRemoveMeal(index)}
-                              className="text-muted-foreground hover:text-red-400"
-                            >
-                              <X size={16} />
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => navigate('/dishes/new', {
+                                  state: {
+                                    name: meal.name,
+                                    description: meal.description,
+                                    meal_type: meal.type,
+                                  }
+                                })}
+                                className="text-muted-foreground hover:text-primary"
+                                title="Сохранить как блюдо в базу"
+                              >
+                                <BookmarkPlus size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onRemoveMeal(index)}
+                                className="text-muted-foreground hover:text-red-400"
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
                           </div>
 
                           <input
