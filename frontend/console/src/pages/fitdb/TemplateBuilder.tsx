@@ -102,6 +102,7 @@ const TemplateBuilder = () => {
       // Exercise details are now included in the response - no extra API calls needed
       const mappedItems: WorkoutItem[] = (items || []).map((item: any) => {
         const exerciseData = item.exercise || {};
+        const category = (exerciseData.category || 'strength') as ExerciseCategory;
         return {
           id: String(item.id),
           exerciseId: String(item.exercise_id || exerciseData.id),
@@ -109,6 +110,8 @@ const TemplateBuilder = () => {
           reps: item.reps,
           restSeconds: item.rest_seconds,
           weightKg: item.weight_kg || undefined,
+          durationSeconds: item.duration_seconds || undefined,
+          distanceMeters: item.distance_meters || undefined,
           notes: item.notes || undefined,
           orderIndex: item.order_index,
           exercise: {
@@ -116,7 +119,7 @@ const TemplateBuilder = () => {
             name: exerciseData.name || 'Упражнение',
             description: exerciseData.description || '',
             muscleGroups: exerciseData.muscle_group ? [exerciseData.muscle_group] : ['chest'],
-            category: 'strength' as ExerciseCategory,
+            category: category,
             difficulty: 'intermediate',
           },
         };
@@ -136,12 +139,21 @@ const TemplateBuilder = () => {
   };
 
   const addExercise = (exercise: ExerciseType) => {
+    // Категории с временными параметрами (не подходы/повторы)
+    const timeBasedCategories = ['cardio', 'warmup', 'cooldown', 'flexibility'];
+    const isTimeBased = timeBasedCategories.includes(exercise.category) || exercise.muscleGroups?.includes('cardio');
+    const isCardio = exercise.category === 'cardio';
+
     const newItem: WorkoutItem = {
       id: `temp-${Date.now()}`,
       exerciseId: exercise.id,
-      sets: 3,
-      reps: 10,
-      restSeconds: 60,
+      // Силовые параметры (по умолчанию для силовых и плиометрики)
+      sets: isTimeBased ? 1 : 3,
+      reps: isTimeBased ? 1 : 10,
+      restSeconds: isTimeBased ? 0 : 60,
+      // Временные параметры для кардио/разминки/заминки/растяжки
+      durationSeconds: isTimeBased ? (isCardio ? 600 : 300) : undefined,
+      distanceMeters: isCardio ? 1000 : undefined,
       orderIndex: workoutItems.length,
       exercise,
     };
@@ -211,6 +223,8 @@ const TemplateBuilder = () => {
         reps: item.reps,
         rest_seconds: item.restSeconds,
         weight_kg: item.weightKg || undefined,
+        duration_seconds: item.durationSeconds || undefined,
+        distance_meters: item.distanceMeters || undefined,
         notes: item.notes || undefined,
         order_index: index,
       }));
@@ -360,51 +374,102 @@ const TemplateBuilder = () => {
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-2">
-                      <div>
-                        <label className="text-xs text-muted-foreground">Подходы</label>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={item.sets}
-                          onChange={(e) => updateItem(item.id, { sets: parseInt(e.target.value) || 1 })}
-                          className="h-9 bg-muted border-border/50"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground">Повторы</label>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={item.reps}
-                          onChange={(e) => updateItem(item.id, { reps: parseInt(e.target.value) || 1 })}
-                          className="h-9 bg-muted border-border/50"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground">Вес (кг)</label>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={2.5}
-                          value={item.weightKg || ''}
-                          onChange={(e) => updateItem(item.id, { weightKg: parseFloat(e.target.value) || undefined })}
-                          placeholder="—"
-                          className="h-9 bg-muted border-border/50"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground">Отдых</label>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={15}
-                          value={item.restSeconds}
-                          onChange={(e) => updateItem(item.id, { restSeconds: parseInt(e.target.value) || 0 })}
-                          className="h-9 bg-muted border-border/50"
-                        />
-                      </div>
-                    </div>
+                    {/* Parameters - разные для временных (кардио/разминка/заминка/растяжка) и силовых */}
+                    {(() => {
+                      const timeBasedCategories = ['cardio', 'warmup', 'cooldown', 'flexibility'];
+                      const isTimeBased = timeBasedCategories.includes(item.exercise.category) || item.exercise.muscleGroups?.includes('cardio');
+                      const isCardio = item.exercise.category === 'cardio';
+
+                      if (isTimeBased) {
+                        return (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            <div>
+                              <label className="text-xs text-muted-foreground">Время (мин)</label>
+                              <Input
+                                type="number"
+                                min={1}
+                                value={item.durationSeconds ? Math.round(item.durationSeconds / 60) : ''}
+                                onChange={(e) => updateItem(item.id, { durationSeconds: (parseInt(e.target.value) || 0) * 60 })}
+                                placeholder="10"
+                                className="h-9 bg-muted border-border/50"
+                              />
+                            </div>
+                            {isCardio && (
+                              <div>
+                                <label className="text-xs text-muted-foreground">Дистанция (км)</label>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step={0.1}
+                                  value={item.distanceMeters ? (item.distanceMeters / 1000).toFixed(1) : ''}
+                                  onChange={(e) => updateItem(item.id, { distanceMeters: (parseFloat(e.target.value) || 0) * 1000 })}
+                                  placeholder="1.0"
+                                  className="h-9 bg-muted border-border/50"
+                                />
+                              </div>
+                            )}
+                            <div>
+                              <label className="text-xs text-muted-foreground">Отдых (сек)</label>
+                              <Input
+                                type="number"
+                                min={0}
+                                step={15}
+                                value={item.restSeconds}
+                                onChange={(e) => updateItem(item.id, { restSeconds: parseInt(e.target.value) || 0 })}
+                                className="h-9 bg-muted border-border/50"
+                              />
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="grid grid-cols-4 gap-2">
+                          <div>
+                            <label className="text-xs text-muted-foreground">Подходы</label>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={item.sets}
+                              onChange={(e) => updateItem(item.id, { sets: parseInt(e.target.value) || 1 })}
+                              className="h-9 bg-muted border-border/50"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground">Повторы</label>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={item.reps}
+                              onChange={(e) => updateItem(item.id, { reps: parseInt(e.target.value) || 1 })}
+                              className="h-9 bg-muted border-border/50"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground">Вес (кг)</label>
+                            <Input
+                              type="number"
+                              min={0}
+                              step={2.5}
+                              value={item.weightKg || ''}
+                              onChange={(e) => updateItem(item.id, { weightKg: parseFloat(e.target.value) || undefined })}
+                              placeholder="—"
+                              className="h-9 bg-muted border-border/50"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground">Отдых</label>
+                            <Input
+                              type="number"
+                              min={0}
+                              step={15}
+                              value={item.restSeconds}
+                              onChange={(e) => updateItem(item.id, { restSeconds: parseInt(e.target.value) || 0 })}
+                              className="h-9 bg-muted border-border/50"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </CardContent>
