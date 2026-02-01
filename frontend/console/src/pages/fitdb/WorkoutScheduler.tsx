@@ -422,23 +422,35 @@ export default function WorkoutScheduler() {
 
     try {
       const exercises = await workoutExercisesApi.list(assignment.workoutId)
-      const mapped: WorkoutExerciseItem[] = (exercises || []).map((item: any) => ({
-        id: String(item.id),
-        exerciseId: String(item.exercise_id),
-        exercise: {
-          id: String(item.exercise?.id || item.exercise_id),
-          name: item.exercise?.name || 'Упражнение',
-          muscleGroup: item.exercise?.muscle_group || '',
-          category: item.exercise?.category || 'strength',
-        },
-        sets: item.sets,
-        reps: item.reps,
-        restSeconds: item.rest_seconds,
-        weightKg: item.weight_kg || undefined,
-        durationSeconds: item.duration_seconds || undefined,
-        distanceMeters: item.distance_meters || undefined,
-        orderIndex: item.order_index || 0,
-      }))
+      const mapped: WorkoutExerciseItem[] = (exercises || []).map((item: any) => {
+        const muscleGroup = item.exercise?.muscle_group || ''
+        // Определяем категорию: сначала из API, потом по muscle_group
+        let category = item.exercise?.category || ''
+        if (!category && muscleGroup === 'cardio') {
+          category = 'cardio'
+        }
+        if (!category) {
+          category = 'strength'
+        }
+
+        return {
+          id: String(item.id),
+          exerciseId: String(item.exercise_id),
+          exercise: {
+            id: String(item.exercise?.id || item.exercise_id),
+            name: item.exercise?.name || 'Упражнение',
+            muscleGroup,
+            category,
+          },
+          sets: item.sets,
+          reps: item.reps,
+          restSeconds: item.rest_seconds,
+          weightKg: item.weight_kg || undefined,
+          durationSeconds: item.duration_seconds || undefined,
+          distanceMeters: item.distance_meters || undefined,
+          orderIndex: item.order_index || 0,
+        }
+      })
       mapped.sort((a, b) => a.orderIndex - b.orderIndex)
       setEditingExercises(mapped)
     } catch (error) {

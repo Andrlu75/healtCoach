@@ -92,12 +92,51 @@ class FitDBWorkoutExerciseSerializer(serializers.Serializer):
         ex = obj.exercise
         if not ex:
             return None
+
+        # Определяем категорию: сначала из exercise_type, потом из category name, потом из muscle_groups
+        category = ''
+        if ex.exercise_type:
+            # ExerciseType имеет параметры которые определяют тип
+            type_name = ex.exercise_type.name.lower()
+            if 'кардио' in type_name or 'cardio' in type_name:
+                category = 'cardio'
+            elif 'разминка' in type_name or 'warmup' in type_name:
+                category = 'warmup'
+            elif 'заминка' in type_name or 'cooldown' in type_name:
+                category = 'cooldown'
+            elif 'растяжка' in type_name or 'flexibility' in type_name or 'stretch' in type_name:
+                category = 'flexibility'
+            else:
+                category = 'strength'
+        elif ex.category:
+            # ExerciseCategory - используем имя
+            cat_name = ex.category.name.lower()
+            if 'кардио' in cat_name or 'cardio' in cat_name:
+                category = 'cardio'
+            elif 'разминка' in cat_name or 'warmup' in cat_name:
+                category = 'warmup'
+            elif 'заминка' in cat_name or 'cooldown' in cat_name:
+                category = 'cooldown'
+            elif 'растяжка' in cat_name or 'flexibility' in cat_name or 'stretch' in cat_name:
+                category = 'flexibility'
+            else:
+                category = 'strength'
+        elif ex.muscle_groups:
+            # Fallback: проверяем muscle_groups
+            mg = ' '.join(ex.muscle_groups).lower()
+            if 'кардио' in mg or 'cardio' in mg:
+                category = 'cardio'
+            else:
+                category = 'strength'
+        else:
+            category = 'strength'
+
         return {
             'id': ex.id,
             'name': ex.name,
             'description': ex.description or '',
             'muscle_group': ex.muscle_groups[0] if ex.muscle_groups else '',
-            'category': ex.category or '',
+            'category': category,
         }
 
 
