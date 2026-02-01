@@ -8,19 +8,19 @@ import { clientsApi } from '../api/clients'
 import type {
   NutritionProgram,
   NutritionProgramCreatePayload,
-  Ingredient,
   Client,
   ProgramMeal,
   MealType,
   ShoppingListItem,
+  SimpleIngredient,
 } from '../types'
 
 interface DayFormData {
   day_number: number
   meals: ProgramMeal[]
   activity: string
-  allowed_ingredients: Ingredient[]
-  forbidden_ingredients: Ingredient[]
+  allowed_ingredients: SimpleIngredient[]
+  forbidden_ingredients: SimpleIngredient[]
   shopping_list: ShoppingListItem[]
   notes: string
 }

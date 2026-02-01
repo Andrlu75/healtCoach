@@ -1,10 +1,14 @@
+import type { MealType } from './dishes'
+
 export type NutritionProgramStatus = 'draft' | 'active' | 'completed' | 'cancelled'
 
-export interface Ingredient {
+// Простой ингредиент для программ питания (только имя)
+export interface SimpleIngredient {
   name: string
 }
 
-export type MealType = 'breakfast' | 'snack1' | 'lunch' | 'snack2' | 'dinner'
+// Re-export MealType from dishes for compatibility
+export type { MealType }
 
 export interface ProgramMeal {
   id?: string
@@ -25,8 +29,8 @@ export interface NutritionProgramDay {
   date: string
   meals: ProgramMeal[]
   activity: string
-  allowed_ingredients: Ingredient[]
-  forbidden_ingredients: Ingredient[]
+  allowed_ingredients: SimpleIngredient[]
+  forbidden_ingredients: SimpleIngredient[]
   shopping_list: ShoppingListItem[]
   notes: string
 }
@@ -105,8 +109,8 @@ export interface NutritionProgramDayPayload {
   day_number: number
   meals?: ProgramMeal[]
   activity?: string
-  allowed_ingredients: Ingredient[]
-  forbidden_ingredients: Ingredient[]
+  allowed_ingredients: SimpleIngredient[]
+  forbidden_ingredients: SimpleIngredient[]
   shopping_list?: ShoppingListItem[]
   notes?: string
 }

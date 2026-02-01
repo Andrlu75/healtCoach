@@ -11,7 +11,7 @@ import type { Product } from '@/types/dishes'
 import { PRODUCT_CATEGORY_LABELS } from '@/types/dishes'
 import { productsApi } from '@/api/dishes'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/Button'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { ProductQuickAdd } from './ProductQuickAdd'
 

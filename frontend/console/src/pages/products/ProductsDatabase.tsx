@@ -8,9 +8,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Plus, Search, Pencil, Trash2, Loader2, Sparkles, Check, X } from 'lucide-react'
 import { productsApi, dishesAiApi } from '@/api/dishes'
-import type { Product, ProductCategory, ProductFormData, ProductListResponse } from '@/types/dishes'
+import type { Product, ProductCategory, ProductListResponse } from '@/types/dishes'
 import { PRODUCT_CATEGORY_LABELS } from '@/types/dishes'
-import { Button } from '@/components/ui/Button'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Select,

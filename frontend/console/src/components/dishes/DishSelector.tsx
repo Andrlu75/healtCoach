@@ -4,11 +4,11 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, X, Loader2, Plus, ExternalLink } from 'lucide-react'
+import { Search, Loader2, Plus, ExternalLink } from 'lucide-react'
 import { dishesApi } from '@/api/dishes'
 import type { DishListItem, MealType } from '@/types/dishes'
 import { MEAL_TYPE_LABELS } from '@/types/dishes'
-import { Button } from '@/components/ui/Button'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Dialog,

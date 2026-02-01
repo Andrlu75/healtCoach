@@ -5,8 +5,8 @@
 import { Clock, Copy, MoreVertical, Pencil, Archive } from 'lucide-react'
 import type { DishListItem } from '@/types/dishes'
 import { MEAL_TYPE_LABELS } from '@/types/dishes'
-import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,

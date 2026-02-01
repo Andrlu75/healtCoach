@@ -9,7 +9,7 @@ import { useDishesStore } from '@/stores/dishes'
 import { dishesApi, type DishImportResult } from '@/api/dishes'
 import { MEAL_TYPE_LABELS, type MealType } from '@/types/dishes'
 import { DishCard } from '@/components/dishes/DishCard'
-import { Button } from '@/components/ui/Button'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Select,

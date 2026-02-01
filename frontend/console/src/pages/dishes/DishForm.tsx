@@ -7,12 +7,12 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { ArrowLeft, Loader2, Save, ImagePlus, X, Plus, Trash2, Sparkles } from 'lucide-react'
 import { useDishesStore } from '@/stores/dishes'
 import { dishesAiApi } from '@/api/dishes'
-import { MEAL_TYPE_LABELS, PRODUCT_CATEGORY_LABELS, type MealType, type Ingredient } from '@/types/dishes'
-import { Button } from '@/components/ui/Button'
+import { MEAL_TYPE_LABELS, type MealType, type Ingredient } from '@/types/dishes'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/use-toast'
 import { ShoppingLinksInput } from '@/components/dishes/ShoppingLinksInput'
@@ -744,7 +744,7 @@ export default function DishForm() {
                       style={{
                         backgroundColor: `${tag.color}20`,
                         color: tag.color,
-                        ringColor: tag.color,
+                        borderColor: tag.color,
                       }}
                       onClick={() => handleTagToggle(tag.id)}
                     >

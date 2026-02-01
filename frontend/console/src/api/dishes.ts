@@ -6,7 +6,6 @@ import api from './client'
 import type {
   Dish,
   DishFormData,
-  DishListItem,
   DishListParams,
   DishListResponse,
   DishTag,
