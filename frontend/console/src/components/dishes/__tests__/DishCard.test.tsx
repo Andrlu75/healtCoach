@@ -18,14 +18,12 @@ const mockDish: DishListItem = {
   portion_weight: 300,
   cooking_time: 15,
   photo: null,
-  thumbnail: null,
   tags: [
-    { id: 1, name: 'Завтрак', color: '#22c55e' },
-    { id: 2, name: 'Здоровое', color: '#3b82f6' },
+    { id: 1, name: 'Завтрак', color: '#22c55e', created_at: '2024-01-01T00:00:00Z' },
+    { id: 2, name: 'Здоровое', color: '#3b82f6', created_at: '2024-01-01T00:00:00Z' },
   ],
   meal_types: ['breakfast'],
-  is_active: true,
-  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
 }
 
 const mockDishWithPhoto: DishListItem = {
@@ -36,10 +34,10 @@ const mockDishWithPhoto: DishListItem = {
 const mockDishWithManyTags: DishListItem = {
   ...mockDish,
   tags: [
-    { id: 1, name: 'Завтрак', color: '#22c55e' },
-    { id: 2, name: 'Здоровое', color: '#3b82f6' },
-    { id: 3, name: 'Веган', color: '#a855f7' },
-    { id: 4, name: 'Быстрое', color: '#f59e0b' },
+    { id: 1, name: 'Завтрак', color: '#22c55e', created_at: '2024-01-01T00:00:00Z' },
+    { id: 2, name: 'Здоровое', color: '#3b82f6', created_at: '2024-01-01T00:00:00Z' },
+    { id: 3, name: 'Веган', color: '#a855f7', created_at: '2024-01-01T00:00:00Z' },
+    { id: 4, name: 'Быстрое', color: '#f59e0b', created_at: '2024-01-01T00:00:00Z' },
   ],
 }
 

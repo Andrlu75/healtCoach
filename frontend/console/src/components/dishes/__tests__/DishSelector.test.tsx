@@ -17,7 +17,9 @@ vi.mock('@/api/dishes', () => ({
   },
 }))
 
-const mockDishes = [
+import type { DishListItem, MealType } from '@/types/dishes'
+
+const mockDishes: DishListItem[] = [
   {
     id: 1,
     name: 'Овсяная каша',
@@ -28,11 +30,9 @@ const mockDishes = [
     portion_weight: 300,
     cooking_time: 15,
     photo: null,
-    thumbnail: null,
     tags: [],
-    meal_types: ['breakfast'],
-    is_active: true,
-    created_at: '2024-01-01T00:00:00Z',
+    meal_types: ['breakfast'] as MealType[],
+    updated_at: '2024-01-01T00:00:00Z',
   },
   {
     id: 2,
@@ -44,11 +44,9 @@ const mockDishes = [
     portion_weight: 250,
     cooking_time: 10,
     photo: null,
-    thumbnail: null,
     tags: [],
-    meal_types: ['lunch', 'dinner'],
-    is_active: true,
-    created_at: '2024-01-01T00:00:00Z',
+    meal_types: ['lunch', 'dinner'] as MealType[],
+    updated_at: '2024-01-01T00:00:00Z',
   },
 ]
 
@@ -59,7 +57,7 @@ const renderWithRouter = (component: React.ReactElement) => {
 describe('DishSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(dishesApi.list).mockResolvedValue({ results: mockDishes, count: 2 })
+    vi.mocked(dishesApi.list).mockResolvedValue({ results: mockDishes, count: 2, next: null, previous: null })
   })
 
   it('does not render dialog when closed', () => {
@@ -115,7 +113,7 @@ describe('DishSelector', () => {
   })
 
   it('shows empty state when no dishes', async () => {
-    vi.mocked(dishesApi.list).mockResolvedValue({ results: [], count: 0 })
+    vi.mocked(dishesApi.list).mockResolvedValue({ results: [], count: 0, next: null, previous: null })
 
     renderWithRouter(
       <DishSelector isOpen={true} onClose={vi.fn()} onSelect={vi.fn()} />

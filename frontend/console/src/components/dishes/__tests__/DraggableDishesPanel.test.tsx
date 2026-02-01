@@ -3,10 +3,10 @@
  * Базовые тесты для проверки рендеринга.
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { DishDragOverlay } from '../DraggableDishesPanel'
-import type { DishListItem } from '@/types/dishes'
+import type { DishListItem, MealType } from '@/types/dishes'
 
 const mockDish: DishListItem = {
   id: 1,
@@ -18,11 +18,9 @@ const mockDish: DishListItem = {
   portion_weight: 300,
   cooking_time: 15,
   photo: null,
-  thumbnail: null,
   tags: [],
-  meal_types: ['breakfast'],
-  is_active: true,
-  created_at: '2024-01-01T00:00:00Z',
+  meal_types: ['breakfast'] as MealType[],
+  updated_at: '2024-01-01T00:00:00Z',
 }
 
 describe('DishDragOverlay', () => {
