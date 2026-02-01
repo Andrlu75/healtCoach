@@ -264,6 +264,12 @@ class Dish(models.Model):
         blank=True,
         verbose_name='Фото блюда',
     )
+    thumbnail = models.ImageField(
+        upload_to='dishes/thumbnails/%Y/%m/',
+        blank=True,
+        verbose_name='Миниатюра',
+        help_text='Автоматически генерируется из фото (300x300)',
+    )
     video_url = models.URLField(
         blank=True,
         verbose_name='Ссылка на видео',
