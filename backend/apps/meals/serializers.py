@@ -1,3 +1,4 @@
+import json
 import re
 from decimal import Decimal
 from urllib.parse import urlparse
@@ -282,8 +283,15 @@ class DishDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
-    def validate_ingredients(self, value: list) -> list:
+    def validate_ingredients(self, value) -> list:
         """Валидация структуры ингредиентов с защитой от DoS."""
+        # Парсинг JSON-строки (при отправке через FormData)
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                raise serializers.ValidationError('Неверный формат JSON для ингредиентов.')
+
         if not isinstance(value, list):
             raise serializers.ValidationError('Ингредиенты должны быть списком.')
 
@@ -296,8 +304,15 @@ class DishDetailSerializer(serializers.ModelSerializer):
         serializer.is_valid(raise_exception=True)
         return value
 
-    def validate_shopping_links(self, value: list) -> list:
+    def validate_shopping_links(self, value) -> list:
         """Валидация структуры ссылок на покупку с защитой от DoS."""
+        # Парсинг JSON-строки (при отправке через FormData)
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                raise serializers.ValidationError('Неверный формат JSON для ссылок.')
+
         if not isinstance(value, list):
             raise serializers.ValidationError('Ссылки должны быть списком.')
 
@@ -310,8 +325,15 @@ class DishDetailSerializer(serializers.ModelSerializer):
         serializer.is_valid(raise_exception=True)
         return value
 
-    def validate_meal_types(self, value: list) -> list:
+    def validate_meal_types(self, value) -> list:
         """Валидация типов приёмов пищи с защитой от DoS."""
+        # Парсинг JSON-строки (при отправке через FormData)
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                raise serializers.ValidationError('Неверный формат JSON для типов приёмов пищи.')
+
         if not isinstance(value, list):
             raise serializers.ValidationError('Типы приёмов пищи должны быть списком.')
 
