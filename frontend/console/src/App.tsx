@@ -32,6 +32,7 @@ import FitdbClients from './pages/fitdb/Clients'
 import FitdbClientDetail from './pages/fitdb/ClientDetail'
 import FitdbWorkoutRun from './pages/fitdb/WorkoutRun'
 import FitdbWorkoutHistory from './pages/fitdb/WorkoutHistory'
+import FitdbWorkoutScheduler from './pages/fitdb/WorkoutScheduler'
 // MiniApp demo
 import MiniAppDemo from './pages/miniapp'
 
@@ -88,6 +89,7 @@ function App() {
           <Route path="fitdb/templates/:id" element={<FitdbTemplateBuilder />} />
           <Route path="fitdb/clients" element={<FitdbClients />} />
           <Route path="fitdb/clients/:id" element={<FitdbClientDetail />} />
+          <Route path="fitdb/clients/:clientId/schedule" element={<FitdbWorkoutScheduler />} />
           <Route path="fitdb/history" element={<FitdbWorkoutHistory />} />
           {/* MiniApp demo - для тестирования Telegram Mini App */}
           <Route path="miniapp" element={<MiniAppDemo />} />

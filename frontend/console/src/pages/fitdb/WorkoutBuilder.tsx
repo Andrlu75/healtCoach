@@ -102,6 +102,7 @@ const WorkoutBuilder = () => {
       const mappedItems: WorkoutItem[] = (items || []).map((item: any) => {
         const exerciseId = String(item.exercise_id || item.exercise);
         const exerciseData = item.exercise || {};
+        const category = (exerciseData.category || 'strength') as ExerciseCategory;
         return {
           id: String(item.id),
           exerciseId,
@@ -109,6 +110,9 @@ const WorkoutBuilder = () => {
           reps: item.reps,
           restSeconds: item.rest_seconds,
           weightKg: item.weight_kg || undefined,
+          // Кардио параметры
+          durationSeconds: item.duration_seconds || undefined,
+          distanceMeters: item.distance_meters || undefined,
           notes: item.notes || undefined,
           orderIndex: item.order_index || item.order || 0,
           exercise: {
@@ -116,7 +120,7 @@ const WorkoutBuilder = () => {
             name: exerciseData.name || 'Упражнение',
             description: exerciseData.description || '',
             muscleGroups: exerciseData.muscle_group ? [exerciseData.muscle_group] : ['chest'],
-            category: 'strength' as ExerciseCategory,
+            category: category,
             difficulty: 'intermediate' as Exercise['difficulty'],
             equipment: undefined,
             imageUrl: undefined,
@@ -141,12 +145,17 @@ const WorkoutBuilder = () => {
   };
 
   const addExercise = (exercise: Exercise) => {
+    const isCardio = exercise.category === 'cardio' || exercise.muscleGroups?.includes('cardio');
     const newItem: WorkoutItem = {
       id: `temp-${Date.now()}`,
       exerciseId: exercise.id,
-      sets: 3,
-      reps: 10,
-      restSeconds: 60,
+      // Силовые параметры (по умолчанию для не-кардио)
+      sets: isCardio ? 1 : 3,
+      reps: isCardio ? 1 : 10,
+      restSeconds: isCardio ? 0 : 60,
+      // Кардио параметры
+      durationSeconds: isCardio ? 600 : undefined,  // 10 минут по умолчанию
+      distanceMeters: isCardio ? 1000 : undefined,  // 1 км по умолчанию
       orderIndex: workoutItems.length,
       exercise,
     };
@@ -217,6 +226,9 @@ const WorkoutBuilder = () => {
         reps: item.reps,
         rest_seconds: item.restSeconds,
         weight_kg: item.weightKg,
+        // Кардио параметры
+        duration_seconds: item.durationSeconds,
+        distance_meters: item.distanceMeters,
         notes: item.notes,
         order_index: index,
       }));
@@ -365,52 +377,93 @@ const WorkoutBuilder = () => {
                       </Button>
                     </div>
 
-                    {/* Parameters */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <div>
-                        <label className="text-xs text-muted-foreground">Подходы</label>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={item.sets}
-                          onChange={(e) => updateItem(item.id, { sets: parseInt(e.target.value) || 1 })}
-                          className="h-9 bg-muted border-border/50"
-                        />
+                    {/* Parameters - разные для кардио и силовых */}
+                    {item.exercise.category === 'cardio' || item.exercise.muscleGroups?.includes('cardio') ? (
+                      // Кардио параметры: время и дистанция
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-xs text-muted-foreground">Время (мин)</label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={item.durationSeconds ? Math.round(item.durationSeconds / 60) : ''}
+                            onChange={(e) => updateItem(item.id, { durationSeconds: (parseInt(e.target.value) || 0) * 60 })}
+                            placeholder="10"
+                            className="h-9 bg-muted border-border/50"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Дистанция (км)</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.1}
+                            value={item.distanceMeters ? (item.distanceMeters / 1000).toFixed(1) : ''}
+                            onChange={(e) => updateItem(item.id, { distanceMeters: (parseFloat(e.target.value) || 0) * 1000 })}
+                            placeholder="1.0"
+                            className="h-9 bg-muted border-border/50"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Отдых (сек)</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={15}
+                            value={item.restSeconds}
+                            onChange={(e) => updateItem(item.id, { restSeconds: parseInt(e.target.value) || 0 })}
+                            className="h-9 bg-muted border-border/50"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground">Повторы</label>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={item.reps}
-                          onChange={(e) => updateItem(item.id, { reps: parseInt(e.target.value) || 1 })}
-                          className="h-9 bg-muted border-border/50"
-                        />
+                    ) : (
+                      // Силовые параметры: подходы, повторы, вес
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div>
+                          <label className="text-xs text-muted-foreground">Подходы</label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={item.sets}
+                            onChange={(e) => updateItem(item.id, { sets: parseInt(e.target.value) || 1 })}
+                            className="h-9 bg-muted border-border/50"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Повторы</label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={item.reps}
+                            onChange={(e) => updateItem(item.id, { reps: parseInt(e.target.value) || 1 })}
+                            className="h-9 bg-muted border-border/50"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Вес (кг)</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={2.5}
+                            value={item.weightKg || ''}
+                            onChange={(e) => updateItem(item.id, { weightKg: parseFloat(e.target.value) || undefined })}
+                            placeholder="—"
+                            className="h-9 bg-muted border-border/50"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Отдых</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={15}
+                            value={item.restSeconds}
+                            onChange={(e) => updateItem(item.id, { restSeconds: parseInt(e.target.value) || 0 })}
+                            className="h-9 bg-muted border-border/50"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground">Вес (кг)</label>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={2.5}
-                          value={item.weightKg || ''}
-                          onChange={(e) => updateItem(item.id, { weightKg: parseFloat(e.target.value) || undefined })}
-                          placeholder="—"
-                          className="h-9 bg-muted border-border/50"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground">Отдых</label>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={15}
-                          value={item.restSeconds}
-                          onChange={(e) => updateItem(item.id, { restSeconds: parseInt(e.target.value) || 0 })}
-                          className="h-9 bg-muted border-border/50"
-                        />
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </CardContent>

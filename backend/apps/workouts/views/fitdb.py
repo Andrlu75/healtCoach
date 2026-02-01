@@ -50,6 +50,9 @@ class FitDBWorkoutExerciseSerializer(serializers.Serializer):
     reps = serializers.SerializerMethodField()
     rest_seconds = serializers.SerializerMethodField()
     weight_kg = serializers.SerializerMethodField()
+    # Кардио параметры
+    duration_seconds = serializers.SerializerMethodField()
+    distance_meters = serializers.SerializerMethodField()
     notes = serializers.CharField(allow_blank=True, required=False)
     order_index = serializers.SerializerMethodField()
     # Include exercise details to avoid N+1 queries
@@ -73,6 +76,12 @@ class FitDBWorkoutExerciseSerializer(serializers.Serializer):
     def get_weight_kg(self, obj):
         return obj.parameters.get('weight_kg')
 
+    def get_duration_seconds(self, obj):
+        return obj.parameters.get('duration_seconds')
+
+    def get_distance_meters(self, obj):
+        return obj.parameters.get('distance_meters')
+
     def get_order_index(self, obj):
         return obj.order
 
@@ -86,6 +95,7 @@ class FitDBWorkoutExerciseSerializer(serializers.Serializer):
             'name': ex.name,
             'description': ex.description or '',
             'muscle_group': ex.muscle_groups[0] if ex.muscle_groups else '',
+            'category': ex.category or '',
         }
 
 
@@ -206,15 +216,22 @@ class FitDBWorkoutViewSet(viewsets.ModelViewSet):
                 except Exercise.DoesNotExist:
                     continue
 
+                parameters = {
+                    'sets': ex.get('sets', 3),
+                    'reps': ex.get('reps', 10),
+                    'weight_kg': ex.get('weight_kg'),
+                }
+                # Добавляем кардио параметры если переданы
+                if ex.get('duration_seconds') is not None:
+                    parameters['duration_seconds'] = ex.get('duration_seconds')
+                if ex.get('distance_meters') is not None:
+                    parameters['distance_meters'] = ex.get('distance_meters')
+
                 WorkoutTemplateExercise.objects.create(
                     block=block,
                     exercise=exercise,
                     order=idx,
-                    parameters={
-                        'sets': ex.get('sets', 3),
-                        'reps': ex.get('reps', 10),
-                        'weight_kg': ex.get('weight_kg'),
-                    },
+                    parameters=parameters,
                     rest_after=ex.get('rest_seconds', 60),
                     notes=ex.get('notes', ''),
                 )
@@ -273,15 +290,22 @@ class FitDBWorkoutExerciseViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Exercise not found'}, status=404)
 
         # Create workout exercise
+        parameters = {
+            'sets': data.get('sets', 3),
+            'reps': data.get('reps', 10),
+            'weight_kg': data.get('weight_kg'),
+        }
+        # Добавляем кардио параметры если переданы
+        if data.get('duration_seconds') is not None:
+            parameters['duration_seconds'] = data.get('duration_seconds')
+        if data.get('distance_meters') is not None:
+            parameters['distance_meters'] = data.get('distance_meters')
+
         template_exercise = WorkoutTemplateExercise.objects.create(
             block=block,
             exercise=exercise,
             order=data.get('order_index', 0),
-            parameters={
-                'sets': data.get('sets', 3),
-                'reps': data.get('reps', 10),
-                'weight_kg': data.get('weight_kg'),
-            },
+            parameters=parameters,
             rest_after=data.get('rest_seconds', 60),
             notes=data.get('notes', ''),
         )
@@ -321,15 +345,22 @@ class FitDBWorkoutExerciseViewSet(viewsets.ModelViewSet):
                 except Exercise.DoesNotExist:
                     continue
 
+                parameters = {
+                    'sets': item.get('sets', 3),
+                    'reps': item.get('reps', 10),
+                    'weight_kg': item.get('weight_kg'),
+                }
+                # Добавляем кардио параметры если переданы
+                if item.get('duration_seconds') is not None:
+                    parameters['duration_seconds'] = item.get('duration_seconds')
+                if item.get('distance_meters') is not None:
+                    parameters['distance_meters'] = item.get('distance_meters')
+
                 template_exercise = WorkoutTemplateExercise.objects.create(
                     block=block,
                     exercise=exercise,
                     order=item.get('order_index', 0),
-                    parameters={
-                        'sets': item.get('sets', 3),
-                        'reps': item.get('reps', 10),
-                        'weight_kg': item.get('weight_kg'),
-                    },
+                    parameters=parameters,
                     rest_after=item.get('rest_seconds', 60),
                     notes=item.get('notes', ''),
                 )

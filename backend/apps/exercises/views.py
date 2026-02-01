@@ -1,4 +1,4 @@
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from rest_framework import viewsets, status, serializers, pagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -96,10 +96,12 @@ class FitDBExerciseViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        # Общая база упражнений для всех коучей
+        coach = self.request.user.coach_profile
+
+        # Упражнения текущего коуча + общая база активных упражнений
         queryset = Exercise.objects.filter(
-            is_active=True
-        ).only(
+            Q(coach=coach) | Q(is_active=True)
+        ).distinct().only(
             'id', 'name', 'description', 'muscle_groups', 'difficulty', 'equipment', 'image'
         )
 
@@ -112,7 +114,6 @@ class FitDBExerciseViewSet(viewsets.ModelViewSet):
                 if en_name == muscle_group
             ]
             if matching_groups:
-                from django.db.models import Q
                 q = Q()
                 for mg in matching_groups:
                     q |= Q(muscle_groups__icontains=mg)

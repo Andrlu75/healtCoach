@@ -321,10 +321,16 @@ const ClientDetail = () => {
             <Dumbbell className="w-5 h-5 text-primary" />
             Назначенные тренировки
           </h3>
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-1" />
-            Назначить
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => navigate(`/fitdb/clients/${id}/schedule`)}>
+              <Calendar className="w-4 h-4 mr-1" />
+              Расписание
+            </Button>
+            <Button size="sm" onClick={() => setDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-1" />
+              Назначить
+            </Button>
+          </div>
         </div>
 
         {/* Assignment Wizard */}

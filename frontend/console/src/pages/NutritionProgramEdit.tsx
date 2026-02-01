@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { ChevronRight, Save, Play, X, Copy, Plus, Check, Loader2, ShoppingCart, Sparkles, ArrowLeft, ChefHat, ChevronLeft, BookmarkPlus } from 'lucide-react'
+import { useToast } from '../hooks/use-toast'
 import { DndContext, DragOverlay, pointerWithin, useDroppable } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { nutritionProgramsApi } from '../api/nutritionPrograms'
@@ -47,6 +48,7 @@ const SHOPPING_CATEGORIES: { key: ShoppingListItem['category']; label: string; e
 export default function NutritionProgramEdit() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { toast } = useToast()
   const isNew = !id || id === 'new'
 
   const [loading, setLoading] = useState(!isNew)
@@ -229,8 +231,12 @@ export default function NutritionProgramEdit() {
         if (activate) {
           await nutritionProgramsApi.activate(data.id)
         }
-        allowNavigationRef.current = true
-        navigate(`/nutrition-programs/${data.id}`)
+        // Переходим на страницу редактирования созданной программы (без перезагрузки)
+        setProgram(data)
+        setLastSaved(new Date())
+        setHasUnsavedChanges(false)
+        toast({ title: 'Программа создана', description: activate ? 'Программа активирована' : undefined })
+        navigate(`/nutrition-programs/${data.id}`, { replace: true })
       } else {
         await nutritionProgramsApi.update(Number(id), {
           name: formData.name,
@@ -248,9 +254,13 @@ export default function NutritionProgramEdit() {
         })
         if (activate && program?.status === 'draft') {
           await nutritionProgramsApi.activate(Number(id))
+          // Обновляем статус программы
+          setProgram(prev => prev ? { ...prev, status: 'active' } : null)
         }
-        allowNavigationRef.current = true
-        navigate('/nutrition-programs')
+        // Остаёмся на странице, обновляем время сохранения
+        setLastSaved(new Date())
+        setHasUnsavedChanges(false)
+        toast({ title: 'Сохранено', description: activate ? 'Программа активирована' : undefined })
       }
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: Record<string, unknown> } }
@@ -1294,14 +1304,35 @@ function DayEditor({
                       Перетащите блюдо сюда или нажмите кнопку
                     </div>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => handleOpenDishSelector(mealType.type)}
-                    className="w-full mt-2 flex items-center justify-center gap-1.5 text-xs py-1.5 text-muted-foreground hover:text-foreground border border-dashed border-border rounded hover:border-primary/50 hover:bg-muted/30 transition-colors"
-                  >
-                    <Plus size={12} />
-                    Добавить
-                  </button>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const mealConfig = MEAL_TYPES.find((m) => m.type === mealType.type)
+                        if (mealConfig) {
+                          onAddMeal({
+                            id: crypto.randomUUID(),
+                            type: mealType.type,
+                            time: mealConfig.defaultTime,
+                            name: mealConfig.label,
+                            description: '',
+                          })
+                        }
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 text-muted-foreground hover:text-foreground border border-dashed border-border rounded hover:border-primary/50 hover:bg-muted/30 transition-colors"
+                    >
+                      <Plus size={12} />
+                      Добавить
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDishSelector(mealType.type)}
+                      className="flex items-center justify-center gap-1.5 text-xs py-1.5 px-3 text-muted-foreground hover:text-foreground border border-dashed border-border rounded hover:border-primary/50 hover:bg-muted/30 transition-colors"
+                      title="Выбрать из базы блюд"
+                    >
+                      <ChefHat size={12} />
+                    </button>
+                  </div>
                 </MealDropZone>
               )
             })}

@@ -33,6 +33,9 @@ export interface WorkoutExercise {
   reps: number;
   rest_seconds: number;
   weight_kg?: number;
+  // Кардио параметры
+  duration_seconds?: number;
+  distance_meters?: number;
   notes?: string;
   order_index: number;
   exercise?: Exercise;
@@ -169,6 +172,9 @@ export const workoutExercisesApi = {
     reps: number;
     rest_seconds: number;
     weight_kg?: number;
+    // Кардио параметры
+    duration_seconds?: number;
+    distance_meters?: number;
     notes?: string;
     order_index: number;
   }) {
@@ -183,6 +189,9 @@ export const workoutExercisesApi = {
     reps: number;
     rest_seconds: number;
     weight_kg?: number;
+    // Кардио параметры
+    duration_seconds?: number;
+    distance_meters?: number;
     notes?: string;
     order_index: number;
   }>) {
