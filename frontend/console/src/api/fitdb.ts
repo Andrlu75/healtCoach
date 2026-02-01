@@ -148,6 +148,8 @@ export const workoutsApi = {
       reps: number;
       rest_seconds: number;
       weight_kg?: number;
+      duration_seconds?: number;
+      distance_meters?: number;
       notes?: string;
     }>;
   }) {

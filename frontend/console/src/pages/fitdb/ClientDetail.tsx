@@ -322,13 +322,13 @@ const ClientDetail = () => {
             Назначенные тренировки
           </h3>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => navigate(`/fitdb/clients/${id}/schedule`)}>
+            <Button size="sm" onClick={() => navigate(`/fitdb/clients/${id}/schedule`)}>
               <Calendar className="w-4 h-4 mr-1" />
               Расписание
             </Button>
-            <Button size="sm" onClick={() => setDialogOpen(true)}>
+            <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
               <Plus className="w-4 h-4 mr-1" />
-              Назначить
+              Быстро назначить
             </Button>
           </div>
         </div>
