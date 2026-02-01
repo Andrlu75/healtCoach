@@ -243,3 +243,93 @@ function prepareFormData(formData: Partial<DishFormData>): FormData | Record<str
   })
   return result
 }
+
+// ============================================================================
+// AI API
+// ============================================================================
+
+/**
+ * Структура сгенерированного рецепта.
+ */
+export interface GeneratedRecipe {
+  dish_name: string
+  portion_weight: number
+  cooking_time: number
+  ingredients: Array<{
+    name: string
+    weight: number
+    calories: number
+    proteins: number
+    fats: number
+    carbohydrates: number
+  }>
+  recipe: string
+  calories: number
+  proteins: number
+  fats: number
+  carbohydrates: number
+}
+
+/**
+ * Структура КБЖУ.
+ */
+export interface NutritionData {
+  calories: number
+  proteins: number
+  fats: number
+  carbohydrates: number
+}
+
+/**
+ * Структура КБЖУ продукта на 100г.
+ */
+export interface ProductNutritionData {
+  calories_per_100g: number
+  proteins_per_100g: number
+  fats_per_100g: number
+  carbs_per_100g: number
+}
+
+export const dishesAiApi = {
+  /**
+   * Сгенерировать рецепт блюда по названию.
+   */
+  async generateRecipe(name: string): Promise<GeneratedRecipe> {
+    const { data } = await api.post<GeneratedRecipe>(`${BASE_URL}/ai/generate-recipe/`, { name })
+    return data
+  },
+
+  /**
+   * Рассчитать КБЖУ по списку ингредиентов.
+   */
+  async calculateNutrition(
+    ingredients: Array<{ name: string; weight: number }>
+  ): Promise<NutritionData> {
+    const { data } = await api.post<NutritionData>(`${BASE_URL}/ai/calculate-nutrition/`, {
+      ingredients,
+    })
+    return data
+  },
+
+  /**
+   * Сгенерировать описание блюда.
+   */
+  async suggestDescription(name: string): Promise<string> {
+    const { data } = await api.post<{ description: string }>(
+      `${BASE_URL}/ai/suggest-description/`,
+      { name }
+    )
+    return data.description
+  },
+
+  /**
+   * Подсказать КБЖУ продукта на 100г.
+   */
+  async suggestProductNutrition(name: string): Promise<ProductNutritionData> {
+    const { data } = await api.post<ProductNutritionData>(
+      `${BASE_URL}/ai/suggest-product-nutrition/`,
+      { name }
+    )
+    return data
+  },
+}

@@ -4,8 +4,9 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Loader2, Save, ImagePlus, X, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Save, ImagePlus, X, Plus, Trash2, Sparkles } from 'lucide-react'
 import { useDishesStore } from '@/stores/dishes'
+import { dishesAiApi } from '@/api/dishes'
 import { MEAL_TYPE_LABELS, PRODUCT_CATEGORY_LABELS, type MealType, type Ingredient } from '@/types/dishes'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useToast } from '@/components/ui/use-toast'
 
 export default function DishForm() {
   const { id } = useParams()
@@ -50,6 +52,13 @@ export default function DishForm() {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+
+  // AI loading состояния
+  const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false)
+  const [isCalculatingNutrition, setIsCalculatingNutrition] = useState(false)
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false)
+
+  const { toast } = useToast()
 
   // Загрузка данных
   useEffect(() => {
@@ -171,6 +180,134 @@ export default function DishForm() {
     }))
   }
 
+  // ========== AI HANDLERS ==========
+
+  const handleGenerateRecipe = async () => {
+    if (!formData.name.trim()) {
+      toast({
+        title: 'Введите название',
+        description: 'Для генерации рецепта нужно указать название блюда',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsGeneratingRecipe(true)
+    try {
+      const recipe = await dishesAiApi.generateRecipe(formData.name)
+
+      setFormData((prev) => ({
+        ...prev,
+        recipe: recipe.recipe,
+        portion_weight: recipe.portion_weight,
+        cooking_time: recipe.cooking_time,
+        calories: recipe.calories,
+        proteins: recipe.proteins,
+        fats: recipe.fats,
+        carbohydrates: recipe.carbohydrates,
+        ingredients: recipe.ingredients.map((ing) => ({
+          name: ing.name,
+          weight: ing.weight,
+          calories: ing.calories,
+          proteins: ing.proteins,
+          fats: ing.fats,
+          carbohydrates: ing.carbohydrates,
+        })),
+      }))
+
+      toast({
+        title: 'Рецепт сгенерирован',
+        description: `Добавлено ${recipe.ingredients.length} ингредиентов`,
+      })
+    } catch (error) {
+      console.error('Error generating recipe:', error)
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось сгенерировать рецепт. Попробуйте позже.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsGeneratingRecipe(false)
+    }
+  }
+
+  const handleAiCalculateNutrition = async () => {
+    if (formData.ingredients.length === 0) {
+      toast({
+        title: 'Нет ингредиентов',
+        description: 'Добавьте ингредиенты для расчёта КБЖУ',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsCalculatingNutrition(true)
+    try {
+      const ingredientsForAi = formData.ingredients.map((ing) => ({
+        name: ing.name,
+        weight: ing.weight,
+      }))
+
+      const nutrition = await dishesAiApi.calculateNutrition(ingredientsForAi)
+
+      setFormData((prev) => ({
+        ...prev,
+        calories: nutrition.calories,
+        proteins: nutrition.proteins,
+        fats: nutrition.fats,
+        carbohydrates: nutrition.carbohydrates,
+      }))
+
+      toast({
+        title: 'КБЖУ рассчитано',
+        description: `${Math.round(nutrition.calories)} ккал`,
+      })
+    } catch (error) {
+      console.error('Error calculating nutrition:', error)
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось рассчитать КБЖУ. Попробуйте позже.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsCalculatingNutrition(false)
+    }
+  }
+
+  const handleGenerateDescription = async () => {
+    if (!formData.name.trim()) {
+      toast({
+        title: 'Введите название',
+        description: 'Для генерации описания нужно указать название блюда',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsGeneratingDescription(true)
+    try {
+      const description = await dishesAiApi.suggestDescription(formData.name)
+
+      setFormData((prev) => ({
+        ...prev,
+        description,
+      }))
+
+      toast({
+        title: 'Описание сгенерировано',
+      })
+    } catch (error) {
+      console.error('Error generating description:', error)
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось сгенерировать описание. Попробуйте позже.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsGeneratingDescription(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.name.trim()) return
@@ -237,7 +374,24 @@ export default function DishForm() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <Label htmlFor="name">Название блюда *</Label>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label htmlFor="name">Название блюда *</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleGenerateRecipe}
+                      disabled={isGeneratingRecipe || !formData.name.trim()}
+                      className="text-xs h-7"
+                    >
+                      {isGeneratingRecipe ? (
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-3 h-3 mr-1" />
+                      )}
+                      Сгенерировать рецепт
+                    </Button>
+                  </div>
                   <Input
                     id="name"
                     name="name"
@@ -249,7 +403,24 @@ export default function DishForm() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <Label htmlFor="description">Описание</Label>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label htmlFor="description">Описание</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleGenerateDescription}
+                      disabled={isGeneratingDescription || !formData.name.trim()}
+                      className="text-xs h-7"
+                    >
+                      {isGeneratingDescription ? (
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-3 h-3 mr-1" />
+                      )}
+                      Сгенерировать
+                    </Button>
+                  </div>
                   <Textarea
                     id="description"
                     name="description"
@@ -293,6 +464,20 @@ export default function DishForm() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Ингредиенты</CardTitle>
               <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAiCalculateNutrition}
+                  disabled={isCalculatingNutrition || formData.ingredients.length === 0}
+                >
+                  {isCalculatingNutrition ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4 mr-1" />
+                  )}
+                  AI расчёт
+                </Button>
                 <Button type="button" variant="outline" size="sm" onClick={handleRecalculateNutrition}>
                   Пересчитать КБЖУ
                 </Button>
