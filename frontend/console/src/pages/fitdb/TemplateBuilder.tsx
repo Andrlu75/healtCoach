@@ -27,6 +27,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface WorkoutItem extends WorkoutExercise {
   exercise: ExerciseType;
@@ -47,6 +57,8 @@ const TemplateBuilder = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -249,6 +261,30 @@ const TemplateBuilder = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!id) return;
+
+    setDeleting(true);
+    try {
+      await workoutsApi.delete(id);
+      toast({
+        title: 'Шаблон удалён',
+        description: 'Шаблон тренировки был удалён',
+      });
+      navigate('/fitdb/templates');
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось удалить шаблон',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
   // Server handles search, we only filter by muscle group and already added
   const filteredExercises = exercises.filter(e => {
     const matchesMuscle = !selectedMuscle || e.muscleGroups?.includes(selectedMuscle);
@@ -294,14 +330,26 @@ const TemplateBuilder = () => {
               </div>
             </div>
 
-            <Button onClick={handleSave} disabled={saving} className="shadow-glow">
-              {saving ? (
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              ) : (
-                <Save className="w-5 h-5 mr-2" />
+            <div className="flex items-center gap-2">
+              {id && (
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="w-5 h-5 mr-2" />
+                  Удалить
+                </Button>
               )}
-              Сохранить
-            </Button>
+              <Button onClick={handleSave} disabled={saving} className="shadow-glow">
+                {saving ? (
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-5 h-5 mr-2" />
+                )}
+                Сохранить
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -559,6 +607,39 @@ const TemplateBuilder = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить шаблон?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите удалить шаблон «{name}»? Это действие нельзя отменить.
+              Назначенные тренировки на основе этого шаблона останутся без изменений.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Удаление...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Удалить
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
