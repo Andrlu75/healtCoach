@@ -9,7 +9,7 @@ healthCooach/
 │   │   ├── accounts/           # User, Coach, Client модели + Auth
 │   │   ├── bot/                # Telegram webhook, handlers
 │   │   ├── chat/               # ChatMessage, InteractionLog
-│   │   ├── meals/              # Meal, MealDraft (анализ фото еды)
+│   │   ├── meals/              # Meal, MealDraft, Product, Dish, DishTag
 │   │   ├── metrics/            # HealthMetric (вес, сон, пульс и т.д.)
 │   │   ├── exercises/          # Упражнения для тренировок
 │   │   ├── workouts/           # Программы тренировок
@@ -170,6 +170,73 @@ Client (ForeignKey -> Coach)
 ### Meal Models (meals/models.py)
 
 ```python
+# ============================================================================
+# БАЗА ДАННЫХ БЛЮД КОУЧА
+# ============================================================================
+
+Product (база продуктов коуча с КБЖУ на 100г)
+  - coach (FK -> Coach)
+  - name (уникально для коуча)
+  - calories_per_100g, proteins_per_100g, fats_per_100g, carbs_per_100g
+  - category: 'dairy' | 'meat' | 'fish' | 'vegetables' | 'fruits' |
+              'grains' | 'nuts' | 'oils' | 'spices' | 'other'
+  - is_verified (подтверждено после AI-подсказки)
+  - created_at, updated_at
+
+  # Методы:
+  - get_nutrition_for_weight(weight_grams)  # КБЖУ для заданного веса
+
+  # Индексы: (coach, name), (category)
+  # Таблица: products
+
+DishTag (теги для категоризации блюд)
+  - coach (FK -> Coach)
+  - name (уникально для коуча)
+  - color (HEX-код, например #3B82F6)
+  - created_at, updated_at
+
+  # Индексы: (coach)
+  # Таблица: dish_tags
+
+Dish (блюдо из базы данных коуча)
+  - coach (FK -> Coach)
+
+  # Основная информация
+  - name
+  - description
+  - recipe (Markdown поддержка)
+
+  # КБЖУ
+  - portion_weight (г)
+  - calories, proteins, fats, carbohydrates
+
+  # Время приготовления
+  - cooking_time (мин, nullable)
+
+  # Медиа
+  - photo (ImageField, upload: dishes/%Y/%m/)
+  - video_url (URLField, YouTube и т.д.)
+
+  # JSON поля
+  - ingredients: [{product_id, name, weight, calories, proteins, fats, carbohydrates}]
+  - shopping_links: [{title, url}]
+  - meal_types: ['breakfast', 'lunch', 'dinner', 'snack1', 'snack2']
+
+  # Категоризация
+  - tags (M2M -> DishTag)
+  - is_active (неактивные не отображаются)
+  - created_at, updated_at
+
+  # Методы:
+  - recalculate_nutrition()  # Пересчёт КБЖУ из ингредиентов
+
+  # Индексы: (coach, name), (coach, is_active), (-updated_at)
+  # Таблица: dishes
+
+# ============================================================================
+# ПРИЁМЫ ПИЩИ КЛИЕНТА
+# ============================================================================
+
 MealDraft (для умного режима "smart")
   - id: UUID
   - client (FK -> Client)
@@ -214,6 +281,7 @@ Meal
   - health_analysis (JSON)
   - ai_confidence (0-100)
   - ai_comment (TextField)
+  - program_check_status: null | 'compliant' | 'violation'
   - plate_type, layout, decorations
   - meal_time (DateTimeField)
   - created_at
@@ -735,6 +803,9 @@ AIUsageLog.objects.create(
 |-----------|-----------|-----------|------|
 | Telegram Bot | Получение фото/текст | python-telegram-bot 21 | `apps/bot/webhook.py` |
 | AI Анализ | Классификация + КБЖУ | OpenAI/Anthropic/Gemini | `apps/meals/services.py` |
+| Модель Product | База продуктов коуча | Django ORM + PostgreSQL | `apps/meals/models.py` |
+| Модель DishTag | Теги для блюд | Django ORM + PostgreSQL | `apps/meals/models.py` |
+| Модель Dish | База блюд коуча | Django ORM + PostgreSQL | `apps/meals/models.py` |
 | Модель Meal | Хранение приёмов пищи | Django ORM + PostgreSQL | `apps/meals/models.py` |
 | Модель MealDraft | Умный режим редактирования | Django ORM + PostgreSQL | `apps/meals/models.py` |
 | Dashboard коуча | Обзор клиентов | React 19 + Tailwind | `frontend/console/src/pages/Dashboard.tsx` |
@@ -743,3 +814,13 @@ AIUsageLog.objects.create(
 | Miniapp Stats | Графики КБЖУ | React 19 + Recharts | `frontend/miniapp/src/features/stats/Stats.tsx` |
 | Напоминания | Расписание задач | Celery + Redis | `apps/reminders/tasks.py` |
 | Отчёты | PDF генерация | WeasyPrint | `apps/reports/models.py` |
+
+---
+
+## Дополнительная документация
+
+| Документ | Описание |
+|----------|----------|
+| [FEATURE_DISH_DATABASE.md](./FEATURE_DISH_DATABASE.md) | База данных блюд коуча (Product, DishTag, Dish) |
+| [TASKS_NUTRITION_PROGRAM.md](./TASKS_NUTRITION_PROGRAM.md) | Программы питания — план разработки |
+| [SECURITY.md](./SECURITY.md) | Безопасность: аутентификация, валидация, защита данных |
