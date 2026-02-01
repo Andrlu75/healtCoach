@@ -68,6 +68,11 @@ export default function WorkoutRun() {
   const [showFinishConfirm, setShowFinishConfirm] = useState(false)
   const [showStats, setShowStats] = useState(false)
   const [finalStats, setFinalStats] = useState<WorkoutStats | null>(null)
+  // Состояние для активного подхода (начат, но не завершён)
+  const [activeSetIndex, setActiveSetIndex] = useState<number | null>(null)
+  const [setElapsedTime, setSetElapsedTime] = useState(0)
+  const setStartTimeRef = useRef<Date | null>(null)
+  const setTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTimeRef = useRef<Date>(new Date())
   const exerciseListRef = useRef<HTMLDivElement>(null)
@@ -83,6 +88,7 @@ export default function WorkoutRun() {
     return () => {
       isMountedRef.current = false
       if (timerRef.current) clearInterval(timerRef.current)
+      if (setTimerRef.current) clearInterval(setTimerRef.current)
     }
   }, [workoutId])
 
@@ -268,11 +274,47 @@ export default function WorkoutRun() {
     }, 1000)
   }, [sessionId, currentExercise])
 
+  // Начать выполнение подхода
+  const startSet = (setIndex: number) => {
+    if (!currentExercise || !sessionId) return
+
+    selection()
+    setActiveSetIndex(setIndex)
+    setSetElapsedTime(0)
+    setStartTimeRef.current = new Date()
+
+    // Log set started
+    const set = currentSets[setIndex]
+    logActivity(sessionId, 'set_started', currentExercise.exercise.id, set.set_number, {})
+
+    // Запускаем таймер
+    if (setTimerRef.current) clearInterval(setTimerRef.current)
+    setTimerRef.current = setInterval(() => {
+      setSetElapsedTime(prev => prev + 1)
+    }, 1000)
+  }
+
+  // Завершить выполнение подхода
   const completeSet = async (setIndex: number) => {
     if (!currentExercise || !sessionId) return
 
     const set = currentSets[setIndex]
     selection()
+
+    // Вычисляем длительность подхода
+    let durationSeconds: number | undefined
+    if (setStartTimeRef.current) {
+      durationSeconds = Math.round((new Date().getTime() - setStartTimeRef.current.getTime()) / 1000)
+    }
+
+    // Останавливаем таймер подхода
+    if (setTimerRef.current) {
+      clearInterval(setTimerRef.current)
+      setTimerRef.current = null
+    }
+    setActiveSetIndex(null)
+    setSetElapsedTime(0)
+    setStartTimeRef.current = null
 
     try {
       await api.post('/workouts/exercise-logs/', {
@@ -281,12 +323,14 @@ export default function WorkoutRun() {
         set_number: set.set_number,
         reps_completed: set.reps,
         weight_kg: set.weight || undefined,
+        duration_seconds: durationSeconds,
       })
 
       // Log set completed
       logActivity(sessionId, 'set_completed', currentExercise.exercise.id, set.set_number, {
         reps: set.reps,
         weight_kg: set.weight,
+        duration_seconds: durationSeconds,
       })
     } catch (error) {
       console.error('Error logging set:', error)
@@ -333,6 +377,12 @@ export default function WorkoutRun() {
     setSelectedExercise(null)
     setIsResting(false)
     if (timerRef.current) clearInterval(timerRef.current)
+
+    // Сброс состояния активного подхода
+    if (setTimerRef.current) clearInterval(setTimerRef.current)
+    setActiveSetIndex(null)
+    setSetElapsedTime(0)
+    setStartTimeRef.current = null
 
     // Log exercise started
     const exercise = exercises[index]
@@ -1110,14 +1160,41 @@ export default function WorkoutRun() {
                         </div>
                       </div>
 
-                      <motion.button
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => completeSet(index)}
-                        className="w-full bg-blue-500 text-white rounded-xl py-3 font-medium flex items-center justify-center gap-2"
-                      >
-                        <Check className="w-4 h-4" />
-                        Выполнено
-                      </motion.button>
+                      {/* Кнопки управления подходом */}
+                      {activeSetIndex === index ? (
+                        // Подход начат - показываем таймер и кнопку завершения
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-center gap-2 py-2 bg-green-50 dark:bg-green-900/20 rounded-xl">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                            <span className="text-green-600 dark:text-green-400 font-medium">
+                              Выполняется: {Math.floor(setElapsedTime / 60)}:{String(setElapsedTime % 60).padStart(2, '0')}
+                            </span>
+                          </div>
+                          <motion.button
+                            whileTap={{ scale: 0.97 }}
+                            onClick={() => completeSet(index)}
+                            className="w-full bg-green-500 text-white rounded-xl py-3 font-medium flex items-center justify-center gap-2"
+                          >
+                            <Check className="w-4 h-4" />
+                            Завершить подход
+                          </motion.button>
+                        </div>
+                      ) : (
+                        // Подход не начат - показываем кнопку начала
+                        <motion.button
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => startSet(index)}
+                          disabled={activeSetIndex !== null}
+                          className={`w-full rounded-xl py-3 font-medium flex items-center justify-center gap-2 ${
+                            activeSetIndex !== null
+                              ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
+                              : 'bg-blue-500 text-white'
+                          }`}
+                        >
+                          <Play className="w-4 h-4" />
+                          Начать подход
+                        </motion.button>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>

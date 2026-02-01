@@ -91,6 +91,8 @@ class FitDBExerciseLog(models.Model):
         null=True,
         blank=True
     )
+    # Фактическое время выполнения подхода в секундах
+    duration_seconds = models.PositiveIntegerField(null=True, blank=True)
     completed_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -111,6 +113,7 @@ class FitDBActivityLog(models.Model):
         ('exercise_started', 'Упражнение начато'),
         ('exercise_completed', 'Упражнение завершено'),
         ('exercise_skipped', 'Упражнение пропущено'),
+        ('set_started', 'Подход начат'),
         ('set_completed', 'Подход выполнен'),
         ('set_skipped', 'Подход пропущен'),
         ('rest_started', 'Отдых начат'),

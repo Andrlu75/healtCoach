@@ -664,7 +664,7 @@ class FitDBExerciseLogSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FitDBExerciseLog
-        fields = ['id', 'session_id', 'exercise_id', 'set_number', 'reps_completed', 'weight_kg', 'completed_at']
+        fields = ['id', 'session_id', 'exercise_id', 'set_number', 'reps_completed', 'weight_kg', 'duration_seconds', 'completed_at']
         read_only_fields = ['completed_at']
 
 
