@@ -257,6 +257,24 @@ class DishDetailSerializer(serializers.ModelSerializer):
         help_text='Список ID тегов для привязки к блюду',
     )
 
+    def to_internal_value(self, data):
+        """Предобработка данных — парсинг JSON-строк для FormData."""
+        # Копируем данные чтобы не мутировать оригинал
+        if hasattr(data, 'copy'):
+            data = data.copy()
+
+        # Поля которые могут прийти как JSON-строки через FormData
+        json_fields = ['tag_ids', 'ingredients', 'shopping_links', 'meal_types']
+
+        for field in json_fields:
+            if field in data and isinstance(data[field], str):
+                try:
+                    data[field] = json.loads(data[field])
+                except json.JSONDecodeError:
+                    pass  # Пусть валидация поля обработает ошибку
+
+        return super().to_internal_value(data)
+
     class Meta:
         model = Dish
         fields = [
