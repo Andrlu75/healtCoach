@@ -9,11 +9,13 @@ export type MuscleGroup =
   | 'abs'
   | 'cardio';
 
-export type ExerciseCategory = 
+export type ExerciseCategory =
+  | 'warmup'
   | 'strength'
   | 'cardio'
   | 'flexibility'
-  | 'plyometric';
+  | 'plyometric'
+  | 'cooldown';
 
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 
@@ -41,10 +43,12 @@ export const muscleGroupLabels: Record<MuscleGroup, string> = {
 };
 
 export const categoryLabels: Record<ExerciseCategory, string> = {
+  warmup: 'Разминка',
   strength: 'Силовые',
   cardio: 'Кардио',
   flexibility: 'Растяжка',
   plyometric: 'Плиометрика',
+  cooldown: 'Заминка',
 };
 
 export const difficultyLabels: Record<Difficulty, string> = {

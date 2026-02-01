@@ -145,17 +145,21 @@ const WorkoutBuilder = () => {
   };
 
   const addExercise = (exercise: Exercise) => {
-    const isCardio = exercise.category === 'cardio' || exercise.muscleGroups?.includes('cardio');
+    // Категории с временными параметрами (не подходы/повторы)
+    const timeBasedCategories = ['cardio', 'warmup', 'cooldown', 'flexibility'];
+    const isTimeBased = timeBasedCategories.includes(exercise.category) || exercise.muscleGroups?.includes('cardio');
+    const isCardio = exercise.category === 'cardio';
+
     const newItem: WorkoutItem = {
       id: `temp-${Date.now()}`,
       exerciseId: exercise.id,
-      // Силовые параметры (по умолчанию для не-кардио)
-      sets: isCardio ? 1 : 3,
-      reps: isCardio ? 1 : 10,
-      restSeconds: isCardio ? 0 : 60,
-      // Кардио параметры
-      durationSeconds: isCardio ? 600 : undefined,  // 10 минут по умолчанию
-      distanceMeters: isCardio ? 1000 : undefined,  // 1 км по умолчанию
+      // Силовые параметры (по умолчанию для силовых и плиометрики)
+      sets: isTimeBased ? 1 : 3,
+      reps: isTimeBased ? 1 : 10,
+      restSeconds: isTimeBased ? 0 : 60,
+      // Временные параметры для кардио/разминки/заминки/растяжки
+      durationSeconds: isTimeBased ? (isCardio ? 600 : 300) : undefined,  // 10 мин кардио, 5 мин остальное
+      distanceMeters: isCardio ? 1000 : undefined,  // дистанция только для кардио
       orderIndex: workoutItems.length,
       exercise,
     };
@@ -377,47 +381,57 @@ const WorkoutBuilder = () => {
                       </Button>
                     </div>
 
-                    {/* Parameters - разные для кардио и силовых */}
-                    {item.exercise.category === 'cardio' || item.exercise.muscleGroups?.includes('cardio') ? (
-                      // Кардио параметры: время и дистанция
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-xs text-muted-foreground">Время (мин)</label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={item.durationSeconds ? Math.round(item.durationSeconds / 60) : ''}
-                            onChange={(e) => updateItem(item.id, { durationSeconds: (parseInt(e.target.value) || 0) * 60 })}
-                            placeholder="10"
-                            className="h-9 bg-muted border-border/50"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Дистанция (км)</label>
-                          <Input
-                            type="number"
-                            min={0}
-                            step={0.1}
-                            value={item.distanceMeters ? (item.distanceMeters / 1000).toFixed(1) : ''}
-                            onChange={(e) => updateItem(item.id, { distanceMeters: (parseFloat(e.target.value) || 0) * 1000 })}
-                            placeholder="1.0"
-                            className="h-9 bg-muted border-border/50"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Отдых (сек)</label>
-                          <Input
-                            type="number"
-                            min={0}
-                            step={15}
-                            value={item.restSeconds}
-                            onChange={(e) => updateItem(item.id, { restSeconds: parseInt(e.target.value) || 0 })}
-                            className="h-9 bg-muted border-border/50"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      // Силовые параметры: подходы, повторы, вес
+                    {/* Parameters - разные для временных (кардио/разминка/заминка/растяжка) и силовых */}
+                    {(() => {
+                      const timeBasedCategories = ['cardio', 'warmup', 'cooldown', 'flexibility'];
+                      const isTimeBased = timeBasedCategories.includes(item.exercise.category) || item.exercise.muscleGroups?.includes('cardio');
+                      const isCardio = item.exercise.category === 'cardio';
+
+                      if (isTimeBased) {
+                        return (
+                          // Временные параметры: время (и дистанция для кардио)
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            <div>
+                              <label className="text-xs text-muted-foreground">Время (мин)</label>
+                              <Input
+                                type="number"
+                                min={1}
+                                value={item.durationSeconds ? Math.round(item.durationSeconds / 60) : ''}
+                                onChange={(e) => updateItem(item.id, { durationSeconds: (parseInt(e.target.value) || 0) * 60 })}
+                                placeholder="10"
+                                className="h-9 bg-muted border-border/50"
+                              />
+                            </div>
+                            {isCardio && (
+                              <div>
+                                <label className="text-xs text-muted-foreground">Дистанция (км)</label>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step={0.1}
+                                  value={item.distanceMeters ? (item.distanceMeters / 1000).toFixed(1) : ''}
+                                  onChange={(e) => updateItem(item.id, { distanceMeters: (parseFloat(e.target.value) || 0) * 1000 })}
+                                  placeholder="1.0"
+                                  className="h-9 bg-muted border-border/50"
+                                />
+                              </div>
+                            )}
+                            <div>
+                              <label className="text-xs text-muted-foreground">Отдых (сек)</label>
+                              <Input
+                                type="number"
+                                min={0}
+                                step={15}
+                                value={item.restSeconds}
+                                onChange={(e) => updateItem(item.id, { restSeconds: parseInt(e.target.value) || 0 })}
+                                className="h-9 bg-muted border-border/50"
+                              />
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        // Силовые параметры: подходы, повторы, вес
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <div>
                           <label className="text-xs text-muted-foreground">Подходы</label>
@@ -463,7 +477,8 @@ const WorkoutBuilder = () => {
                           />
                         </div>
                       </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               </CardContent>
