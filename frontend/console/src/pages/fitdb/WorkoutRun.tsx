@@ -376,7 +376,7 @@ const WorkoutRun = () => {
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={viewMode === 'exercise' ? backToList : () => navigate(`/workouts/${id}`)}
+            onClick={viewMode === 'exercise' ? backToList : () => navigate(`/fitdb/workouts/${id}`)}
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>

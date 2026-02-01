@@ -350,8 +350,23 @@ export default function DishForm() {
         await createDish(data)
       }
       navigate('/dishes')
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error saving dish:', error)
+      const axiosError = error as { response?: { data?: Record<string, unknown> } }
+      const errorData = axiosError?.response?.data
+      let errorMessage = 'Не удалось сохранить блюдо'
+      if (errorData) {
+        const messages = Object.entries(errorData)
+          .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+          .join(', ')
+        errorMessage = messages || errorMessage
+        console.error('Server error:', errorData)
+      }
+      toast({
+        title: 'Ошибка сохранения',
+        description: errorMessage,
+        variant: 'destructive',
+      })
     } finally {
       setIsSaving(false)
     }

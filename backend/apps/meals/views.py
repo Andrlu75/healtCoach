@@ -584,6 +584,22 @@ class DishViewSet(viewsets.ModelViewSet):
         """Устанавливает coach при создании блюда."""
         serializer.save(coach=self.request.user.coach_profile)
 
+    def update(self, request, *args, **kwargs):
+        """Обновление блюда с логированием ошибок валидации."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+
+        if not serializer.is_valid():
+            logger.warning(
+                f'Dish update validation error: dish_id={instance.id}, '
+                f'errors={serializer.errors}, data_keys={list(request.data.keys())}'
+            )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['post'])
     def duplicate(self, request, pk=None):
         """Дублировать блюдо.

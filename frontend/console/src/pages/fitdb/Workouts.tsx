@@ -122,7 +122,7 @@ const Workouts = () => {
               <Card
                 key={workout.id}
                 className="gradient-card border-border/50 shadow-card hover:border-primary/30 transition-all cursor-pointer animate-fade-in"
-                onClick={() => navigate(`/workouts/${workout.id}`)}
+                onClick={() => navigate(`/fitdb/workouts/${workout.id}`)}
               >
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -151,7 +151,7 @@ const Workouts = () => {
                       <Button
                         variant="default"
                         size="sm"
-                        onClick={() => navigate(`/workouts/${workout.id}/run`)}
+                        onClick={() => navigate(`/fitdb/workouts/${workout.id}/run`)}
                         className="shadow-glow flex-1 sm:flex-none"
                         disabled={workout.exerciseCount === 0}
                       >
@@ -161,7 +161,7 @@ const Workouts = () => {
                       <Button
                         variant="secondary"
                         size="icon"
-                        onClick={() => navigate(`/workouts/${workout.id}`)}
+                        onClick={() => navigate(`/fitdb/workouts/${workout.id}`)}
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
