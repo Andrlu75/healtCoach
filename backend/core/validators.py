@@ -3,6 +3,9 @@ from django.core.exceptions import ValidationError
 from PIL import Image
 import io
 
+# SECURITY: Защита от decompression bombs (CVE-2013-7459 и аналогичные)
+# Ограничиваем максимальный размер изображения в пикселях (~9500x9500)
+Image.MAX_IMAGE_PIXELS = 89_478_485
 
 # Дефолтный максимальный размер загружаемого изображения (10 МБ)
 DEFAULT_MAX_IMAGE_SIZE = 10 * 1024 * 1024

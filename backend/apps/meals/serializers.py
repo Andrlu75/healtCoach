@@ -1,10 +1,25 @@
 import re
 from decimal import Decimal
+from urllib.parse import urlparse
 
 from rest_framework import serializers
 
 from core.validators import validate_uploaded_image
 from .models import Dish, DishTag, Meal, MealDraft, Product, MEAL_TYPES
+
+
+# ============================================================================
+# SECURITY CONSTANTS
+# ============================================================================
+
+# Лимиты для защиты от DoS через большие JSON payloads
+MAX_INGREDIENTS = 50
+MAX_SHOPPING_LINKS = 20
+MAX_MEAL_TYPES = 5
+MAX_STRING_LENGTH = 500
+
+# Разрешённые URL схемы для ссылок
+ALLOWED_URL_SCHEMES = {'http', 'https'}
 
 
 class IngredientSerializer(serializers.Serializer):
@@ -195,6 +210,16 @@ class ShoppingLinkSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=255)
     url = serializers.URLField()
 
+    def validate_url(self, value: str) -> str:
+        """Валидация URL схемы для защиты от XSS (javascript:, data:)."""
+        parsed = urlparse(value)
+        if parsed.scheme.lower() not in ALLOWED_URL_SCHEMES:
+            raise serializers.ValidationError(
+                f'Недопустимая схема URL: {parsed.scheme}. '
+                f'Разрешены только: {", ".join(ALLOWED_URL_SCHEMES)}.'
+            )
+        return value
+
 
 class DishListSerializer(serializers.ModelSerializer):
     """Компактный сериализатор для списка блюд."""
@@ -258,27 +283,42 @@ class DishDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def validate_ingredients(self, value: list) -> list:
-        """Валидация структуры ингредиентов."""
+        """Валидация структуры ингредиентов с защитой от DoS."""
         if not isinstance(value, list):
             raise serializers.ValidationError('Ингредиенты должны быть списком.')
+
+        if len(value) > MAX_INGREDIENTS:
+            raise serializers.ValidationError(
+                f'Превышен лимит ингредиентов: максимум {MAX_INGREDIENTS}.'
+            )
 
         serializer = DishIngredientSerializer(data=value, many=True)
         serializer.is_valid(raise_exception=True)
         return value
 
     def validate_shopping_links(self, value: list) -> list:
-        """Валидация структуры ссылок на покупку."""
+        """Валидация структуры ссылок на покупку с защитой от DoS."""
         if not isinstance(value, list):
             raise serializers.ValidationError('Ссылки должны быть списком.')
+
+        if len(value) > MAX_SHOPPING_LINKS:
+            raise serializers.ValidationError(
+                f'Превышен лимит ссылок: максимум {MAX_SHOPPING_LINKS}.'
+            )
 
         serializer = ShoppingLinkSerializer(data=value, many=True)
         serializer.is_valid(raise_exception=True)
         return value
 
     def validate_meal_types(self, value: list) -> list:
-        """Валидация типов приёмов пищи."""
+        """Валидация типов приёмов пищи с защитой от DoS."""
         if not isinstance(value, list):
             raise serializers.ValidationError('Типы приёмов пищи должны быть списком.')
+
+        if len(value) > MAX_MEAL_TYPES:
+            raise serializers.ValidationError(
+                f'Превышен лимит типов приёмов пищи: максимум {MAX_MEAL_TYPES}.'
+            )
 
         valid_types = {mt[0] for mt in MEAL_TYPES}
         for meal_type in value:

@@ -27,11 +27,20 @@ LOGGING = {
             'format': '[{levelname}] {name}: {message}',
             'style': '{',
         },
+        'audit': {
+            'format': '[AUDIT] {asctime} {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
+        },
+        'audit_console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'audit',
         },
     },
     'root': {
@@ -41,6 +50,11 @@ LOGGING = {
     'loggers': {
         'apps.bot': {
             'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'audit': {
+            'handlers': ['audit_console'],
             'level': 'INFO',
             'propagate': False,
         },
@@ -54,6 +68,18 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_SSL_REDIRECT = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# HSTS (HTTP Strict Transport Security)
+# Браузер будет всегда использовать HTTPS для этого домена
+SECURE_HSTS_SECONDS = 31536000  # 1 год
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# X-Frame-Options для защиты от clickjacking
+X_FRAME_OPTIONS = 'DENY'
+
+# Referrer Policy для защиты приватности
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
 # CSRF trusted origins for Railway
 CSRF_TRUSTED_ORIGINS = config(
@@ -71,6 +97,9 @@ CORS_ALLOWED_ORIGINS = config(
 
 # Whitenoise for static files
 MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+
+# Audit logging middleware для логирования доступа к health data
+MIDDLEWARE.append('core.audit.AuditLoggingMiddleware')
 
 # Cache — use Redis if available, otherwise locmem
 REDIS_URL = config('REDIS_URL', default='')

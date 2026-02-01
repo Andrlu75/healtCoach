@@ -21,6 +21,12 @@ urlpatterns = [
     path('drafts/<uuid:draft_id>/ingredients/', views.MealDraftAddIngredientView.as_view(), name='draft_add_ingredient'),
     path('drafts/<uuid:draft_id>/ingredients/<int:index>/', views.MealDraftRemoveIngredientView.as_view(), name='draft_remove_ingredient'),
 
+    # AI API endpoints
+    path('ai/generate-recipe/', views.DishAIGenerateRecipeView.as_view(), name='ai_generate_recipe'),
+    path('ai/calculate-nutrition/', views.DishAICalculateNutritionView.as_view(), name='ai_calculate_nutrition'),
+    path('ai/suggest-description/', views.DishAISuggestDescriptionView.as_view(), name='ai_suggest_description'),
+    path('ai/suggest-product-nutrition/', views.ProductAISuggestNutritionView.as_view(), name='ai_suggest_product_nutrition'),
+
     # ViewSets для базы блюд (dishes, products, dish-tags)
     path('', include(router.urls)),
 ]

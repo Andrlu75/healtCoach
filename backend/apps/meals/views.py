@@ -12,6 +12,7 @@ from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser, JSONParser
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
 from .models import Dish, DishTag, Meal, MealDraft, Product
@@ -28,6 +29,32 @@ from .serializers import (
 from apps.accounts.models import Client
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# SECURITY: AI RATE LIMITING
+# ============================================================================
+
+class AIHourlyRateThrottle(UserRateThrottle):
+    """Rate limiting для AI endpoints — 20 запросов в час на пользователя.
+
+    SECURITY: Защита от cost attacks и злоупотребления AI API.
+    AI вызовы дорогостоящие, поэтому лимит значительно ниже общего.
+    """
+    scope = 'ai_hourly'
+    rate = '20/hour'
+
+
+class AIDailyRateThrottle(UserRateThrottle):
+    """Rate limiting для AI endpoints — 100 запросов в день на пользователя.
+
+    SECURITY: Дополнительный дневной лимит для защиты от злоупотреблений.
+    """
+    scope = 'ai_daily'
+    rate = '100/day'
+
+
+AI_THROTTLE_CLASSES = [AIHourlyRateThrottle, AIDailyRateThrottle]
 
 
 def get_client_timezone(client):
@@ -749,7 +776,10 @@ class DishAIGenerateRecipeView(APIView):
 
     POST /api/meals/ai/generate-recipe/
     Body: {"name": "Овсяная каша с бананом"}
+
+    SECURITY: Применён AI rate limiting (20/hour, 100/day).
     """
+    throttle_classes = AI_THROTTLE_CLASSES
 
     def post(self, request):
         dish_name = request.data.get('name', '').strip()
@@ -764,19 +794,20 @@ class DishAIGenerateRecipeView(APIView):
             from .ai_services import generate_recipe
             result = async_to_sync(generate_recipe)(dish_name)
 
-            logger.info(f'Рецепт сгенерирован для: {dish_name}')
+            # SECURITY: Не логируем название блюда
+            logger.info(f'AI generate_recipe: user={request.user.id}, success=true')
             return Response(result)
 
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except RuntimeError as e:
-            logger.error(f'AI ошибка при генерации рецепта: {e}')
+            logger.error(f'AI generate_recipe error: user={request.user.id}, error={e}')
             return Response(
                 {'error': 'Ошибка при генерации рецепта. Попробуйте позже.'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception as e:
-            logger.exception(f'Неожиданная ошибка при генерации рецепта: {e}')
+            logger.exception(f'AI generate_recipe unexpected error: user={request.user.id}')
             return Response(
                 {'error': 'Произошла ошибка. Попробуйте позже.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -788,7 +819,10 @@ class DishAICalculateNutritionView(APIView):
 
     POST /api/meals/ai/calculate-nutrition/
     Body: {"ingredients": [{"name": "Овсянка", "weight": 100}, ...]}
+
+    SECURITY: Применён AI rate limiting (20/hour, 100/day).
     """
+    throttle_classes = AI_THROTTLE_CLASSES
 
     def post(self, request):
         ingredients = request.data.get('ingredients', [])
@@ -809,19 +843,20 @@ class DishAICalculateNutritionView(APIView):
             from .ai_services import calculate_nutrition_from_ingredients
             result = async_to_sync(calculate_nutrition_from_ingredients)(ingredients)
 
-            logger.info(f'КБЖУ рассчитано для {len(ingredients)} ингредиентов')
+            # SECURITY: Не логируем содержимое ингредиентов
+            logger.info(f'AI calculate_nutrition: user={request.user.id}, ingredients_count={len(ingredients)}')
             return Response(result)
 
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except RuntimeError as e:
-            logger.error(f'AI ошибка при расчёте КБЖУ: {e}')
+            logger.error(f'AI calculate_nutrition error: user={request.user.id}, error={e}')
             return Response(
                 {'error': 'Ошибка при расчёте КБЖУ. Попробуйте позже.'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception as e:
-            logger.exception(f'Неожиданная ошибка при расчёте КБЖУ: {e}')
+            logger.exception(f'AI calculate_nutrition unexpected error: user={request.user.id}')
             return Response(
                 {'error': 'Произошла ошибка. Попробуйте позже.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -833,7 +868,10 @@ class DishAISuggestDescriptionView(APIView):
 
     POST /api/meals/ai/suggest-description/
     Body: {"name": "Овсяная каша с бананом"}
+
+    SECURITY: Применён AI rate limiting (20/hour, 100/day).
     """
+    throttle_classes = AI_THROTTLE_CLASSES
 
     def post(self, request):
         dish_name = request.data.get('name', '').strip()
@@ -848,19 +886,20 @@ class DishAISuggestDescriptionView(APIView):
             from .ai_services import suggest_dish_description
             description = async_to_sync(suggest_dish_description)(dish_name)
 
-            logger.info(f'Описание сгенерировано для: {dish_name}')
+            # SECURITY: Не логируем название блюда
+            logger.info(f'AI suggest_description: user={request.user.id}, success=true')
             return Response({'description': description})
 
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except RuntimeError as e:
-            logger.error(f'AI ошибка при генерации описания: {e}')
+            logger.error(f'AI suggest_description error: user={request.user.id}, error={e}')
             return Response(
                 {'error': 'Ошибка при генерации описания. Попробуйте позже.'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception as e:
-            logger.exception(f'Неожиданная ошибка при генерации описания: {e}')
+            logger.exception(f'AI suggest_description unexpected error: user={request.user.id}')
             return Response(
                 {'error': 'Произошла ошибка. Попробуйте позже.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -872,7 +911,10 @@ class ProductAISuggestNutritionView(APIView):
 
     POST /api/meals/ai/suggest-product-nutrition/
     Body: {"name": "Куриная грудка"}
+
+    SECURITY: Применён AI rate limiting (20/hour, 100/day).
     """
+    throttle_classes = AI_THROTTLE_CLASSES
 
     def post(self, request):
         product_name = request.data.get('name', '').strip()
@@ -887,19 +929,20 @@ class ProductAISuggestNutritionView(APIView):
             from .ai_services import suggest_product_nutrition
             result = async_to_sync(suggest_product_nutrition)(product_name)
 
-            logger.info(f'КБЖУ продукта подсказано для: {product_name}')
+            # SECURITY: Не логируем название продукта
+            logger.info(f'AI suggest_product_nutrition: user={request.user.id}, success=true')
             return Response(result)
 
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except RuntimeError as e:
-            logger.error(f'AI ошибка при подсказке КБЖУ продукта: {e}')
+            logger.error(f'AI suggest_product_nutrition error: user={request.user.id}, error={e}')
             return Response(
                 {'error': 'Ошибка при подсказке КБЖУ. Попробуйте позже.'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception as e:
-            logger.exception(f'Неожиданная ошибка при подсказке КБЖУ продукта: {e}')
+            logger.exception(f'AI suggest_product_nutrition unexpected error: user={request.user.id}')
             return Response(
                 {'error': 'Произошла ошибка. Попробуйте позже.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

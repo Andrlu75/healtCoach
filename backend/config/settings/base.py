@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Third-party
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',  # для BLACKLIST_AFTER_ROTATION
     'corsheaders',
     'django_filters',
     'django_celery_beat',
@@ -129,14 +130,19 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/hour',
         'user': '1000/hour',
+        # SECURITY: Отдельные лимиты для AI endpoints (дорогостоящие вызовы)
+        'ai_hourly': '20/hour',
+        'ai_daily': '100/day',
     },
 }
 
 # JWT
+# SECURITY: Уменьшены сроки действия токенов для безопасности health data
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=12),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),  # было 12 часов
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # было 30 дней
     'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,  # отозванные refresh токены добавляются в blacklist
 }
 
 # CORS

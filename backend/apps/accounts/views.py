@@ -6,6 +6,8 @@ import time
 from urllib.parse import parse_qs, unquote
 
 from django.conf import settings
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -78,20 +80,32 @@ class TelegramAuthView(APIView):
             )
 
         # Validate auth_date freshness (prevent replay attacks)
+        # SECURITY: auth_date обязателен для защиты от replay attacks
         auth_date_str = parsed.get('auth_date', [''])[0]
-        if auth_date_str:
-            try:
-                auth_date = int(auth_date_str)
-                # Allow tokens up to 24 hours old (configurable)
-                max_age = getattr(settings, 'TELEGRAM_AUTH_MAX_AGE', 86400)
-                if time.time() - auth_date > max_age:
-                    logger.warning('Expired initData: auth_date=%s, age=%ds', auth_date, time.time() - auth_date)
-                    return Response(
-                        {'error': 'Auth data expired'},
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
-            except (ValueError, TypeError):
-                pass  # Invalid auth_date format, continue anyway
+        if not auth_date_str:
+            logger.warning('Missing auth_date in initData')
+            return Response(
+                {'error': 'Missing auth_date in initData'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            auth_date = int(auth_date_str)
+        except (ValueError, TypeError):
+            logger.warning('Invalid auth_date format: %s', auth_date_str)
+            return Response(
+                {'error': 'Invalid auth_date format'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Allow tokens up to 24 hours old (configurable)
+        max_age = getattr(settings, 'TELEGRAM_AUTH_MAX_AGE', 86400)
+        if time.time() - auth_date > max_age:
+            logger.warning('Expired initData: auth_date=%s, age=%ds', auth_date, time.time() - auth_date)
+            return Response(
+                {'error': 'Auth data expired'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         # Extract user info
         user_data_str = parsed.get('user', [''])[0]
@@ -381,9 +395,12 @@ class ChangePasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if len(new_password) < 6:
+        # SECURITY: Используем Django password validators из AUTH_PASSWORD_VALIDATORS
+        try:
+            validate_password(new_password, user)
+        except DjangoValidationError as e:
             return Response(
-                {'error': 'Новый пароль должен содержать минимум 6 символов'},
+                {'error': e.messages[0] if e.messages else 'Пароль не соответствует требованиям безопасности'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
