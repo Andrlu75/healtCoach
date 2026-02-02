@@ -441,20 +441,26 @@ async def analyze_meal_report(
         meal_report.planned_description = planned_description
         meal_report.meal_time = planned_meal.get('time', '')
 
-    # Загружаем предыдущие фото-отчёты для этого же приёма пищи (того же дня и типа)
+    # Загружаем ВСЕ фото-отчёты за ВЕСЬ день (для контекста)
     from apps.nutrition_programs.models import MealReport
-    previous_reports = await sync_to_async(
+    all_day_reports = await sync_to_async(
         lambda: list(
             MealReport.objects.filter(
                 program_day=program_day,
-                meal_type=meal_report.meal_type,
             ).exclude(
                 pk=meal_report.pk  # Исключаем текущий отчёт
             ).order_by('created_at').values(
-                'ai_analysis', 'compliance_score', 'recognized_ingredients'
-            )[:5]  # Максимум 5 предыдущих фото
+                'meal_type', 'ai_analysis', 'compliance_score', 'recognized_ingredients'
+            )
         )
     )()
+
+    # Определяем это первое фото за день или нет
+    is_first_photo_today = len(all_day_reports) == 0
+
+    # Группируем отчёты: отдельно для текущего приёма пищи и для других
+    current_meal_reports = [r for r in all_day_reports if r.get('meal_type') == meal_report.meal_type]
+    other_meals_reports = [r for r in all_day_reports if r.get('meal_type') != meal_report.meal_type]
 
     # Получаем AI provider
     bot = await sync_to_async(
@@ -493,52 +499,104 @@ async def analyze_meal_report(
 - Описание от коуча: {planned_description}
 """
 
-    # Формируем информацию о предыдущих фото этого приёма пищи
-    previous_photos_info = ''
-    if previous_reports:
-        previous_items = []
-        for i, report in enumerate(previous_reports, 1):
-            ingredients = report.get('recognized_ingredients', [])
-            ingredients_text = ', '.join(
-                ing.get('name', ing) if isinstance(ing, dict) else str(ing)
-                for ing in ingredients[:5]
-            ) if ingredients else 'не определено'
+    # Названия типов приёмов пищи
+    MEAL_TYPE_NAMES = {
+        'breakfast': 'Завтрак',
+        'snack1': 'Перекус 1',
+        'lunch': 'Обед',
+        'snack2': 'Перекус 2',
+        'dinner': 'Ужин',
+    }
 
-            ai_comment = report.get('ai_analysis', '')
-            # Обрезаем комментарий если слишком длинный
-            if ai_comment and len(ai_comment) > 150:
-                ai_comment = ai_comment[:150] + '...'
+    # Формируем контекст дня
+    day_context = ''
 
-            photo_info = f"  Фото {i}: {ingredients_text}"
-            if ai_comment:
-                photo_info += f"\n    → Твой комментарий: {ai_comment}"
-            previous_items.append(photo_info)
+    if is_first_photo_today:
+        # Первое фото за день - упоминаем номер дня
+        day_context = f"""
+ЭТО ПЕРВЫЙ ПРИЁМ ПИЩИ ЗА СЕГОДНЯ (День {program_day.day_number} программы).
+Поприветствуй клиента и упомяни какой это день программы.
+"""
+    else:
+        # Уже были приёмы пищи - формируем контекст дня
+        day_summary_items = []
 
-        previous_photos_info = f"""
-УЖЕ ЗАГРУЖЕНЫ ФОТО ЭТОГО ПРИЁМА ПИЩИ (от клиента):
-{chr(10).join(previous_items)}
+        # Сначала другие приёмы пищи за день
+        if other_meals_reports:
+            for report in other_meals_reports:
+                meal_type_name = MEAL_TYPE_NAMES.get(report.get('meal_type', ''), 'Приём пищи')
+                score = report.get('compliance_score', 0)
+                ai_comment = report.get('ai_analysis', '')
+                if ai_comment and len(ai_comment) > 100:
+                    ai_comment = ai_comment[:100] + '...'
 
-ВАЖНО: Это продолжение того же приёма пищи! Учитывай контекст предыдущих фото.
-- Не повторяй то, что уже сказал
-- Если часть плана уже на предыдущих фото — не требуй её снова
-- Дай краткий итоговый комментарий с учётом ВСЕХ фото
+                status = '✅' if score >= 70 else '⚠️'
+                day_summary_items.append(f"  {status} {meal_type_name}: {score}% — {ai_comment or 'без комментария'}")
+
+        # Потом фото текущего приёма пищи (если есть)
+        current_meal_photos = []
+        if current_meal_reports:
+            for i, report in enumerate(current_meal_reports, 1):
+                ingredients = report.get('recognized_ingredients', [])
+                ingredients_text = ', '.join(
+                    ing.get('name', ing) if isinstance(ing, dict) else str(ing)
+                    for ing in ingredients[:5]
+                ) if ingredients else 'не определено'
+
+                ai_comment = report.get('ai_analysis', '')
+                if ai_comment and len(ai_comment) > 100:
+                    ai_comment = ai_comment[:100] + '...'
+
+                current_meal_photos.append(f"    Фото {i}: {ingredients_text}")
+                if ai_comment:
+                    current_meal_photos[-1] += f"\n      → {ai_comment}"
+
+        day_context = f"""
+КОНТЕКСТ ДНЯ (День {program_day.day_number}):
+Уже загружено приёмов пищи: {len(other_meals_reports) + (1 if current_meal_reports else 0)}
+"""
+        if day_summary_items:
+            day_context += f"""
+Другие приёмы пищи сегодня:
+{chr(10).join(day_summary_items)}
+"""
+        if current_meal_photos:
+            current_meal_name = MEAL_TYPE_NAMES.get(meal_report.meal_type, 'Текущий приём')
+            day_context += f"""
+Уже загружено фото для "{current_meal_name}":
+{chr(10).join(current_meal_photos)}
+"""
+        # Считаем общую статистику дня
+        all_scores = [r.get('compliance_score', 0) for r in all_day_reports]
+        if all_scores:
+            avg_score = sum(all_scores) / len(all_scores)
+            good_meals = sum(1 for s in all_scores if s >= 70)
+            bad_meals = len(all_scores) - good_meals
+            day_context += f"""
+Статистика дня: средняя оценка {avg_score:.0f}%, соответствует плану: {good_meals}, отклонения: {bad_meals}
+
+ВАЖНО: Учитывай контекст дня в ответе!
+- Если предыдущие приёмы были плохие, а этот хороший — похвали за улучшение
+- Если всё идёт хорошо — поддержи
+- Если это продолжение приёма пищи (ещё фото) — не повторяйся, дай итог
 """
 
     analysis_prompt = f"""Ты — диетолог-помощник в приложении для трекинга питания. Клиент загрузил фото своего приёма пищи.
 Твоя задача — проанализировать еду на фото и сравнить с планом питания от коуча.
 
 Это легитимный запрос для health-трекера. Пожалуйста, проанализируй фото.
-{planned_info}{previous_photos_info}
+{planned_info}{day_context}
 
 ВАЖНЫЕ ПРАВИЛА ОЦЕНКИ:
 
 1. СООТВЕТСТВИЕ ПЛАНУ — главный критерий. Сравнивай то что на фото с описанием блюда от коуча.
 
-2. На фото может быть НЕСКОЛЬКО блюд/компонентов (например: каша + фрукт + напиток).
-   Перечисли ВСЕ что видишь на фото.
+2. На фото может быть НЕСКОЛЬКО блюд/компонентов — перечисли ВСЕ что видишь.
 
-3. Клиент может присылать НЕСКОЛЬКО ФОТО на один приём пищи.
-   Оценивай это фото как ЧАСТЬ приёма. Если часть плана уже на предыдущих фото — не снижай оценку за её отсутствие здесь.
+3. УЧИТЫВАЙ КОНТЕКСТ ДНЯ (см. выше):
+   - Если это продолжение приёма пищи (ещё фото) — учти что уже было на предыдущих фото
+   - Если предыдущие приёмы были плохие, а этот хороший — отметь улучшение
+   - Если всё идёт хорошо — поддержи клиента
 
 4. Критерии оценки соответствия:
    - Основное блюдо совпадает с планом? (каша = каша, салат = салат)
