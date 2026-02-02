@@ -653,7 +653,7 @@ async def analyze_meal_report(
     response = await provider.analyze_image(
         image_data=image_data,
         prompt=analysis_prompt,
-        max_tokens=800,
+        max_tokens=1200,  # Увеличено для детального анализа с контекстом дня
         model=model,
         temperature=0.2,  # Низкая температура для стабильного анализа
     )
