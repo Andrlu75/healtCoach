@@ -431,6 +431,11 @@ async def analyze_meal_report(
     program = await sync_to_async(lambda: program_day.program)()
     client = await sync_to_async(lambda: program.client)()
 
+    # Информация о клиенте для корректного обращения
+    client_name = client.first_name or 'Клиент'
+    client_gender = client.gender  # 'male' или 'female'
+    gender_info = 'женщина' if client_gender == 'female' else 'мужчина'
+
     # Получаем запланированное блюдо
     planned_meal = program_day.get_meal_by_type(meal_report.meal_type)
     planned_description = ''
@@ -583,6 +588,9 @@ async def analyze_meal_report(
 
     analysis_prompt = f"""Ты — диетолог-помощник в приложении для трекинга питания. Клиент загрузил фото своего приёма пищи.
 Твоя задача — проанализировать еду на фото и сравнить с планом питания от коуча.
+
+КЛИЕНТ: {client_name}, пол: {gender_info}
+ВАЖНО: Обращайся к клиенту в правильном грамматическом роде! Если клиент — женщина, используй женский род ("ты выбрала", "молодец", "справилась"). Если мужчина — мужской род ("ты выбрал", "молодец", "справился").
 
 Это легитимный запрос для health-трекера. Пожалуйста, проанализируй фото.
 {planned_info}{day_context}
