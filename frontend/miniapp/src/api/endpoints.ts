@@ -283,3 +283,28 @@ export const getMealReportPhoto = (reportId: number) =>
   api.get<Blob>(`/miniapp/nutrition-program/meal-report/${reportId}/photo/`, {
     responseType: 'blob',
   })
+
+// Workouts
+export interface TodayWorkout {
+  id: number
+  workout_id: number
+  name: string
+  description: string
+  due_date: string | null
+  status: 'pending' | 'active' | 'in_progress' | 'completed'
+  exercise_count: number
+  session: {
+    id: number
+    status: string
+    duration_seconds: number | null
+  } | null
+}
+
+export interface TodayWorkoutsResponse {
+  date: string
+  has_workouts: boolean
+  workouts: TodayWorkout[]
+}
+
+export const getTodayWorkouts = () =>
+  api.get<TodayWorkoutsResponse>('/miniapp/workouts/today/')

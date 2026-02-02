@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Droplets, Plus, Zap, Sparkles, X } from 'lucide-react'
+import { Droplets, Plus, Zap, Sparkles, X, Dumbbell, Play, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import { getDailySummary, getMeals, getNutritionProgramSummary, getNutritionProgramToday } from '../../api/endpoints'
+import api from '../../api/client'
 import { useAuthStore } from '../auth'
 import { useHaptic } from '../../shared/hooks'
 import { Card } from '../../shared/components/ui'
@@ -60,6 +61,29 @@ function Dashboard() {
     queryKey: ['nutritionProgramToday'],
     queryFn: () => getNutritionProgramToday().then((r) => r.data),
     enabled: !!nutritionProgram?.has_program && nutritionProgram?.status === 'active',
+  })
+
+  // Загружаем тренировки на сегодня
+  const { data: todayWorkouts } = useQuery({
+    queryKey: ['todayWorkouts'],
+    queryFn: async () => {
+      const { data } = await api.get('/workouts/assignments/')
+      const assignments = data.results || data
+      const todayStr = dayjs().format('YYYY-MM-DD')
+
+      // Фильтруем тренировки на сегодня (не завершённые)
+      const todayAssignments = assignments.filter((a: any) =>
+        a.due_date === todayStr && a.status !== 'completed'
+      )
+
+      return todayAssignments.map((a: any) => ({
+        id: a.id,
+        workout_id: a.workout_id || a.workout,
+        name: a.workout_detail?.name || 'Тренировка',
+        exercise_count: a.workout_detail?.exercise_count || 0,
+        status: a.status,
+      }))
+    },
   })
 
   // Получаем список приёмов пищи из программы (с описаниями)
@@ -225,6 +249,70 @@ function Dashboard() {
           </Card>
         </motion.div>
       )}
+
+      {/* Today's workout widget */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <Card
+          variant="elevated"
+          className="p-4 cursor-pointer"
+          onClick={() => navigate('/workouts')}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Dumbbell size={18} className="text-orange-500" />
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Тренировка на сегодня
+              </span>
+            </div>
+            <ChevronRight size={18} className="text-gray-400" />
+          </div>
+
+          {todayWorkouts && todayWorkouts.length > 0 ? (
+            <div className="space-y-3">
+              {todayWorkouts.map((workout: any) => (
+                <div
+                  key={workout.id}
+                  className="flex items-center justify-between bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    navigate(`/workouts/${workout.workout_id}`)
+                  }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                      {workout.name}
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {workout.exercise_count} упражнений
+                    </p>
+                  </div>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      impact('light')
+                      navigate(`/workouts/${workout.workout_id}/run`)
+                    }}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-medium"
+                  >
+                    <Play size={12} fill="currentColor" />
+                    {workout.status === 'in_progress' || workout.status === 'active' ? 'Продолжить' : 'Начать'}
+                  </motion.button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-2">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Нет тренировок на сегодня
+              </p>
+            </div>
+          )}
+        </Card>
+      </motion.div>
 
       {/* Meals photo thumbnails */}
       <div>

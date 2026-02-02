@@ -16,6 +16,7 @@ from .client_views import (
     ClientProfileView,
     ClientReminderListView,
 )
+from apps.workouts.client_views import ClientTodayWorkoutsView
 
 urlpatterns = [
     path('meals/', ClientMealListView.as_view(), name='client_meals'),
@@ -41,4 +42,7 @@ urlpatterns = [
 
     # Nutrition programs
     path('nutrition-program/', include('apps.nutrition_programs.client_urls')),
+
+    # Workouts
+    path('workouts/today/', ClientTodayWorkoutsView.as_view(), name='client_today_workouts'),
 ]
