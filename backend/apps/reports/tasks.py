@@ -3,6 +3,7 @@ from datetime import date, timedelta
 
 import httpx
 from celery import shared_task
+from django.conf import settings
 
 from apps.accounts.models import Client
 from apps.persona.models import TelegramBot
@@ -13,6 +14,11 @@ from .services import generate_report
 logger = logging.getLogger(__name__)
 
 TELEGRAM_API = 'https://api.telegram.org'
+
+
+def telegram_delivery_enabled() -> bool:
+    """Flag to toggle Telegram delivery of reports."""
+    return getattr(settings, 'REPORTS_TELEGRAM_DELIVERY_ENABLED', True)
 
 
 @shared_task(name='reports.generate_daily_reports', bind=True, max_retries=2)
@@ -33,7 +39,10 @@ def generate_daily_reports(self):
                 continue
 
             report = generate_report(client, 'daily', yesterday)
-            send_report.delay(report.pk)
+            if telegram_delivery_enabled():
+                send_report.delay(report.pk)
+            else:
+                logger.info('Telegram delivery disabled; report %s generated without sending', report.pk)
             count += 1
         except IntegrityError:
             # Report already created by another worker (race condition)
@@ -61,7 +70,10 @@ def generate_weekly_reports(self):
                 continue
 
             report = generate_report(client, 'weekly', last_monday)
-            send_report.delay(report.pk)
+            if telegram_delivery_enabled():
+                send_report.delay(report.pk)
+            else:
+                logger.info('Telegram delivery disabled; report %s generated without sending', report.pk)
             count += 1
         except IntegrityError:
             # Report already created by another worker (race condition)
@@ -78,6 +90,10 @@ def send_report(self, report_id: int):
     try:
         report = Report.objects.select_related('client', 'coach').get(pk=report_id)
     except Report.DoesNotExist:
+        return
+
+    if not telegram_delivery_enabled():
+        logger.info('Telegram delivery disabled; skipping send for report %s', report.pk)
         return
 
     bot = TelegramBot.objects.filter(coach=report.coach, is_active=True).first()
