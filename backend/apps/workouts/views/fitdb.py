@@ -700,12 +700,32 @@ class FitDBSessionViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         session = serializer.save()
 
-        # Send notification about workout start
+        # Send notification about workout start and update assignment
         if session.client:
             from apps.workouts.notifications import notify_workout_started
             notify_workout_started(session)
+        self._sync_assignment_status(session)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def _sync_assignment_status(self, session):
+        """Синхронизировать статус назначения с состоянием сессии."""
+        if not session.client:
+            return
+        assignment = FitDBWorkoutAssignment.objects.filter(
+            workout=session.workout,
+            client=session.client,
+            due_date=session.started_at.date() if session.started_at else None,
+        ).first()
+        if not assignment:
+            return
+        if session.completed_at:
+            if assignment.status != 'completed':
+                assignment.status = 'completed'
+                assignment.save(update_fields=['status'])
+        elif assignment.status == 'pending':
+            assignment.status = 'active'
+            assignment.save(update_fields=['status'])
 
     def update(self, request, *args, **kwargs):
         """Update session and notify coach about workout completion"""
@@ -714,11 +734,12 @@ class FitDBSessionViewSet(viewsets.ModelViewSet):
 
         response = super().update(request, *args, **kwargs)
 
-        # If workout just completed, send notification
+        # If workout just completed, send notification and update assignment
         instance.refresh_from_db()
         if was_incomplete and instance.completed_at is not None and instance.client:
             from apps.workouts.notifications import notify_workout_completed
             notify_workout_completed(instance)
+        self._sync_assignment_status(instance)
 
         return response
 
@@ -729,11 +750,12 @@ class FitDBSessionViewSet(viewsets.ModelViewSet):
 
         response = super().partial_update(request, *args, **kwargs)
 
-        # If workout just completed, send notification
+        # If workout just completed, send notification and update assignment
         instance.refresh_from_db()
         if was_incomplete and instance.completed_at is not None and instance.client:
             from apps.workouts.notifications import notify_workout_completed
             notify_workout_completed(instance)
+        self._sync_assignment_status(instance)
 
         return response
 
