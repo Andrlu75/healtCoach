@@ -111,6 +111,257 @@ def _build_system_prompt(persona_prompt: str, client: Client) -> str:
     return persona_prompt
 
 
+# --------------- Дневной контекст клиента ---------------
+
+MEAL_TYPE_LABELS = {
+    'breakfast': 'Завтрак', 'snack1': 'Перекус', 'lunch': 'Обед',
+    'snack2': 'Перекус', 'dinner': 'Ужин',
+}
+
+WORKOUT_STATUS_LABELS = {
+    'pending': 'ожидает', 'active': 'в процессе', 'completed': 'выполнено',
+    'skipped': 'пропущено',
+}
+
+METRIC_TYPE_LABELS = {
+    'weight': 'Вес', 'sleep': 'Сон', 'steps': 'Шаги',
+    'heart_rate': 'Пульс', 'blood_pressure': 'Давление',
+    'water': 'Вода', 'active_calories': 'Активные калории',
+}
+
+
+async def _build_program_context(client: Client, today) -> str:
+    """Блок активной программы питания: плановые приёмы, ограничения."""
+    from apps.nutrition_programs.services import get_active_program_for_client, get_program_day
+
+    program = await sync_to_async(get_active_program_for_client)(client, today)
+    if not program:
+        return ''
+
+    program_day = await sync_to_async(get_program_day)(program, today)
+    if not program_day:
+        return ''
+
+    lines = [f'📋 Программа питания: "{program.name}" (день {program_day.day_number} из {program.duration_days})']
+
+    # Плановые приёмы пищи
+    meals = program_day.meals or []
+    if meals:
+        lines.append('Приёмы пищи по плану:')
+        for m in meals:
+            label = MEAL_TYPE_LABELS.get(m.get('type', ''), m.get('type', ''))
+            time_str = f" ({m['time']})" if m.get('time') else ''
+            desc = m.get('name', '') or m.get('description', '')
+            if len(desc) > 80:
+                desc = desc[:77] + '...'
+            lines.append(f'- {label}{time_str}: {desc}')
+
+    # Запрещённые продукты
+    forbidden = program_day.forbidden_ingredients or []
+    forbidden_names = [i['name'] if isinstance(i, dict) else str(i) for i in forbidden][:8]
+    if forbidden_names:
+        lines.append(f'Запрещённые продукты: {", ".join(forbidden_names)}')
+
+    # Разрешённые продукты
+    allowed = program_day.allowed_ingredients or []
+    allowed_names = [i['name'] if isinstance(i, dict) else str(i) for i in allowed][:8]
+    if allowed_names:
+        lines.append(f'Рекомендуемые продукты: {", ".join(allowed_names)}')
+
+    # Общие заметки программы
+    if program.general_notes:
+        notes = program.general_notes
+        if len(notes) > 150:
+            notes = notes[:147] + '...'
+        lines.append(f'Заметки: {notes}')
+
+    return '\n'.join(lines)
+
+
+async def _build_meals_context(client: Client, today, client_tz) -> str:
+    """Блок сегодняшних приёмов пищи с итогами и остатком."""
+    from datetime import datetime, time as dt_time
+    from apps.meals.models import Meal
+
+    day_start = datetime.combine(today, dt_time.min).replace(tzinfo=client_tz)
+    day_end = datetime.combine(today, dt_time.max).replace(tzinfo=client_tz)
+
+    meals = await sync_to_async(
+        lambda: list(
+            Meal.objects.filter(
+                client=client,
+                image_type='food',
+                meal_time__range=(day_start, day_end),
+            ).order_by('meal_time')
+        )
+    )()
+
+    if not meals:
+        return ''
+
+    total_cal = sum(m.calories or 0 for m in meals)
+    total_p = sum(m.proteins or 0 for m in meals)
+    total_f = sum(m.fats or 0 for m in meals)
+    total_c = sum(m.carbohydrates or 0 for m in meals)
+    norm_cal = client.daily_calories or 2000
+
+    lines = [f'🍽 Питание сегодня ({len(meals)} приёмов, {int(total_cal)} из {norm_cal} ккал):']
+    for m in meals[:10]:
+        t = m.meal_time.astimezone(client_tz).strftime('%H:%M') if m.meal_time else ''
+        name = (m.dish_name or '')[:50]
+        lines.append(
+            f'- {t} {name} — {int(m.calories or 0)} ккал '
+            f'(Б:{int(m.proteins or 0)} Ж:{int(m.fats or 0)} У:{int(m.carbohydrates or 0)})'
+        )
+
+    rem_cal = int(norm_cal - total_cal)
+    rem_p = int((client.daily_proteins or 80) - total_p)
+    rem_f = int((client.daily_fats or 70) - total_f)
+    rem_c = int((client.daily_carbs or 250) - total_c)
+    lines.append(f'Остаток: {rem_cal} ккал | Б:{rem_p}г Ж:{rem_f}г У:{rem_c}г')
+
+    return '\n'.join(lines)
+
+
+async def _build_workouts_context(client: Client, today) -> str:
+    """Блок тренировок на сегодня: назначения и сессии."""
+    from datetime import datetime, time as dt_time
+    import zoneinfo
+    from apps.workouts.models.fitdb import FitDBWorkoutAssignment, FitDBWorkoutSession
+
+    assignments = await sync_to_async(
+        lambda: list(
+            FitDBWorkoutAssignment.objects.filter(
+                client=client, due_date=today,
+            ).select_related('workout')
+        )
+    )()
+
+    try:
+        client_tz = zoneinfo.ZoneInfo(client.timezone or 'Europe/Moscow')
+    except Exception:
+        client_tz = zoneinfo.ZoneInfo('Europe/Moscow')
+
+    day_start = datetime.combine(today, dt_time.min).replace(tzinfo=client_tz)
+    day_end = datetime.combine(today, dt_time.max).replace(tzinfo=client_tz)
+
+    sessions = await sync_to_async(
+        lambda: list(
+            FitDBWorkoutSession.objects.filter(
+                client=client, started_at__range=(day_start, day_end),
+            ).select_related('workout')
+        )
+    )()
+
+    if not assignments and not sessions:
+        return ''
+
+    lines = ['💪 Тренировки сегодня:']
+
+    for a in assignments:
+        status = WORKOUT_STATUS_LABELS.get(a.status, a.status)
+        lines.append(f'- {a.workout.name} — {status}')
+
+    # Сессии, не покрытые назначениями
+    assignment_workout_ids = {a.workout_id for a in assignments}
+    for s in sessions:
+        if s.workout_id not in assignment_workout_ids:
+            duration = f' ({s.duration_seconds // 60} мин)' if s.duration_seconds else ''
+            status = 'выполнено' if s.completed_at else 'в процессе'
+            lines.append(f'- {s.workout.name} — {status}{duration}')
+
+    return '\n'.join(lines)
+
+
+async def _build_metrics_context(client: Client, today) -> str:
+    """Блок последних показателей здоровья (1 на тип, за 7 дней)."""
+    from datetime import timedelta
+    from apps.metrics.models import HealthMetric
+
+    week_ago = today - timedelta(days=7)
+
+    metrics = await sync_to_async(
+        lambda: list(
+            HealthMetric.objects.filter(
+                client=client, recorded_at__date__gte=week_ago,
+            ).order_by('metric_type', '-recorded_at')
+        )
+    )()
+
+    if not metrics:
+        return ''
+
+    # Оставляем по 1 последнему значению на тип
+    seen = set()
+    latest = []
+    for m in metrics:
+        if m.metric_type not in seen:
+            seen.add(m.metric_type)
+            latest.append(m)
+
+    if not latest:
+        return ''
+
+    lines = ['📊 Последние показатели:']
+    for m in latest[:6]:
+        name = METRIC_TYPE_LABELS.get(m.metric_type, m.metric_type)
+        days_ago = (today - m.recorded_at.date()).days
+        ago = 'сегодня' if days_ago == 0 else f'{days_ago} дн. назад'
+        val = m.value
+        if isinstance(val, float):
+            val = f'{val:.1f}'.rstrip('0').rstrip('.')
+        lines.append(f'- {name}: {val} {m.unit or ""} ({ago})')
+
+    return '\n'.join(lines)
+
+
+async def build_client_daily_context(client: Client) -> str:
+    """Собрать полный дневной контекст клиента для AI.
+
+    Включает: программу питания, сегодняшние приёмы, тренировки, метрики.
+    Целевой размер: ~800-1000 токенов.
+    """
+    import zoneinfo
+
+    try:
+        client_tz = zoneinfo.ZoneInfo(client.timezone or 'Europe/Moscow')
+    except Exception:
+        client_tz = zoneinfo.ZoneInfo('Europe/Moscow')
+
+    from datetime import datetime
+    today = datetime.now(client_tz).date()
+
+    parts = []
+
+    program = await _build_program_context(client, today)
+    if program:
+        parts.append(program)
+
+    meals = await _build_meals_context(client, today, client_tz)
+    if meals:
+        parts.append(meals)
+
+    workouts = await _build_workouts_context(client, today)
+    if workouts:
+        parts.append(workouts)
+
+    metrics = await _build_metrics_context(client, today)
+    if metrics:
+        parts.append(metrics)
+
+    if not parts:
+        return ''
+
+    return '\n\n[Дневной контекст]\n\n' + '\n\n'.join(parts)
+
+
+async def _build_full_system_prompt(persona_prompt: str, client: Client) -> str:
+    """Полный системный промпт: персона + данные клиента + дневной контекст."""
+    base = _build_system_prompt(persona_prompt, client)
+    daily = await build_client_daily_context(client)
+    return base + '\n' + daily if daily else base
+
+
 async def _get_persona(bot: TelegramBot, client: Client | None = None) -> BotPersona:
     def _resolve():
         # Priority: client.persona → coach default → first coach persona
@@ -223,8 +474,8 @@ async def get_ai_text_response(bot: TelegramBot, client: Client, text: str) -> s
     # Load context with token limit
     context = await _get_context_messages(client, model=model)
 
-    # Build system prompt with client context (including gender)
-    system_prompt = _build_system_prompt(persona.system_prompt, client)
+    # Build system prompt with client context + daily context
+    system_prompt = await _build_full_system_prompt(persona.system_prompt, client)
     api_key = await _get_api_key(bot.coach, provider_name)
     provider = get_ai_provider(provider_name, api_key)
 

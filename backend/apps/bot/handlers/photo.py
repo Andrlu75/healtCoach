@@ -168,9 +168,18 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
             'Каждый раз используй разные варианты.'
         )
 
+        # Системный промпт с полным контекстом клиента (данные + дневной контекст)
+        from ..services import _build_full_system_prompt, _get_context_messages
+        system_prompt = await _build_full_system_prompt(persona.food_response_prompt, client)
+        system_prompt += intro_instruction
+
+        # История чата для учёта предыдущих разговоров (напр. «я не ем сахар»)
+        chat_history = await _get_context_messages(client, limit=15, max_tokens=3000)
+        messages = chat_history + [{'role': 'user', 'content': user_message}]
+
         response = await provider.complete(
-            messages=[{'role': 'user', 'content': user_message}],
-            system_prompt=persona.food_response_prompt + intro_instruction,
+            messages=messages,
+            system_prompt=system_prompt,
             max_tokens=persona.max_tokens,
             temperature=persona.temperature,
             model=model_name,
