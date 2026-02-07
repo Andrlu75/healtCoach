@@ -77,6 +77,8 @@ export default function WorkoutRun() {
   const setStartTimeRef = useRef<Date | null>(null)
   const setTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const restStartTimeRef = useRef<Date | null>(null)
+  const restDurationRef = useRef<number>(0)
   const startTimeRef = useRef<Date>(new Date())
   const exerciseListRef = useRef<HTMLDivElement>(null)
 
@@ -259,6 +261,8 @@ export default function WorkoutRun() {
   const startRest = useCallback((seconds: number) => {
     setRestTime(seconds)
     setIsResting(true)
+    restStartTimeRef.current = new Date()
+    restDurationRef.current = seconds
 
     // Log rest started (don't await, fire and forget)
     if (sessionId && currentExercise) {
@@ -270,14 +274,17 @@ export default function WorkoutRun() {
     if (timerRef.current) clearInterval(timerRef.current)
 
     timerRef.current = setInterval(() => {
-      setRestTime(prev => {
-        if (prev <= 1) {
+      if (restStartTimeRef.current) {
+        const elapsed = Math.round((Date.now() - restStartTimeRef.current.getTime()) / 1000)
+        const remaining = restDurationRef.current - elapsed
+        if (remaining <= 0) {
           clearInterval(timerRef.current!)
           setIsResting(false)
-          return 0
+          setRestTime(0)
+        } else {
+          setRestTime(remaining)
         }
-        return prev - 1
-      })
+      }
     }, 1000)
   }, [sessionId, currentExercise])
 
@@ -297,7 +304,9 @@ export default function WorkoutRun() {
     // Запускаем таймер
     if (setTimerRef.current) clearInterval(setTimerRef.current)
     setTimerRef.current = setInterval(() => {
-      setSetElapsedTime(prev => prev + 1)
+      if (setStartTimeRef.current) {
+        setSetElapsedTime(Math.round((Date.now() - setStartTimeRef.current.getTime()) / 1000))
+      }
     }, 1000)
   }
 
