@@ -328,10 +328,8 @@ class TodayWorkoutsDashboardView(APIView):
             fitdb_assignments = FitDBWorkoutAssignment.objects.filter(
                 client=client,
             ).filter(
-                # Show: today's assignments OR pending ones (not yet completed)
+                # Show: today's assignments (including completed) OR pending ones without date
                 models.Q(due_date=client_today) | models.Q(due_date__isnull=True, status='pending')
-            ).exclude(
-                status='completed'
             ).select_related('workout')
 
             for assignment in fitdb_assignments:
