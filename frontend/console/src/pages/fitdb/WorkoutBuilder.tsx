@@ -26,9 +26,163 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface WorkoutItem extends WorkoutExercise {
   exercise: Exercise;
+}
+
+function SortableExerciseCard({ item, onUpdate, onRemove }: {
+  item: WorkoutItem;
+  onUpdate: (id: string, updates: Partial<WorkoutItem>) => void;
+  onRemove: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const timeBasedCategories = ['cardio', 'warmup', 'cooldown', 'flexibility'];
+  const isTimeBased = timeBasedCategories.includes(item.exercise.category) || item.exercise.muscleGroups?.includes('cardio');
+  const isCardio = item.exercise.category === 'cardio';
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Card className="gradient-card border-border/50 shadow-card animate-fade-in">
+        <CardContent className="p-4">
+          <div className="flex gap-4">
+            {/* Drag Handle & Image */}
+            <div className="flex flex-col items-center gap-2">
+              <div
+                {...attributes}
+                {...listeners}
+                className="cursor-grab active:cursor-grabbing p-1 rounded hover:bg-muted"
+              >
+                <GripVertical className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+                {item.exercise.imageUrl ? (
+                  <img src={item.exercise.imageUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-2xl">{muscleGroupIcons[item.exercise.muscleGroups?.[0]] || ''}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Exercise Details */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div>
+                  <h3 className="font-semibold text-foreground">{item.exercise.name}</h3>
+                  <p className="text-sm text-muted-foreground">{item.exercise.muscleGroups?.map(mg => muscleGroupLabels[mg]).join(', ') || ''}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => onRemove(item.id)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {isTimeBased ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground">Время (мин)</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={item.durationSeconds ? Math.round(item.durationSeconds / 60) : ''}
+                      onChange={(e) => onUpdate(item.id, { durationSeconds: (parseInt(e.target.value) || 0) * 60 })}
+                      placeholder="10"
+                      className="h-9 bg-muted border-border/50"
+                    />
+                  </div>
+                  {isCardio && (
+                    <div>
+                      <label className="text-xs text-muted-foreground">Дистанция (км)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        value={item.distanceMeters ? (item.distanceMeters / 1000).toFixed(1) : ''}
+                        onChange={(e) => onUpdate(item.id, { distanceMeters: (parseFloat(e.target.value) || 0) * 1000 })}
+                        placeholder="1.0"
+                        className="h-9 bg-muted border-border/50"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-xs text-muted-foreground">Отдых (сек)</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={15}
+                      value={item.restSeconds}
+                      onChange={(e) => onUpdate(item.id, { restSeconds: parseInt(e.target.value) || 0 })}
+                      className="h-9 bg-muted border-border/50"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground">Подходы</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={item.sets}
+                      onChange={(e) => onUpdate(item.id, { sets: parseInt(e.target.value) || 1 })}
+                      className="h-9 bg-muted border-border/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Повторы</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={item.reps}
+                      onChange={(e) => onUpdate(item.id, { reps: parseInt(e.target.value) || 1 })}
+                      className="h-9 bg-muted border-border/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Вес (кг)</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={2.5}
+                      value={item.weightKg || ''}
+                      onChange={(e) => onUpdate(item.id, { weightKg: parseFloat(e.target.value) || undefined })}
+                      placeholder="—"
+                      className="h-9 bg-muted border-border/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Отдых</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={15}
+                      value={item.restSeconds}
+                      onChange={(e) => onUpdate(item.id, { restSeconds: parseInt(e.target.value) || 0 })}
+                      className="h-9 bg-muted border-border/50"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 const WorkoutBuilder = () => {
@@ -179,12 +333,18 @@ const WorkoutBuilder = () => {
     setWorkoutItems(items => items.filter(item => item.id !== itemId));
   };
 
-  const moveItem = (index: number, direction: 'up' | 'down') => {
-    const newItems = [...workoutItems];
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= newItems.length) return;
-    [newItems[index], newItems[newIndex]] = [newItems[newIndex], newItems[index]];
-    setWorkoutItems(newItems.map((item, i) => ({ ...item, orderIndex: i })));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setWorkoutItems(items => {
+      const oldIndex = items.findIndex(i => i.id === active.id);
+      const newIndex = items.findIndex(i => i.id === over.id);
+      return arrayMove(items, oldIndex, newIndex).map((item, i) => ({ ...item, orderIndex: i }));
+    });
   };
 
   const handleSave = async () => {
@@ -337,154 +497,20 @@ const WorkoutBuilder = () => {
         </Card>
 
         {/* Exercise List */}
-        <div className="space-y-3 mb-6">
-          {workoutItems.map((item, index) => (
-            <Card key={item.id} className="gradient-card border-border/50 shadow-card animate-fade-in">
-              <CardContent className="p-4">
-                <div className="flex gap-4">
-                  {/* Drag Handle & Image */}
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => moveItem(index, 'up')}
-                        disabled={index === 0}
-                      >
-                        <GripVertical className="w-4 h-4 text-muted-foreground" />
-                      </Button>
-                    </div>
-                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-                      {item.exercise.imageUrl ? (
-                        <img src={item.exercise.imageUrl} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-2xl">{muscleGroupIcons[item.exercise.muscleGroups?.[0]] || '💪'}</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Exercise Details */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div>
-                        <h3 className="font-semibold text-foreground">{item.exercise.name}</h3>
-                        <p className="text-sm text-muted-foreground">{item.exercise.muscleGroups?.map(mg => muscleGroupLabels[mg]).join(', ') || ''}</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => removeItem(item.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-
-                    {/* Parameters - разные для временных (кардио/разминка/заминка/растяжка) и силовых */}
-                    {(() => {
-                      const timeBasedCategories = ['cardio', 'warmup', 'cooldown', 'flexibility'];
-                      const isTimeBased = timeBasedCategories.includes(item.exercise.category) || item.exercise.muscleGroups?.includes('cardio');
-                      const isCardio = item.exercise.category === 'cardio';
-
-                      if (isTimeBased) {
-                        return (
-                          // Временные параметры: время (и дистанция для кардио)
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            <div>
-                              <label className="text-xs text-muted-foreground">Время (мин)</label>
-                              <Input
-                                type="number"
-                                min={1}
-                                value={item.durationSeconds ? Math.round(item.durationSeconds / 60) : ''}
-                                onChange={(e) => updateItem(item.id, { durationSeconds: (parseInt(e.target.value) || 0) * 60 })}
-                                placeholder="10"
-                                className="h-9 bg-muted border-border/50"
-                              />
-                            </div>
-                            {isCardio && (
-                              <div>
-                                <label className="text-xs text-muted-foreground">Дистанция (км)</label>
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  step={0.1}
-                                  value={item.distanceMeters ? (item.distanceMeters / 1000).toFixed(1) : ''}
-                                  onChange={(e) => updateItem(item.id, { distanceMeters: (parseFloat(e.target.value) || 0) * 1000 })}
-                                  placeholder="1.0"
-                                  className="h-9 bg-muted border-border/50"
-                                />
-                              </div>
-                            )}
-                            <div>
-                              <label className="text-xs text-muted-foreground">Отдых (сек)</label>
-                              <Input
-                                type="number"
-                                min={0}
-                                step={15}
-                                value={item.restSeconds}
-                                onChange={(e) => updateItem(item.id, { restSeconds: parseInt(e.target.value) || 0 })}
-                                className="h-9 bg-muted border-border/50"
-                              />
-                            </div>
-                          </div>
-                        );
-                      }
-                      return (
-                        // Силовые параметры: подходы, повторы, вес
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        <div>
-                          <label className="text-xs text-muted-foreground">Подходы</label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={item.sets}
-                            onChange={(e) => updateItem(item.id, { sets: parseInt(e.target.value) || 1 })}
-                            className="h-9 bg-muted border-border/50"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Повторы</label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={item.reps}
-                            onChange={(e) => updateItem(item.id, { reps: parseInt(e.target.value) || 1 })}
-                            className="h-9 bg-muted border-border/50"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Вес (кг)</label>
-                          <Input
-                            type="number"
-                            min={0}
-                            step={2.5}
-                            value={item.weightKg || ''}
-                            onChange={(e) => updateItem(item.id, { weightKg: parseFloat(e.target.value) || undefined })}
-                            placeholder="—"
-                            className="h-9 bg-muted border-border/50"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Отдых</label>
-                          <Input
-                            type="number"
-                            min={0}
-                            step={15}
-                            value={item.restSeconds}
-                            onChange={(e) => updateItem(item.id, { restSeconds: parseInt(e.target.value) || 0 })}
-                            className="h-9 bg-muted border-border/50"
-                          />
-                        </div>
-                      </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={workoutItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-3 mb-6">
+              {workoutItems.map((item) => (
+                <SortableExerciseCard
+                  key={item.id}
+                  item={item}
+                  onUpdate={updateItem}
+                  onRemove={removeItem}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
 
         {/* Add Exercise Button */}
         <Button
