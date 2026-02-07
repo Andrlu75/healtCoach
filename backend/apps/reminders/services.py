@@ -44,6 +44,8 @@ def send_reminder_message(reminder: Reminder) -> bool:
     # Определяем текст
     if reminder.reminder_type == 'morning':
         text = generate_morning_greeting(reminder)
+    elif reminder.reminder_type == 'meal_program':
+        text = _build_meal_program_text(reminder)
     elif reminder.is_smart:
         text = generate_smart_text(reminder)
     else:
@@ -69,6 +71,97 @@ def send_reminder_message(reminder: Reminder) -> bool:
     except httpx.RequestError as e:
         logger.exception('Error sending reminder %s: %s', reminder.pk, e)
         return False
+
+
+# --------------- Напоминание о приёме пищи по программе ---------------
+
+MEAL_TYPE_LABELS = {
+    'breakfast': 'завтрак', 'snack1': 'перекус', 'lunch': 'обед',
+    'snack2': 'перекус', 'dinner': 'ужин',
+}
+
+
+def _build_meal_program_text(reminder: Reminder) -> str:
+    """Строит текст напоминания о ближайшем приёме пищи из программы."""
+    from apps.nutrition_programs.services import get_active_program_for_client, get_program_day
+
+    client = reminder.client
+
+    try:
+        client_tz = pytz.timezone(client.timezone or 'Europe/Moscow')
+    except pytz.exceptions.UnknownTimeZoneError:
+        client_tz = pytz.timezone('Europe/Moscow')
+
+    now = timezone.now().astimezone(client_tz)
+    today = now.date()
+
+    program = get_active_program_for_client(client)
+    if not program:
+        return reminder.message or f'{client.first_name}, не забудь поесть!'
+
+    program_day = get_program_day(program, today)
+    if not program_day:
+        return reminder.message or f'{client.first_name}, не забудь поесть!'
+
+    meals = program_day.meals or []
+    offset = timedelta(minutes=reminder.offset_minutes)
+
+    # Ищем ближайший приём пищи (тот, для которого сработало напоминание)
+    next_meal = None
+    next_meal_dt = None
+    for meal in meals:
+        meal_time_str = meal.get('time')
+        if not meal_time_str:
+            continue
+        try:
+            hour, minute = map(int, meal_time_str.split(':'))
+            meal_dt = datetime.combine(today, datetime.min.time().replace(hour=hour, minute=minute))
+            meal_dt = client_tz.localize(meal_dt)
+            fire_dt = meal_dt - offset
+            # Берём приём, до которого напоминание ещё актуально (±5 мин)
+            if fire_dt <= now <= meal_dt + timedelta(minutes=5):
+                if next_meal_dt is None or meal_dt < next_meal_dt:
+                    next_meal = meal
+                    next_meal_dt = meal_dt
+        except (ValueError, AttributeError):
+            continue
+
+    if not next_meal:
+        # Fallback — просто берём ближайший будущий приём
+        for meal in meals:
+            meal_time_str = meal.get('time')
+            if not meal_time_str:
+                continue
+            try:
+                hour, minute = map(int, meal_time_str.split(':'))
+                meal_dt = datetime.combine(today, datetime.min.time().replace(hour=hour, minute=minute))
+                meal_dt = client_tz.localize(meal_dt)
+                if meal_dt > now:
+                    if next_meal_dt is None or meal_dt < next_meal_dt:
+                        next_meal = meal
+                        next_meal_dt = meal_dt
+            except (ValueError, AttributeError):
+                continue
+
+    if not next_meal:
+        return reminder.message or f'{client.first_name}, не забудь поесть!'
+
+    meal_label = MEAL_TYPE_LABELS.get(next_meal.get('type', ''), next_meal.get('type', ''))
+    meal_name = next_meal.get('name', '')
+    meal_time = next_meal.get('time', '')
+    meal_desc = next_meal.get('description', '')
+
+    parts = [f'{client.first_name}, скоро {meal_label}']
+    if meal_time:
+        parts[0] += f' ({meal_time})'
+    parts[0] += '!'
+    if meal_name:
+        parts.append(f'По плану: {meal_name}')
+    if meal_desc:
+        parts.append(meal_desc)
+    parts.append('Не забудь отправить фото отчёт!')
+
+    return '\n'.join(parts)
 
 
 # --------------- Утреннее приветствие ---------------
