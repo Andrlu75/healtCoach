@@ -93,9 +93,10 @@ def _build_client_context(client: Client) -> str:
 
     # Память клиента
     if client.memory:
-        result += '\n\n[Память о клиенте]'
+        result += '\n\n[ВАЖНЫЕ ТРЕБОВАНИЯ КЛИЕНТА — ОБЯЗАТЕЛЬНО СОБЛЮДАЙ]'
         for item in client.memory:
             result += f'\n- {item}'
+        result += '\nСтрого следуй этим требованиям в КАЖДОМ ответе.'
 
     return result
 
@@ -606,8 +607,8 @@ async def get_ai_vision_response(bot: TelegramBot, client: Client, image_data: b
     api_key = await _get_api_key(bot.coach, provider_name)
     provider = get_ai_provider(provider_name, api_key)
 
-    # Build prompt with client context (including gender)
-    system_prompt = _build_system_prompt(persona.system_prompt, client)
+    # Build prompt with client context + daily context + memory
+    system_prompt = await _build_full_system_prompt(persona.system_prompt, client)
     prompt = system_prompt + '\n\n'
     if caption:
         prompt += f'Пользователь отправил фото с подписью: "{caption}". Проанализируй изображение.'

@@ -468,11 +468,11 @@ class AITestView(APIView):
         persona = _get_default_persona(coach)
 
         if task_type == 'text':
-            provider_name = persona.text_provider
-            model_id = persona.text_model
+            provider_name = persona.text_provider or 'openai'
+            model_id = persona.text_model or 'gpt-4o-mini'
         elif task_type == 'vision':
-            provider_name = persona.vision_provider
-            model_id = persona.vision_model
+            provider_name = persona.vision_provider or persona.text_provider or 'openai'
+            model_id = persona.vision_model or persona.text_model or 'gpt-4o-mini'
         else:
             return Response(
                 {'error': f'Неизвестный тип задачи: {task_type}'},
