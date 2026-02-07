@@ -44,39 +44,70 @@ logger = logging.getLogger(__name__)
 
 
 async def handle_photo(bot: TelegramBot, client: Client, message: dict):
-    """Handle incoming photo message - redirect to MiniApp."""
+    """Handle incoming photo message — analyze directly in chat."""
     chat_id = message['chat']['id']
 
     photos = message.get('photo')
     if not photos:
         return
 
-    # Redirect to MiniApp for photo analysis
-    miniapp_url = getattr(settings, 'TELEGRAM_MINIAPP_URL', '')
+    caption = message.get('caption', '')
 
+    # Отправляем "анализирую" и typing-индикатор
+    await send_message(bot.token, chat_id, '📸 Фото получил, анализирую...')
+    await send_chat_action(bot.token, chat_id, 'typing')
+
+    # Скачиваем самое большое фото (последнее в массиве)
+    largest_photo = photos[-1]
+    file_id = largest_photo['file_id']
+
+    image_data = await get_file(bot.token, file_id)
+    if not image_data:
+        await send_message(bot.token, chat_id, 'Не удалось загрузить фото. Попробуйте ещё раз.')
+        return
+
+    total_start = time.time()
+
+    try:
+        # Классифицируем и анализируем в одном AI вызове
+        analysis = await classify_and_analyze(bot, image_data, caption)
+        image_type = analysis.get('type', 'other')
+
+        if image_type == 'food':
+            await _handle_food_photo_with_analysis(
+                bot, client, chat_id, image_data, caption, analysis, total_start
+            )
+        elif image_type == 'data':
+            await _handle_data_photo(bot, client, chat_id, image_data)
+        else:
+            await send_message(
+                bot.token, chat_id,
+                'Не смог распознать что на фото. Отправьте фото еды для анализа КБЖУ.',
+            )
+            logger.info('[PHOTO] client=%s type=%s (unrecognized)', client.pk, image_type)
+            return
+    except Exception:
+        logger.exception('[PHOTO] Error analyzing photo for client=%s', client.pk)
+        await send_message(bot.token, chat_id, 'Произошла ошибка при анализе. Попробуйте ещё раз.')
+        return
+
+    # Отправляем кнопку на приложение для подробностей
+    miniapp_url = getattr(settings, 'TELEGRAM_MINIAPP_URL', '')
     if miniapp_url:
         await send_message_with_webapp(
             bot.token,
             chat_id,
             text=(
-                '📸 Для анализа еды, пожалуйста, используйте приложение.\n\n'
-                'Там вы сможете:\n'
-                '• Сфотографировать или выбрать фото еды\n'
-                '• Получить детальный анализ КБЖУ\n'
-                '• Отслеживать программу питания\n'
-                '• Видеть статистику за день'
+                '📱 В приложении доступно:\n'
+                '• Редактирование КБЖУ и ингредиентов\n'
+                '• Дневник питания и статистика\n'
+                '• Программа питания'
             ),
             button_text='📱 Открыть приложение',
             webapp_url=miniapp_url,
         )
-    else:
-        await send_message(
-            bot.token,
-            chat_id,
-            'Анализ фото временно недоступен. Обратитесь к тренеру.',
-        )
 
-    logger.info('[PHOTO] client=%s redirected to miniapp', client.pk)
+    logger.info('[PHOTO] client=%s analyzed directly in chat (%.1fs)', client.pk, time.time() - total_start)
 
 
 async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, chat_id: int, image_data: bytes, caption: str, analysis: dict, total_start: float = None):
