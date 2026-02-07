@@ -403,7 +403,7 @@ export default function WorkoutDetail() {
                         ) : (
                           <>
                             <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {ex.sets} × {ex.reps}
+                              {ex.sets} × {ex.duration_seconds ? `${ex.duration_seconds} сек` : ex.reps}
                             </span>
                             {ex.weight_kg && (
                               <span className="text-xs text-gray-500 dark:text-gray-400">

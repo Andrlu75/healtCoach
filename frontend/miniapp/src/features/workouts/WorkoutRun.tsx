@@ -573,7 +573,10 @@ export default function WorkoutRun() {
                       {ex.distance_meters && ex.distance_meters > 0 ? ` · ${(ex.distance_meters / 1000).toFixed(1)} км` : ''}
                     </>
                   ) : (
-                    `${completedSets}/${sets.length} подходов`
+                    <>
+                      {`${completedSets}/${sets.length} подходов`}
+                      {ex.duration_seconds ? ` · ${ex.duration_seconds} сек` : ''}
+                    </>
                   )}
                 </p>
               </motion.div>
@@ -641,10 +644,17 @@ export default function WorkoutRun() {
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedExercise.sets}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">подходов</p>
                     </div>
-                    <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-3 text-center">
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedExercise.reps}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">повторений</p>
-                    </div>
+                    {selectedExercise.duration_seconds ? (
+                      <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedExercise.duration_seconds}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">сек</p>
+                      </div>
+                    ) : (
+                      <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedExercise.reps}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">повторений</p>
+                      </div>
+                    )}
                     {selectedExercise.weight_kg && (
                       <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-3 text-center">
                         <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedExercise.weight_kg}</p>
@@ -1060,7 +1070,7 @@ export default function WorkoutRun() {
                 </>
               ) : (
                 <>
-                  {currentExercise.sets} × {currentExercise.reps} повт
+                  {currentExercise.sets} × {currentExercise.duration_seconds ? `${currentExercise.duration_seconds} сек` : `${currentExercise.reps} повт`}
                   {currentExercise.weight_kg && ` · ${currentExercise.weight_kg} кг`}
                 </>
               )}

@@ -131,7 +131,7 @@ function SortableExerciseCard({ item, onUpdate, onRemove }: {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   <div>
                     <label className="text-xs text-muted-foreground">Подходы</label>
                     <Input
@@ -149,6 +149,18 @@ function SortableExerciseCard({ item, onUpdate, onRemove }: {
                       min={1}
                       value={item.reps}
                       onChange={(e) => onUpdate(item.id, { reps: parseInt(e.target.value) || 1 })}
+                      className="h-9 bg-muted border-border/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Время (сек)</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={5}
+                      value={item.durationSeconds || ''}
+                      onChange={(e) => onUpdate(item.id, { durationSeconds: parseInt(e.target.value) || undefined })}
+                      placeholder="—"
                       className="h-9 bg-muted border-border/50"
                     />
                   </div>
