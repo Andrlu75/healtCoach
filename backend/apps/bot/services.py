@@ -256,16 +256,32 @@ async def _build_workouts_context(client: Client, today) -> str:
     if not assignments and not sessions:
         return ''
 
+    # Индекс сессий по workout_id для сопоставления с назначениями
+    sessions_by_workout = {}
+    for s in sessions:
+        # Берём последнюю (самую свежую) сессию для каждого workout
+        if s.workout_id not in sessions_by_workout or (s.started_at and s.started_at > sessions_by_workout[s.workout_id].started_at):
+            sessions_by_workout[s.workout_id] = s
+
     lines = ['💪 Тренировки сегодня:']
+    shown_workout_ids = set()
 
     for a in assignments:
-        status = WORKOUT_STATUS_LABELS.get(a.status, a.status)
-        lines.append(f'- {a.workout.name} — {status}')
+        shown_workout_ids.add(a.workout_id)
+        session = sessions_by_workout.get(a.workout_id)
+        if session and session.completed_at:
+            duration = f' ({session.duration_seconds // 60} мин)' if session.duration_seconds else ''
+            lines.append(f'- {a.workout.name} — выполнено{duration}')
+        elif session:
+            lines.append(f'- {a.workout.name} — в процессе')
+        else:
+            status = WORKOUT_STATUS_LABELS.get(a.status, a.status)
+            lines.append(f'- {a.workout.name} — {status}')
 
-    # Сессии, не покрытые назначениями
-    assignment_workout_ids = {a.workout_id for a in assignments}
+    # Сессии без назначений
     for s in sessions:
-        if s.workout_id not in assignment_workout_ids:
+        if s.workout_id not in shown_workout_ids:
+            shown_workout_ids.add(s.workout_id)
             duration = f' ({s.duration_seconds // 60} мин)' if s.duration_seconds else ''
             status = 'выполнено' if s.completed_at else 'в процессе'
             lines.append(f'- {s.workout.name} — {status}{duration}')
