@@ -4,11 +4,12 @@ import {
   ArrowLeft, Save, Trash2, MapPin, Clock, Send,
   ChevronDown, ChevronRight, Utensils, Activity,
   MessageCircle, Settings, Calendar, Flame, Beef,
-  Droplets, Wheat, User, Scale, Ruler, Cake
+  Droplets, Wheat, User, Scale, Ruler, Cake,
+  Brain, Plus, X
 } from 'lucide-react'
 import { clientsApi } from '../api/clients'
 import { settingsApi } from '../api/settings'
-import { mealsApi, metricsApi, chatApi } from '../api/data'
+import { mealsApi, metricsApi, chatApi, clientMemoryApi } from '../api/data'
 import { nutritionProgramsApi } from '../api/nutritionPrograms'
 import type { Client, Meal, HealthMetric, ChatMessage, BotPersona, NutritionProgramListItem } from '../types'
 import dayjs from 'dayjs'
@@ -440,6 +441,7 @@ export default function ClientDetail() {
           ) : (
             <SettingsTab
               client={client}
+              onClientUpdate={setClient}
               profile={profile}
               setProfile={setProfile}
               saveProfile={saveProfile}
@@ -1387,6 +1389,7 @@ function ChatTab({
 // Settings tab
 function SettingsTab({
   client,
+  onClientUpdate,
   profile,
   setProfile,
   saveProfile,
@@ -1406,6 +1409,7 @@ function SettingsTab({
   timezoneOptions,
 }: {
   client: Client
+  onClientUpdate: (c: Client) => void
   profile: { first_name: string; last_name: string; city: string; timezone: string; status: string }
   setProfile: (p: typeof profile) => void
   saveProfile: () => Promise<void>
@@ -1545,6 +1549,9 @@ function SettingsTab({
         </SettingsSection>
       )}
 
+      {/* Memory Section */}
+      <MemorySection client={client} onClientUpdate={onClientUpdate} />
+
       {/* Norms Section */}
       <SettingsSection
         icon={Flame}
@@ -1560,6 +1567,83 @@ function SettingsTab({
         </div>
       </SettingsSection>
     </div>
+  )
+}
+
+// Memory section component
+function MemorySection({ client, onClientUpdate }: { client: Client; onClientUpdate: (c: Client) => void }) {
+  const [newItem, setNewItem] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleAdd = async () => {
+    const content = newItem.trim()
+    if (!content) return
+    setLoading(true)
+    try {
+      const { data } = await clientMemoryApi.add(client.id, content)
+      onClientUpdate({ ...client, memory: data.memory })
+      setNewItem('')
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRemove = async (index: number) => {
+    setLoading(true)
+    try {
+      const { data } = await clientMemoryApi.remove(client.id, index)
+      onClientUpdate({ ...client, memory: data.memory })
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <SettingsSection icon={Brain} title="Память">
+      <p className="text-xs text-muted-foreground mb-3">
+        Факты, которые AI всегда учитывает при общении с клиентом
+      </p>
+
+      {(client.memory || []).length > 0 && (
+        <div className="space-y-2 mb-3">
+          {client.memory.map((item, i) => (
+            <div key={i} className="flex items-center gap-2 bg-card rounded-lg px-3 py-2">
+              <span className="flex-1 text-sm text-foreground">{item}</span>
+              <button
+                onClick={() => handleRemove(i)}
+                disabled={loading}
+                className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={newItem}
+          onChange={(e) => setNewItem(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+          placeholder="Например: не ест глютен, называть Машенькой..."
+          className="flex-1 px-3 py-2 text-sm bg-card text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-shadow placeholder:text-muted-foreground"
+        />
+        <button
+          onClick={handleAdd}
+          disabled={loading || !newItem.trim()}
+          className="px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1 text-sm"
+        >
+          <Plus size={14} />
+          <span className="hidden sm:inline">Добавить</span>
+        </button>
+      </div>
+    </SettingsSection>
   )
 }
 

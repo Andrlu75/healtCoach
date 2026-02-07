@@ -186,6 +186,13 @@ export const integrationsApi = {
     api.get<{ logs: Array<{ id: number; started_at: string; finished_at: string | null; status: string; metrics_synced: Record<string, number>; error_message: string }> }>('/integrations/logs/', { params: { client_id, integration_type } }),
 }
 
+export const clientMemoryApi = {
+  add: (clientId: number, content: string) =>
+    api.post<{ memory: string[] }>(`/clients/${clientId}/memory/add/`, { content }),
+  remove: (clientId: number, index: number) =>
+    api.post<{ memory: string[] }>(`/clients/${clientId}/memory/delete/`, { index }),
+}
+
 export const onboardingApi = {
   getQuestions: () =>
     api.get<OnboardingQuestion[]>('/onboarding/questions/'),

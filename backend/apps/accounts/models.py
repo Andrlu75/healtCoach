@@ -92,6 +92,10 @@ class Client(models.Model):
         default='ask',
     )
 
+    # Память клиента (факты, которые AI должен учитывать всегда)
+    memory = models.JSONField(default=list, blank=True)
+    pending_memory = models.CharField(max_length=500, blank=True, default='')
+
     # Онбординг
     onboarding_completed = models.BooleanField(default=False)
     onboarding_data = models.JSONField(default=dict, blank=True)

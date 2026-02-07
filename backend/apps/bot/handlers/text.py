@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import time
 
 from asgiref.sync import sync_to_async
@@ -20,6 +21,13 @@ from ..services import get_ai_text_response, _get_persona, _get_api_key
 
 logger = logging.getLogger(__name__)
 
+# Утвердительные ответы для подтверждения запоминания
+_AFFIRMATIVE_ANSWERS = frozenset({
+    'да', 'ок', 'окей', 'конечно', 'давай', 'запомни',
+    'yes', 'ага', 'угу', 'хорошо', 'запоминай', 'сохрани',
+    'ладно', 'точно', 'верно',
+})
+
 
 async def handle_text(bot: TelegramBot, client: Client, message: dict):
     """Handle incoming text message."""
@@ -32,6 +40,22 @@ async def handle_text(bot: TelegramBot, client: Client, message: dict):
     await send_chat_action(bot.token, chat_id)
 
     try:
+        # Проверяем pending memory (ожидание подтверждения запоминания)
+        if client.pending_memory:
+            pending = client.pending_memory
+            affirmative = text.strip().lower() in _AFFIRMATIVE_ANSWERS
+            client.pending_memory = ''
+            if affirmative:
+                memory = list(client.memory or [])
+                memory.append(pending)
+                client.memory = memory
+                await sync_to_async(client.save)(update_fields=['pending_memory', 'memory'])
+                await send_message(bot.token, chat_id, f'Запомнил: «{pending}»')
+                return
+            else:
+                await sync_to_async(client.save)(update_fields=['pending_memory'])
+                # Не подтвердил — обрабатываем как обычное сообщение
+
         # Check for meal correction
         recent_meal = await get_recent_meal(client)
         if recent_meal:
@@ -41,10 +65,44 @@ async def handle_text(bot: TelegramBot, client: Client, message: dict):
                 return
 
         response_text = await get_ai_text_response(bot, client, text)
+
+        # Обработка тегов памяти из ответа AI
+        response_text = await _process_memory_tags(client, response_text)
+
         await send_message(bot.token, chat_id, response_text)
     except Exception as e:
         logger.exception('Error handling text message for client %s: %s', client.pk, e)
         await send_message(bot.token, chat_id, 'Произошла ошибка. Попробуйте позже.')
+
+
+async def _process_memory_tags(client: Client, response_text: str) -> str:
+    """Парсит теги MEMORY_SAVE / MEMORY_DELETE из ответа AI и обрабатывает."""
+    memory_save = re.search(r'\[MEMORY_SAVE:\s*(.+?)\]', response_text)
+    memory_delete = re.search(r'\[MEMORY_DELETE:\s*(.+?)\]', response_text)
+
+    if memory_save:
+        fact = memory_save.group(1).strip()
+        client.pending_memory = fact
+        await sync_to_async(client.save)(update_fields=['pending_memory'])
+        response_text = re.sub(r'\[MEMORY_SAVE:\s*.+?\]', '', response_text).strip()
+        logger.info('[MEMORY] Pending save for client %s: %s', client.pk, fact)
+
+    if memory_delete:
+        target = memory_delete.group(1).strip()
+        memory = list(client.memory or [])
+        deleted = False
+        for i, item in enumerate(memory):
+            if target.lower() in item.lower() or item.lower() in target.lower():
+                removed = memory.pop(i)
+                deleted = True
+                logger.info('[MEMORY] Deleted for client %s: %s', client.pk, removed)
+                break
+        if deleted:
+            client.memory = memory
+            await sync_to_async(client.save)(update_fields=['memory'])
+        response_text = re.sub(r'\[MEMORY_DELETE:\s*.+?\]', '', response_text).strip()
+
+    return response_text
 
 
 async def _handle_meal_correction(bot: TelegramBot, client: Client, chat_id: int, meal, user_text: str):

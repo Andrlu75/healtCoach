@@ -41,6 +41,7 @@ export interface Client {
   daily_carbs: number | null
   daily_water: number | null
   manual_mode: boolean
+  memory: string[]
   onboarding_completed: boolean
   onboarding_data: Record<string, unknown>
   persona: number | null

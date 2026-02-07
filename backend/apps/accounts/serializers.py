@@ -31,7 +31,7 @@ class ClientSerializer(serializers.ModelSerializer):
             'city', 'timezone', 'status',
             'height', 'weight', 'birth_date',
             'daily_calories', 'daily_proteins', 'daily_fats', 'daily_carbs', 'daily_water',
-            'manual_mode',
+            'manual_mode', 'memory',
             'onboarding_completed', 'onboarding_data',
             'persona', 'persona_name',
             'created_at', 'updated_at',

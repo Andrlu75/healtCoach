@@ -89,7 +89,15 @@ def _build_client_context(client: Client) -> str:
     if not parts:
         return ''
 
-    return '\n\n[Данные о клиенте]\n' + '\n'.join(parts)
+    result = '\n\n[Данные о клиенте]\n' + '\n'.join(parts)
+
+    # Память клиента
+    if client.memory:
+        result += '\n\n[Память о клиенте]'
+        for item in client.memory:
+            result += f'\n- {item}'
+
+    return result
 
 
 def _build_system_prompt(persona_prompt: str, client: Client) -> str:
@@ -372,14 +380,41 @@ async def build_client_daily_context(client: Client) -> str:
     if not parts:
         return ''
 
-    return '\n\n[Дневной контекст]\n\n' + '\n\n'.join(parts)
+    context = '\n\n[Дневной контекст]\n\n' + '\n\n'.join(parts)
+
+    # Если есть и программа питания, и фактические приёмы — добавить инструкцию сравнивать
+    if program and meals:
+        context += (
+            '\n\n[Инструкция по анализу питания]\n'
+            'ОБЯЗАТЕЛЬНО сравнивай фактические приёмы пищи клиента с планом программы питания. '
+            'Если клиент ел блюда, которых нет в плане, или пропустил запланированные — '
+            'отметь конкретные отклонения. Не говори «ты на правильном пути», если есть расхождения с планом. '
+            'Будь конкретным: укажи что было по плану и что фактически съедено.'
+        )
+
+    return context
 
 
 async def _build_full_system_prompt(persona_prompt: str, client: Client) -> str:
     """Полный системный промпт: персона + данные клиента + дневной контекст."""
     base = _build_system_prompt(persona_prompt, client)
     daily = await build_client_daily_context(client)
-    return base + '\n' + daily if daily else base
+    full = base + '\n' + daily if daily else base
+
+    # Инструкция по запоминанию
+    full += (
+        '\n\n[Инструкция по запоминанию]\n'
+        'Если клиент просит тебя что-то запомнить (например "запомни что...", "имей в виду...", '
+        '"учти что...", "называй меня..."), '
+        'сформулируй кратко что нужно запомнить и спроси подтверждение. '
+        'Ответ ОБЯЗАТЕЛЬНО заверши тегом на отдельной строке:\n'
+        '[MEMORY_SAVE: краткая формулировка факта]\n'
+        'Если клиент просит забыть что-то ранее запомненное — '
+        'ответь подтверждением и заверши тегом:\n'
+        '[MEMORY_DELETE: точный текст записи для удаления]'
+    )
+
+    return full
 
 
 async def _get_persona(bot: TelegramBot, client: Client | None = None) -> BotPersona:

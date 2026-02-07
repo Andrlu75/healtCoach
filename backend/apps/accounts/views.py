@@ -342,6 +342,32 @@ class ClientViewSet(viewsets.ModelViewSet):
         client.save(update_fields=['status'])
         return Response({'status': 'archived'})
 
+    @action(detail=True, methods=['post'], url_path='memory/add')
+    def memory_add(self, request, pk=None):
+        """Добавить запись в память клиента."""
+        client = self.get_object()
+        content = request.data.get('content', '').strip()
+        if not content:
+            return Response({'error': 'content обязателен'}, status=status.HTTP_400_BAD_REQUEST)
+        memory = list(client.memory or [])
+        memory.append(content)
+        client.memory = memory
+        client.save(update_fields=['memory'])
+        return Response({'memory': client.memory})
+
+    @action(detail=True, methods=['post'], url_path='memory/delete')
+    def memory_delete(self, request, pk=None):
+        """Удалить запись из памяти клиента по индексу."""
+        client = self.get_object()
+        index = request.data.get('index')
+        memory = list(client.memory or [])
+        if index is None or not isinstance(index, int) or not (0 <= index < len(memory)):
+            return Response({'error': 'Невалидный индекс'}, status=status.HTTP_400_BAD_REQUEST)
+        memory.pop(index)
+        client.memory = memory
+        client.save(update_fields=['memory'])
+        return Response({'memory': client.memory})
+
     @action(detail=True, methods=['post'], url_path='set_persona')
     def set_persona(self, request, pk=None):
         client = self.get_object()
