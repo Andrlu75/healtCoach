@@ -266,7 +266,7 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
     await send_message(bot.token, chat_id, response_text)
 
     # Сохраняем AI комментарий в meal
-    if persona.food_response_prompt and response_text:
+    if response_text:
         meal.ai_comment = response_text
         await sync_to_async(meal.save)(update_fields=['ai_comment'])
 
@@ -437,7 +437,7 @@ async def _handle_food_photo(bot: TelegramBot, client: Client, chat_id: int, ima
     await send_message(bot.token, chat_id, response_text)
 
     # Сохраняем AI комментарий в meal
-    if persona.food_response_prompt and response_text:
+    if response_text:
         meal.ai_comment = response_text
         await sync_to_async(meal.save)(update_fields=['ai_comment'])
 
