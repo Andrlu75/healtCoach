@@ -144,36 +144,40 @@ async def _build_program_context(client: Client, today) -> str:
 
     lines = [f'📋 Программа питания: "{program.name}" (день {program_day.day_number} из {program.duration_days})']
 
-    # Плановые приёмы пищи
+    # Плановые приёмы пищи с полным описанием
     meals = program_day.meals or []
     if meals:
         lines.append('Приёмы пищи по плану:')
         for m in meals:
             label = MEAL_TYPE_LABELS.get(m.get('type', ''), m.get('type', ''))
             time_str = f" ({m['time']})" if m.get('time') else ''
-            desc = m.get('name', '') or m.get('description', '')
-            if len(desc) > 80:
-                desc = desc[:77] + '...'
-            lines.append(f'- {label}{time_str}: {desc}')
+            name = m.get('name', '')
+            desc = m.get('description', '')
+            if desc:
+                lines.append(f'- {label}{time_str}: {name}')
+                lines.append(f'  {desc}')
+            else:
+                lines.append(f'- {label}{time_str}: {name}')
 
     # Запрещённые продукты
     forbidden = program_day.forbidden_ingredients or []
-    forbidden_names = [i['name'] if isinstance(i, dict) else str(i) for i in forbidden][:8]
+    forbidden_names = [i['name'] if isinstance(i, dict) else str(i) for i in forbidden][:10]
     if forbidden_names:
         lines.append(f'Запрещённые продукты: {", ".join(forbidden_names)}')
 
     # Разрешённые продукты
     allowed = program_day.allowed_ingredients or []
-    allowed_names = [i['name'] if isinstance(i, dict) else str(i) for i in allowed][:8]
+    allowed_names = [i['name'] if isinstance(i, dict) else str(i) for i in allowed][:10]
     if allowed_names:
         lines.append(f'Рекомендуемые продукты: {", ".join(allowed_names)}')
 
+    # Активность на день
+    if program_day.activity:
+        lines.append(f'Активность: {program_day.activity}')
+
     # Общие заметки программы
     if program.general_notes:
-        notes = program.general_notes
-        if len(notes) > 150:
-            notes = notes[:147] + '...'
-        lines.append(f'Заметки: {notes}')
+        lines.append(f'Заметки: {program.general_notes}')
 
     return '\n'.join(lines)
 
@@ -290,11 +294,11 @@ async def _build_workouts_context(client: Client, today) -> str:
 
 
 async def _build_metrics_context(client: Client, today) -> str:
-    """Блок последних показателей здоровья (1 на тип, за 7 дней)."""
+    """Блок последних показателей здоровья (1 на тип, за 2 дня)."""
     from datetime import timedelta
     from apps.metrics.models import HealthMetric
 
-    week_ago = today - timedelta(days=7)
+    week_ago = today - timedelta(days=2)
 
     metrics = await sync_to_async(
         lambda: list(
