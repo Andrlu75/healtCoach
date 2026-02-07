@@ -2,8 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Dumbbell, ChevronRight, Clock, CheckCircle2, Loader2, CalendarDays } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { format, isToday, isTomorrow, parseISO, compareAsc } from 'date-fns'
-import { ru } from 'date-fns/locale'
+import dayjs from 'dayjs'
 import api from '../../api/client'
 
 const containerVariants = {
@@ -122,17 +121,17 @@ export default function Workouts() {
 
     // Sort dates
     const sortedDates = Object.keys(groups).sort((a, b) =>
-      compareAsc(parseISO(a), parseISO(b))
+      dayjs(a).valueOf() - dayjs(b).valueOf()
     )
 
     return { groups, sortedDates, noDate }
   }, [pendingWorkouts])
 
   const formatDateHeader = (dateStr: string) => {
-    const date = parseISO(dateStr)
-    if (isToday(date)) return 'Сегодня'
-    if (isTomorrow(date)) return 'Завтра'
-    return format(date, 'd MMMM, EEEE', { locale: ru })
+    const date = dayjs(dateStr)
+    if (date.isSame(dayjs(), 'day')) return 'Сегодня'
+    if (date.isSame(dayjs().add(1, 'day'), 'day')) return 'Завтра'
+    return date.format('D MMMM, dddd')
   }
 
   if (loading) {
