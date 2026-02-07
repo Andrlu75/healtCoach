@@ -1430,6 +1430,18 @@ function RemindersTab({ clientId, reminders, onUpdate }: {
 }) {
   const [showModal, setShowModal] = useState(false)
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null)
+  const [testingId, setTestingId] = useState<number | null>(null)
+
+  const handleTest = async (id: number) => {
+    setTestingId(id)
+    try {
+      await remindersApi.test(id)
+    } catch {
+      // ошибка — тихо игнорируем, пользователь увидит что сообщение не пришло
+    } finally {
+      setTestingId(null)
+    }
+  }
 
   const handleCreate = () => {
     setEditingReminder(null)
@@ -1517,6 +1529,14 @@ function RemindersTab({ clientId, reminders, onUpdate }: {
                   )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => handleTest(r.id)}
+                    disabled={testingId === r.id}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10 transition-colors disabled:opacity-50"
+                    title="Отправить сейчас (тест)"
+                  >
+                    {testingId === r.id ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                  </button>
                   <button
                     onClick={() => handleToggle(r)}
                     className={`p-1.5 rounded-lg transition-colors ${r.is_active ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-muted-foreground hover:bg-muted'}`}

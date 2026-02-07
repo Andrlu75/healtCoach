@@ -8,7 +8,7 @@ from apps.accounts.models import Client
 
 from .models import CONTEXT_BLOCKS, Reminder
 from .serializers import ReminderCreateSerializer, ReminderSerializer
-from .services import compute_next_fire, generate_ai_text
+from .services import compute_next_fire, generate_ai_text, send_reminder_message
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +109,32 @@ class ReminderDetailView(APIView):
 
         reminder.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ReminderTestView(APIView):
+    """POST: отправить уведомление прямо сейчас (тест)."""
+
+    def post(self, request, pk):
+        coach = request.user.coach_profile
+        try:
+            reminder = Reminder.objects.select_related('client').get(pk=pk, coach=coach)
+        except Reminder.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            ok = send_reminder_message(reminder)
+            if ok:
+                return Response({'status': 'sent'})
+            return Response(
+                {'error': 'Не удалось отправить — проверьте бот и Telegram клиента'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            logger.exception('Test reminder %s error: %s', pk, e)
+            return Response(
+                {'error': f'Ошибка: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class ContextBlocksView(APIView):

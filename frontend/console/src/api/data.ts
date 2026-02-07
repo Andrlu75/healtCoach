@@ -202,6 +202,8 @@ export const remindersApi = {
     api.put<Reminder>(`/reminders/${id}/`, data),
   delete: (id: number) =>
     api.delete(`/reminders/${id}/`),
+  test: (id: number) =>
+    api.post<{ status: string }>(`/reminders/${id}/test/`),
   generateText: (data: { client_id: number; reminder_type: string; context_blocks?: string[]; base_text?: string; generation_prompt?: string }) =>
     api.post<{ text: string }>('/reminders/generate-text/', data),
   contextBlocks: () =>
