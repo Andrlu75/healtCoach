@@ -238,6 +238,35 @@ export interface InviteLink {
   created_at: string
 }
 
+export interface Reminder {
+  id: number
+  client: number
+  title: string
+  message: string
+  reminder_type: string
+  reminder_type_display: string
+  frequency: string
+  frequency_display: string
+  time: string | null
+  days_of_week: number[]
+  is_active: boolean
+  is_smart: boolean
+  context_blocks: string[]
+  offset_minutes: number
+  trigger_event: string
+  trigger_delay_minutes: number
+  generation_prompt: string
+  last_sent_at: string | null
+  next_fire_at: string | null
+  created_at: string
+}
+
+export interface ContextBlock {
+  id: string
+  label: string
+  description: string
+}
+
 export interface InteractionLog {
   id: number
   client: number

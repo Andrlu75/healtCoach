@@ -13,9 +13,26 @@ logger = logging.getLogger(__name__)
 def check_reminders(self):
     """
     Periodic task (every minute): find due reminders, send them, update next_fire_at.
+    Also refreshes next_fire_at for meal_program reminders (dynamic schedule).
     """
     now = timezone.now()
 
+    # 1. Пересчитываем next_fire_at для meal_program (расписание зависит от программы)
+    meal_program_reminders = Reminder.objects.filter(
+        is_active=True,
+        reminder_type='meal_program',
+    ).select_related('client')
+
+    for reminder in meal_program_reminders:
+        try:
+            new_fire = compute_next_fire(reminder)
+            if new_fire != reminder.next_fire_at:
+                reminder.next_fire_at = new_fire
+                reminder.save(update_fields=['next_fire_at'])
+        except Exception as e:
+            logger.exception('Error computing meal_program fire for %s: %s', reminder.pk, e)
+
+    # 2. Находим и отправляем due напоминания
     due_reminders = Reminder.objects.filter(
         is_active=True,
         next_fire_at__isnull=False,

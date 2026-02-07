@@ -723,6 +723,12 @@ class FitDBSessionViewSet(viewsets.ModelViewSet):
             if assignment.status != 'completed':
                 assignment.status = 'completed'
                 assignment.save(update_fields=['status'])
+                # Триггер event-уведомлений
+                try:
+                    from apps.reminders.services import schedule_event_reminder
+                    schedule_event_reminder(session.client, 'workout_completed')
+                except Exception:
+                    pass
         elif assignment.status == 'pending':
             assignment.status = 'active'
             assignment.save(update_fields=['status'])

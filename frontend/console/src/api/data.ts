@@ -1,5 +1,5 @@
 import api from './client'
-import type { Meal, HealthMetric, ChatMessage, Report, InviteLink, OnboardingQuestion, InteractionLog } from '../types'
+import type { Meal, HealthMetric, ChatMessage, Report, InviteLink, OnboardingQuestion, InteractionLog, Reminder, ContextBlock } from '../types'
 
 export interface MealDashboardItem {
   id: number
@@ -191,6 +191,21 @@ export const clientMemoryApi = {
     api.post<{ memory: string[] }>(`/clients/${clientId}/memory/add/`, { content }),
   remove: (clientId: number, index: number) =>
     api.post<{ memory: string[] }>(`/clients/${clientId}/memory/delete/`, { index }),
+}
+
+export const remindersApi = {
+  list: (clientId: number) =>
+    api.get<Reminder[]>('/reminders/', { params: { client_id: clientId } }),
+  create: (data: Record<string, unknown>) =>
+    api.post<Reminder>('/reminders/', data),
+  update: (id: number, data: Record<string, unknown>) =>
+    api.put<Reminder>(`/reminders/${id}/`, data),
+  delete: (id: number) =>
+    api.delete(`/reminders/${id}/`),
+  generateText: (data: { client_id: number; reminder_type: string; context_blocks?: string[]; base_text?: string; generation_prompt?: string }) =>
+    api.post<{ text: string }>('/reminders/generate-text/', data),
+  contextBlocks: () =>
+    api.get<ContextBlock[]>('/reminders/context-blocks/'),
 }
 
 export const onboardingApi = {

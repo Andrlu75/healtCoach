@@ -19,6 +19,9 @@ class ReminderSerializer(serializers.ModelSerializer):
             'frequency', 'frequency_display',
             'time', 'days_of_week',
             'is_active', 'is_smart',
+            'context_blocks', 'offset_minutes',
+            'trigger_event', 'trigger_delay_minutes',
+            'generation_prompt',
             'last_sent_at', 'next_fire_at', 'created_at',
         ]
         read_only_fields = ['id', 'last_sent_at', 'next_fire_at', 'created_at']
@@ -29,17 +32,24 @@ class ReminderCreateSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=200)
     message = serializers.CharField(required=False, default='', allow_blank=True)
     reminder_type = serializers.ChoiceField(
-        choices=['meal', 'water', 'workout', 'weigh_in', 'custom'],
-        default='meal',
+        choices=['morning', 'meal_program', 'meal', 'water', 'workout', 'weigh_in', 'event', 'custom'],
+        default='custom',
     )
     frequency = serializers.ChoiceField(
         choices=['once', 'daily', 'weekly', 'custom'],
         default='daily',
     )
-    time = serializers.TimeField()
+    time = serializers.TimeField(required=False, allow_null=True)
     days_of_week = serializers.ListField(
         child=serializers.IntegerField(min_value=1, max_value=7),
         required=False, default=list,
     )
     is_active = serializers.BooleanField(default=True)
     is_smart = serializers.BooleanField(default=False)
+    context_blocks = serializers.ListField(
+        child=serializers.CharField(), required=False, default=list,
+    )
+    offset_minutes = serializers.IntegerField(required=False, default=30)
+    trigger_event = serializers.CharField(required=False, default='', allow_blank=True)
+    trigger_delay_minutes = serializers.IntegerField(required=False, default=30)
+    generation_prompt = serializers.CharField(required=False, default='', allow_blank=True)

@@ -5,13 +5,13 @@ import {
   ChevronDown, ChevronRight, Utensils, Activity,
   MessageCircle, Settings, Calendar, Flame, Beef,
   Droplets, Wheat, User, Scale, Ruler, Cake,
-  Brain, Plus, X
+  Brain, Plus, X, Bell, Sparkles, Power, Loader2
 } from 'lucide-react'
 import { clientsApi } from '../api/clients'
 import { settingsApi } from '../api/settings'
-import { mealsApi, metricsApi, chatApi, clientMemoryApi } from '../api/data'
+import { mealsApi, metricsApi, chatApi, clientMemoryApi, remindersApi } from '../api/data'
 import { nutritionProgramsApi } from '../api/nutritionPrograms'
-import type { Client, Meal, HealthMetric, ChatMessage, BotPersona, NutritionProgramListItem } from '../types'
+import type { Client, Meal, HealthMetric, ChatMessage, BotPersona, NutritionProgramListItem, Reminder, ContextBlock } from '../types'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
@@ -36,13 +36,14 @@ const timezoneOptions = [
   { value: 'Asia/Kamchatka', label: 'Камчатка (UTC+12)' },
 ]
 
-type Tab = 'meals' | 'metrics' | 'nutrition' | 'chat' | 'settings'
+type Tab = 'meals' | 'metrics' | 'nutrition' | 'chat' | 'reminders' | 'settings'
 
 const tabs: { id: Tab; label: string; icon: typeof Utensils }[] = [
   { id: 'meals', label: 'Питание', icon: Utensils },
   { id: 'metrics', label: 'Метрики', icon: Activity },
   { id: 'nutrition', label: 'Программа', icon: Calendar },
   { id: 'chat', label: 'Чат', icon: MessageCircle },
+  { id: 'reminders', label: 'Уведомления', icon: Bell },
   { id: 'settings', label: 'Настройки', icon: Settings },
 ]
 
@@ -102,6 +103,7 @@ export default function ClientDetail() {
   const [metrics, setMetrics] = useState<HealthMetric[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [nutritionPrograms, setNutritionPrograms] = useState<NutritionProgramListItem[]>([])
+  const [reminders, setReminders] = useState<Reminder[]>([])
   const [tabLoading, setTabLoading] = useState(false)
 
   useEffect(() => {
@@ -165,6 +167,10 @@ export default function ClientDetail() {
     } else if (tab === 'chat') {
       chatApi.messages(clientId)
         .then(({ data }) => setMessages(data.results))
+        .finally(() => setTabLoading(false))
+    } else if (tab === 'reminders') {
+      remindersApi.list(clientId)
+        .then(({ data }) => setReminders(data))
         .finally(() => setTabLoading(false))
     } else {
       setTabLoading(false)
@@ -437,6 +443,12 @@ export default function ClientDetail() {
               client={client}
               onClientUpdate={setClient}
               onMessagesUpdate={setMessages}
+            />
+          ) : tab === 'reminders' ? (
+            <RemindersTab
+              clientId={clientId}
+              reminders={reminders}
+              onUpdate={() => remindersApi.list(clientId).then(({ data }) => setReminders(data))}
             />
           ) : (
             <SettingsTab
@@ -1382,6 +1394,404 @@ function ChatTab({
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+// Reminders tab
+const REMINDER_TYPE_OPTIONS = [
+  { value: 'morning', label: 'Утреннее приветствие', description: 'AI генерирует уникальное сообщение каждый день' },
+  { value: 'meal_program', label: 'Приём пищи (программа)', description: 'Напоминание за N минут до приёма по программе' },
+  { value: 'event', label: 'По событию', description: 'Отправляется после события (тренировка и т.д.)' },
+  { value: 'custom', label: 'Произвольное', description: 'Свой текст по расписанию' },
+]
+
+const FREQUENCY_OPTIONS = [
+  { value: 'once', label: 'Однократно' },
+  { value: 'daily', label: 'Ежедневно' },
+  { value: 'weekly', label: 'Еженедельно' },
+]
+
+const DEFAULT_CONTEXT_BLOCKS = [
+  { id: 'greeting', label: 'Приветствие' },
+  { id: 'weather', label: 'Погода' },
+  { id: 'meal_plan', label: 'План питания' },
+  { id: 'workout_plan', label: 'Тренировки' },
+  { id: 'sport_tip', label: 'Совет по спорту' },
+  { id: 'nutrition_tip', label: 'Совет по питанию' },
+  { id: 'motivation', label: 'Мотивация' },
+  { id: 'metrics_summary', label: 'Показатели' },
+]
+
+function RemindersTab({ clientId, reminders, onUpdate }: {
+  clientId: number
+  reminders: Reminder[]
+  onUpdate: () => void
+}) {
+  const [showModal, setShowModal] = useState(false)
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null)
+
+  const handleCreate = () => {
+    setEditingReminder(null)
+    setShowModal(true)
+  }
+
+  const handleEdit = (r: Reminder) => {
+    setEditingReminder(r)
+    setShowModal(true)
+  }
+
+  const handleDelete = async (id: number) => {
+    await remindersApi.delete(id)
+    onUpdate()
+  }
+
+  const handleToggle = async (r: Reminder) => {
+    await remindersApi.update(r.id, {
+      ...r,
+      client_id: clientId,
+      is_active: !r.is_active,
+    })
+    onUpdate()
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-foreground">Уведомления</h3>
+        <button
+          onClick={handleCreate}
+          className="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
+        >
+          <Plus size={16} />
+          Добавить
+        </button>
+      </div>
+
+      {reminders.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Bell size={40} className="mx-auto mb-3 opacity-30" />
+          <p>Нет настроенных уведомлений</p>
+          <p className="text-xs mt-1">Добавьте уведомления для автоматической отправки клиенту</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {reminders.map((r) => (
+            <div key={r.id} className={`bg-muted rounded-xl p-4 ${!r.is_active ? 'opacity-50' : ''}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                      {r.reminder_type_display}
+                    </span>
+                    {r.time && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock size={12} /> {r.time.slice(0, 5)}
+                      </span>
+                    )}
+                    {r.frequency_display && (
+                      <span className="text-xs text-muted-foreground">{r.frequency_display}</span>
+                    )}
+                  </div>
+                  <p className="font-medium text-foreground text-sm">{r.title}</p>
+                  {r.message && (
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{r.message}</p>
+                  )}
+                  {r.reminder_type === 'morning' && r.context_blocks.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {r.context_blocks.map((b) => {
+                        const block = DEFAULT_CONTEXT_BLOCKS.find((cb) => cb.id === b)
+                        return (
+                          <span key={b} className="text-xs px-1.5 py-0.5 rounded bg-card text-muted-foreground">
+                            {block?.label || b}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {r.reminder_type === 'meal_program' && (
+                    <p className="text-xs text-muted-foreground mt-1">За {r.offset_minutes} мин до приёма</p>
+                  )}
+                  {r.reminder_type === 'event' && (
+                    <p className="text-xs text-muted-foreground mt-1">Через {r.trigger_delay_minutes} мин после тренировки</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => handleToggle(r)}
+                    className={`p-1.5 rounded-lg transition-colors ${r.is_active ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-muted-foreground hover:bg-muted'}`}
+                    title={r.is_active ? 'Выключить' : 'Включить'}
+                  >
+                    <Power size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleEdit(r)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    title="Редактировать"
+                  >
+                    <Settings size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(r.id)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    title="Удалить"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showModal && (
+        <ReminderModal
+          clientId={clientId}
+          reminder={editingReminder}
+          onClose={() => setShowModal(false)}
+          onSave={() => { setShowModal(false); onUpdate() }}
+        />
+      )}
+    </div>
+  )
+}
+
+// Reminder create/edit modal
+function ReminderModal({ clientId, reminder, onClose, onSave }: {
+  clientId: number
+  reminder: Reminder | null
+  onClose: () => void
+  onSave: () => void
+}) {
+  const [type, setType] = useState(reminder?.reminder_type || 'custom')
+  const [title, setTitle] = useState(reminder?.title || '')
+  const [message, setMessage] = useState(reminder?.message || '')
+  const [time, setTime] = useState(reminder?.time?.slice(0, 5) || '08:00')
+  const [frequency, setFrequency] = useState(reminder?.frequency || 'daily')
+  const [contextBlocks, setContextBlocks] = useState<string[]>(reminder?.context_blocks || ['greeting', 'meal_plan', 'workout_plan'])
+  const [offsetMinutes, setOffsetMinutes] = useState(String(reminder?.offset_minutes || 30))
+  const [triggerDelay, setTriggerDelay] = useState(String(reminder?.trigger_delay_minutes || 30))
+  const [generationPrompt, setGenerationPrompt] = useState(reminder?.generation_prompt || '')
+  const [saving, setSaving] = useState(false)
+  const [generating, setGenerating] = useState(false)
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const data: Record<string, unknown> = {
+        client_id: clientId,
+        title: title || REMINDER_TYPE_OPTIONS.find((o) => o.value === type)?.label || 'Уведомление',
+        message,
+        reminder_type: type,
+        frequency: type === 'morning' ? 'daily' : type === 'event' ? 'custom' : frequency,
+        time: type === 'event' || type === 'meal_program' ? null : time,
+        is_active: true,
+        is_smart: type === 'morning',
+        context_blocks: type === 'morning' ? contextBlocks : [],
+        offset_minutes: type === 'meal_program' ? parseInt(offsetMinutes) || 30 : 30,
+        trigger_event: type === 'event' ? 'workout_completed' : '',
+        trigger_delay_minutes: type === 'event' ? parseInt(triggerDelay) || 30 : 30,
+        generation_prompt: generationPrompt,
+      }
+      if (reminder) {
+        await remindersApi.update(reminder.id, data)
+      } else {
+        await remindersApi.create(data)
+      }
+      onSave()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleGenerate = async () => {
+    setGenerating(true)
+    try {
+      const { data } = await remindersApi.generateText({
+        client_id: clientId,
+        reminder_type: type,
+        context_blocks: type === 'morning' ? contextBlocks : undefined,
+        base_text: message || undefined,
+        generation_prompt: generationPrompt || undefined,
+      })
+      setMessage(data.text)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const toggleBlock = (id: string) => {
+    setContextBlocks((prev) =>
+      prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-card rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4">
+            {reminder ? 'Редактировать' : 'Новое уведомление'}
+          </h3>
+
+          {/* Тип */}
+          <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Тип</label>
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            {REMINDER_TYPE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setType(opt.value)}
+                className={`text-left p-3 rounded-xl border transition-colors ${
+                  type === opt.value
+                    ? 'border-primary bg-primary/5 text-foreground'
+                    : 'border-border bg-muted text-muted-foreground hover:border-primary/50'
+                }`}
+              >
+                <div className="text-sm font-medium">{opt.label}</div>
+                <div className="text-xs opacity-70 mt-0.5">{opt.description}</div>
+              </button>
+            ))}
+          </div>
+
+          {/* Название */}
+          <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Название</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={REMINDER_TYPE_OPTIONS.find((o) => o.value === type)?.label}
+            className="w-full px-3 py-2 text-sm bg-muted text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none mb-4 placeholder:text-muted-foreground"
+          />
+
+          {/* Время (не для event и meal_program) */}
+          {type !== 'event' && type !== 'meal_program' && (
+            <>
+              <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Время</label>
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-muted text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none mb-4"
+              />
+            </>
+          )}
+
+          {/* Частота (только для custom) */}
+          {type === 'custom' && (
+            <>
+              <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Частота</label>
+              <select
+                value={frequency}
+                onChange={(e) => setFrequency(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-muted text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none mb-4"
+              >
+                {FREQUENCY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </>
+          )}
+
+          {/* Контекстные блоки (для morning) */}
+          {type === 'morning' && (
+            <>
+              <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Контекстные блоки</label>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {DEFAULT_CONTEXT_BLOCKS.map((block) => (
+                  <button
+                    key={block.id}
+                    onClick={() => toggleBlock(block.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                      contextBlocks.includes(block.id)
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground border border-border hover:border-primary/50'
+                    }`}
+                  >
+                    {block.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Offset (для meal_program) */}
+          {type === 'meal_program' && (
+            <>
+              <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">За сколько минут до приёма</label>
+              <input
+                type="number"
+                value={offsetMinutes}
+                onChange={(e) => setOffsetMinutes(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-muted text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none mb-4"
+              />
+            </>
+          )}
+
+          {/* Задержка (для event) */}
+          {type === 'event' && (
+            <>
+              <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Через сколько минут после тренировки</label>
+              <input
+                type="number"
+                value={triggerDelay}
+                onChange={(e) => setTriggerDelay(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-muted text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none mb-4"
+              />
+            </>
+          )}
+
+          {/* Промпт для AI */}
+          <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+            Промпт для AI (опционально)
+          </label>
+          <textarea
+            value={generationPrompt}
+            onChange={(e) => setGenerationPrompt(e.target.value)}
+            placeholder="Дополнительные указания для AI при генерации текста..."
+            rows={2}
+            className="w-full px-3 py-2 text-sm bg-muted text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none mb-4 resize-none placeholder:text-muted-foreground"
+          />
+
+          {/* Текст сообщения */}
+          <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+            Текст сообщения
+          </label>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder={type === 'morning' ? 'AI сгенерирует автоматически при отправке' : 'Текст уведомления...'}
+            rows={4}
+            className="w-full px-3 py-2 text-sm bg-muted text-foreground border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none mb-2 resize-none placeholder:text-muted-foreground"
+          />
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors disabled:opacity-50 mb-4"
+          >
+            {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            {message ? 'Доработать через AI' : 'Сгенерировать AI'}
+          </button>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Отмена
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm disabled:opacity-50"
+            >
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              Сохранить
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
