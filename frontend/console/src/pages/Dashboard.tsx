@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Utensils, Dumbbell, X, Check, Clock, Play, MessageSquare } from 'lucide-react'
-import { mealsApi, workoutsApi, chatApi, type MealsDashboardResponse, type WorkoutsDashboardResponse, type MealDashboardItem } from '../api/data'
+import { Utensils, Dumbbell, X, Check, Clock, Play, MessageSquare, Loader2, Timer } from 'lucide-react'
+import { mealsApi, workoutsApi, chatApi, type MealsDashboardResponse, type WorkoutsDashboardResponse, type MealDashboardItem, type WorkoutDashboardItem, type WorkoutSessionReport } from '../api/data'
 
 export default function Dashboard() {
   const [mealsDashboard, setMealsDashboard] = useState<MealsDashboardResponse | null>(null)
@@ -12,6 +12,12 @@ export default function Dashboard() {
   // Модальное окно с деталями блюда
   const [selectedMeal, setSelectedMeal] = useState<MealDashboardItem | null>(null)
   const [selectedMealClientName, setSelectedMealClientName] = useState<string>('')
+
+  // Модальное окно с отчётом о тренировке
+  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutDashboardItem | null>(null)
+  const [selectedWorkoutClientName, setSelectedWorkoutClientName] = useState<string>('')
+  const [workoutReport, setWorkoutReport] = useState<WorkoutSessionReport | null>(null)
+  const [workoutReportLoading, setWorkoutReportLoading] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -207,7 +213,20 @@ export default function Dashboard() {
                       <p className="text-xs text-muted-foreground text-center py-3">На сегодня тренировок нет</p>
                     ) : (
                       client.workouts.map(workout => (
-                        <div key={workout.id} className="flex items-center gap-2 bg-card rounded-lg p-2">
+                        <div
+                          key={workout.id}
+                          className="flex items-center gap-2 bg-card rounded-lg p-2 cursor-pointer hover:bg-muted transition-colors"
+                          onClick={() => {
+                            setSelectedWorkout(workout)
+                            setSelectedWorkoutClientName(client.client_name)
+                            setWorkoutReport(null)
+                            setWorkoutReportLoading(true)
+                            workoutsApi.assignmentReport(workout.id)
+                              .then(res => setWorkoutReport(res.data))
+                              .catch(() => setWorkoutReport(null))
+                              .finally(() => setWorkoutReportLoading(false))
+                          }}
+                        >
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                             workout.status === 'completed' ? 'bg-green-500/20 text-green-400' :
                             workout.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
@@ -233,6 +252,176 @@ export default function Dashboard() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Workout Report Modal */}
+      {selectedWorkout && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedWorkout(null)}>
+          <div className="bg-card rounded-xl border border-border w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-foreground truncate">
+                    {workoutReport?.workout_name || selectedWorkout.name}
+                  </h2>
+                  {selectedWorkout.status === 'in_progress' && (
+                    <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs font-medium">
+                      <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" />
+                      В процессе
+                    </span>
+                  )}
+                  {selectedWorkout.status === 'completed' && (
+                    <span className="flex items-center gap-1 px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-xs font-medium">
+                      <Check size={12} />
+                      Выполнено
+                    </span>
+                  )}
+                  {(selectedWorkout.status === 'scheduled' || selectedWorkout.status === 'draft') && (
+                    <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-500/20 text-gray-400 rounded-full text-xs font-medium">
+                      <Clock size={12} />
+                      Ожидает
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">{selectedWorkoutClientName}</p>
+              </div>
+              <button onClick={() => setSelectedWorkout(null)} className="p-1 hover:bg-muted rounded-lg transition-colors ml-2">
+                <X size={20} className="text-muted-foreground" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {workoutReportLoading ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <Loader2 size={24} className="text-blue-400 animate-spin" />
+                  <p className="text-sm text-muted-foreground mt-2">Загрузка отчёта...</p>
+                </div>
+              ) : workoutReport ? (
+                <>
+                  {/* Session info */}
+                  {workoutReport.session && (
+                    <div className="bg-muted rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Начало</span>
+                        <span className="text-foreground font-medium">
+                          {new Date(workoutReport.session.started_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      {workoutReport.session.completed_at && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Окончание</span>
+                          <span className="text-foreground font-medium">
+                            {new Date(workoutReport.session.completed_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      )}
+                      {workoutReport.session.duration_seconds != null && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Длительность</span>
+                          <span className="text-foreground font-medium flex items-center gap-1">
+                            <Timer size={14} />
+                            {Math.floor(workoutReport.session.duration_seconds / 60)} мин
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!workoutReport.session && (
+                    <div className="bg-muted rounded-lg p-3 text-center">
+                      <p className="text-sm text-muted-foreground">Тренировка ещё не начата</p>
+                    </div>
+                  )}
+
+                  {/* Totals */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="bg-blue-500/20 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-blue-400">
+                        {workoutReport.totals.completed_exercises}/{workoutReport.totals.planned_exercises}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">упражнений</div>
+                    </div>
+                    <div className="bg-purple-500/20 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-purple-400">
+                        {workoutReport.totals.completed_sets}/{workoutReport.totals.total_sets}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">подходов</div>
+                    </div>
+                    <div className="bg-orange-500/20 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-orange-400">
+                        {workoutReport.totals.volume_kg > 0 ? `${workoutReport.totals.volume_kg}` : '—'}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">объём (кг)</div>
+                    </div>
+                  </div>
+
+                  {/* Exercises list */}
+                  <div>
+                    <h3 className="text-sm font-medium text-secondary-foreground mb-2">Упражнения</h3>
+                    <div className="space-y-2">
+                      {workoutReport.planned_exercises.map(ex => (
+                        <div key={ex.exercise_id} className="bg-muted rounded-lg p-3">
+                          <div className="flex items-start gap-2">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                              ex.is_completed ? 'bg-green-500/20 text-green-400' :
+                              ex.actual_sets.length > 0 ? 'bg-blue-500/20 text-blue-400' :
+                              'bg-gray-500/20 text-gray-500'
+                            }`}>
+                              {ex.is_completed ? <Check size={14} /> :
+                               ex.actual_sets.length > 0 ? <Play size={12} /> :
+                               <Clock size={12} />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-foreground">{ex.exercise_name}</span>
+                                <span className="text-xs text-muted-foreground">{ex.actual_sets.length}/{ex.planned_sets} подх.</span>
+                              </div>
+                              {ex.muscle_group && (
+                                <span className="text-[10px] text-muted-foreground">{ex.muscle_group}</span>
+                              )}
+
+                              {/* Plan info */}
+                              <div className="text-xs text-muted-foreground mt-1">
+                                План: {ex.planned_sets} × {ex.planned_reps ? `${ex.planned_reps} повт.` : ''}{ex.planned_weight ? ` × ${ex.planned_weight} кг` : ''}{ex.planned_duration_seconds ? `${ex.planned_duration_seconds} сек` : ''}
+                              </div>
+
+                              {/* Actual sets */}
+                              {ex.actual_sets.length > 0 && (
+                                <div className="mt-2 space-y-1">
+                                  {ex.actual_sets.map(s => (
+                                    <div key={s.set_number} className="flex items-center gap-2 text-xs">
+                                      <span className="text-muted-foreground w-4">{s.set_number}.</span>
+                                      <span className="text-foreground">
+                                        {s.reps > 0 && `${s.reps} повт.`}
+                                        {s.weight_kg != null && ` × ${s.weight_kg} кг`}
+                                        {s.duration_seconds != null && `${s.duration_seconds} сек`}
+                                      </span>
+                                      {s.completed_at && (
+                                        <span className="text-muted-foreground ml-auto">
+                                          {new Date(s.completed_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <p className="text-sm text-muted-foreground">Не удалось загрузить отчёт</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

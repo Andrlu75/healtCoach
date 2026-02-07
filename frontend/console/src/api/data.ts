@@ -70,9 +70,48 @@ export interface WorkoutsDashboardResponse {
   clients: ClientWorkoutsDashboard[]
 }
 
+export interface WorkoutExerciseReport {
+  exercise_id: number
+  exercise_name: string
+  muscle_group: string
+  planned_sets: number
+  planned_reps: number | null
+  planned_weight: number | null
+  planned_duration_seconds: number | null
+  is_completed: boolean
+  actual_sets: {
+    set_number: number
+    reps: number
+    weight_kg: number | null
+    duration_seconds: number | null
+    completed_at: string | null
+  }[]
+}
+
+export interface WorkoutSessionReport {
+  session: {
+    id: number
+    started_at: string
+    completed_at: string | null
+    duration_seconds: number | null
+    status: 'completed' | 'in_progress'
+  } | null
+  workout_name: string
+  planned_exercises: WorkoutExerciseReport[]
+  totals: {
+    planned_exercises: number
+    completed_exercises: number
+    total_sets: number
+    completed_sets: number
+    volume_kg: number
+  }
+}
+
 export const workoutsApi = {
   dashboard: () =>
     api.get<WorkoutsDashboardResponse>('/workouts/dashboard/'),
+  assignmentReport: (assignmentId: number) =>
+    api.get<WorkoutSessionReport>(`/workouts/assignments/${assignmentId}/detail_report/`),
 }
 
 export const metricsApi = {

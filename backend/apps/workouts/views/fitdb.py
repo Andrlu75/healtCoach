@@ -555,6 +555,96 @@ class FitDBAssignmentViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    @action(detail=True, methods=['get'])
+    def detail_report(self, request, pk=None):
+        """Detailed workout report for coach console modal."""
+        assignment = self.get_object()
+        template = assignment.workout
+
+        # Плановые упражнения из шаблона
+        planned_exercises = WorkoutTemplateExercise.objects.filter(
+            block__template=template
+        ).select_related('exercise').order_by('block__order', 'order')
+
+        # Последняя сессия для этой тренировки + клиента
+        session = FitDBWorkoutSession.objects.filter(
+            workout=template,
+            client=assignment.client,
+        ).order_by('-started_at').first()
+
+        # Логи подходов, сгруппированные по упражнению
+        logs_by_exercise = {}
+        if session:
+            logs = FitDBExerciseLog.objects.filter(session=session).order_by('set_number')
+            for log in logs:
+                ex_id = log.exercise_id
+                if ex_id not in logs_by_exercise:
+                    logs_by_exercise[ex_id] = []
+                logs_by_exercise[ex_id].append({
+                    'set_number': log.set_number,
+                    'reps': log.reps_completed,
+                    'weight_kg': float(log.weight_kg) if log.weight_kg else None,
+                    'duration_seconds': log.duration_seconds,
+                    'completed_at': log.completed_at.isoformat() if log.completed_at else None,
+                })
+
+        # Собираем данные по каждому упражнению
+        exercises_data = []
+        completed_count = 0
+        total_sets = 0
+        completed_sets = 0
+        volume_kg = 0.0
+
+        for te in planned_exercises:
+            params = te.parameters or {}
+            planned_sets = params.get('sets', 0)
+            actual_sets = logs_by_exercise.get(te.exercise_id, [])
+            is_completed = len(actual_sets) >= planned_sets if planned_sets > 0 else len(actual_sets) > 0
+            if is_completed:
+                completed_count += 1
+
+            total_sets += planned_sets
+            completed_sets += len(actual_sets)
+            for s in actual_sets:
+                if s['weight_kg'] and s['reps']:
+                    volume_kg += s['weight_kg'] * s['reps']
+
+            exercises_data.append({
+                'exercise_id': te.exercise_id,
+                'exercise_name': te.exercise.name,
+                'muscle_group': te.exercise.muscle_groups[0] if te.exercise.muscle_groups else '',
+                'planned_sets': planned_sets,
+                'planned_reps': params.get('reps'),
+                'planned_weight': params.get('weight'),
+                'planned_duration_seconds': params.get('duration_seconds'),
+                'is_completed': is_completed,
+                'actual_sets': actual_sets,
+            })
+
+        # Данные сессии
+        session_data = None
+        if session:
+            session_data = {
+                'id': session.id,
+                'started_at': session.started_at.isoformat(),
+                'completed_at': session.completed_at.isoformat() if session.completed_at else None,
+                'duration_seconds': session.duration_seconds,
+                'status': 'completed' if session.completed_at else 'in_progress',
+            }
+
+        return Response({
+            'session': session_data,
+            'workout_name': template.name,
+            'planned_exercises': exercises_data,
+            'totals': {
+                'planned_exercises': len(exercises_data),
+                'completed_exercises': completed_count,
+                'total_sets': total_sets,
+                'completed_sets': completed_sets,
+                'volume_kg': round(volume_kg, 1),
+            },
+        })
+
 
 # ============== FitDB Sessions ==============
 
