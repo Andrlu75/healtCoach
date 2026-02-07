@@ -71,14 +71,27 @@ export function CameraCapture({ isOpen, onClose, onCapture }: CameraCaptureProps
 
     if (!ctx) return
 
-    // Установить размер canvas равным размеру видео
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    // Ресайз до 1500px по длинной стороне
+    const MAX_SIDE = 1500
+    let width = video.videoWidth
+    let height = video.videoHeight
+    if (width > MAX_SIDE || height > MAX_SIDE) {
+      if (width > height) {
+        height = Math.round((height * MAX_SIDE) / width)
+        width = MAX_SIDE
+      } else {
+        width = Math.round((width * MAX_SIDE) / height)
+        height = MAX_SIDE
+      }
+    }
 
-    // Нарисовать кадр
-    ctx.drawImage(video, 0, 0)
+    canvas.width = width
+    canvas.height = height
 
-    // Конвертировать в blob
+    // Нарисовать кадр с ресайзом
+    ctx.drawImage(video, 0, 0, width, height)
+
+    // Конвертировать в blob (JPEG 85%)
     canvas.toBlob(
       (blob) => {
         if (blob) {
@@ -90,7 +103,7 @@ export function CameraCapture({ isOpen, onClose, onCapture }: CameraCaptureProps
         }
       },
       'image/jpeg',
-      0.9
+      0.85
     )
   }
 

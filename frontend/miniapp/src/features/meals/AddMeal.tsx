@@ -8,6 +8,7 @@ import { addMealWithPhoto, analyzeMealPhoto, recalculateMeal, createMealReport, 
 import { useTelegram, useHaptic } from '../../shared/hooks'
 import { Button, Input, Card } from '../../shared/components/ui'
 import { cn } from '../../shared/lib/cn'
+import { compressImage } from '../../shared/lib/compressImage'
 import { CameraCapture } from './components/CameraCapture'
 
 interface MealFormData {
@@ -205,25 +206,27 @@ function AddMeal() {
     galleryInputRef.current?.click()
   }
 
-  const handleCameraCapture = (file: File) => {
-    setPhotoFile(file)
+  const handleCameraCapture = async (file: File) => {
+    const compressed = await compressImage(file)
+    setPhotoFile(compressed)
     const reader = new FileReader()
     reader.onloadend = () => {
       setPhotoPreview(reader.result as string)
     }
-    reader.readAsDataURL(file)
+    reader.readAsDataURL(compressed)
     setAnalyzeError(null)
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      setPhotoFile(file)
+      const compressed = await compressImage(file)
+      setPhotoFile(compressed)
       const reader = new FileReader()
       reader.onloadend = () => {
         setPhotoPreview(reader.result as string)
       }
-      reader.readAsDataURL(file)
+      reader.readAsDataURL(compressed)
       setAnalyzeError(null)
     }
   }
