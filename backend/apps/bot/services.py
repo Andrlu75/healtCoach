@@ -510,7 +510,7 @@ async def get_ai_text_response(bot: TelegramBot, client: Client, text: str) -> s
         interaction_type='text',
         client_input=text,
         ai_request={
-            'system_prompt': persona.system_prompt,
+            'system_prompt': system_prompt,
             'messages': context,
             'provider': provider_name,
             'model': model or '',
