@@ -130,9 +130,9 @@ export default function WorkoutReport() {
         ...ex,
         sets: ex.sets.map((s, si) => {
           if (si !== setIndex) return s
-          const current = s[field] || 0
+          const current = s[field] ?? 0
           const newVal = Math.max(0, current + delta)
-          return { ...s, [field]: newVal || null }
+          return { ...s, [field]: newVal }
         }),
       }
     }))
