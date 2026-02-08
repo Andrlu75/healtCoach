@@ -288,8 +288,10 @@ class OpenAIProvider(AbstractAIProvider):
                 max(max_tokens * GPT5_VISION_TOKEN_MULTIPLIER, GPT5_VISION_MIN_TOKENS)
                 if is_gpt5 else max_tokens
             ),
-            'temperature': temperature,
         }
+
+        if not is_gpt5:
+            kwargs['temperature'] = temperature
 
         # JSON mode для гарантированного JSON ответа
         if json_mode:
