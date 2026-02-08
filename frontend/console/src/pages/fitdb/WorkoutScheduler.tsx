@@ -707,15 +707,29 @@ export default function WorkoutScheduler() {
         </header>
 
         <main className="container mx-auto px-4 py-6">
+          {/* Заголовок календаря */}
+          <div className="mb-6 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-2xl p-6 border border-primary/20">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-primary/15 flex items-center justify-center">
+                <Calendar className="w-7 h-7 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">
+                  График тренировок
+                  {client?.name && (
+                    <span className="text-primary ml-2">{client.name}</span>
+                  )}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {format(weekStart, 'd MMMM', { locale: ru })} — {format(addDays(weekStart, 6), 'd MMMM yyyy', { locale: ru })}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="flex gap-6">
             {/* Left: Weekly Calendar (vertical) */}
             <div className="flex-1">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-foreground">
-                  {format(weekStart, 'd MMMM', { locale: ru })} — {format(addDays(weekStart, 6), 'd MMMM yyyy', { locale: ru })}
-                </h2>
-              </div>
-
               <div className="bg-card border border-border rounded-lg overflow-hidden">
                 {weekDays.map((date) => (
                   <DayDropZone
