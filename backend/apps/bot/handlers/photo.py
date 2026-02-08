@@ -63,10 +63,6 @@ async def handle_photo(bot: TelegramBot, client: Client, message: dict):
 
     caption = message.get('caption', '')
 
-    # Отправляем "анализирую" и typing-индикатор
-    await send_message(bot.token, chat_id, '📸 Фото получил, анализирую...')
-    await send_chat_action(bot.token, chat_id, 'typing')
-
     # Скачиваем самое большое фото (последнее в массиве)
     largest_photo = photos[-1]
     file_id = largest_photo['file_id']
@@ -76,6 +72,15 @@ async def handle_photo(bot: TelegramBot, client: Client, message: dict):
         await send_message(bot.token, chat_id, 'Не удалось загрузить фото. Попробуйте ещё раз.')
         return
 
+    # Если есть активная программа — сначала спрашиваем тип приёма пищи
+    asked = await _maybe_ask_meal_type(bot, client, chat_id, image_data, caption)
+    if asked:
+        return  # Ждём callback с выбором типа
+
+    # Без программы — обычный flow
+    await send_message(bot.token, chat_id, '📸 Фото получил, анализирую...')
+    await send_chat_action(bot.token, chat_id, 'typing')
+
     total_start = time.time()
 
     try:
@@ -84,12 +89,9 @@ async def handle_photo(bot: TelegramBot, client: Client, message: dict):
         image_type = analysis.get('type', 'other')
 
         if image_type == 'food':
-            # Проверяем, нужно ли спросить тип приёма пищи (активная программа)
-            asked = await _maybe_ask_meal_type(bot, client, chat_id, image_data, caption, analysis, total_start)
-            if not asked:
-                await _handle_food_photo_with_analysis(
-                    bot, client, chat_id, image_data, caption, analysis, total_start
-                )
+            await _handle_food_photo_with_analysis(
+                bot, client, chat_id, image_data, caption, analysis, total_start
+            )
         elif image_type == 'data':
             await _handle_data_photo(bot, client, chat_id, image_data)
         else:
@@ -123,9 +125,10 @@ async def handle_photo(bot: TelegramBot, client: Client, message: dict):
     logger.info('[PHOTO] client=%s analyzed directly in chat (%.1fs)', client.pk, time.time() - total_start)
 
 
-async def _maybe_ask_meal_type(bot: TelegramBot, client: Client, chat_id: int, image_data: bytes, caption: str, analysis: dict, total_start: float) -> bool:
+async def _maybe_ask_meal_type(bot: TelegramBot, client: Client, chat_id: int, image_data: bytes, caption: str) -> bool:
     """Check if client has active nutrition program and ask meal type via inline keyboard.
 
+    Called BEFORE analysis. Saves raw image_data in cache for later processing.
     Returns True if question was sent (processing deferred to callback), False otherwise.
     """
     from apps.nutrition_programs.services import get_active_program_for_client, get_client_today, get_program_day
@@ -134,7 +137,7 @@ async def _maybe_ask_meal_type(bot: TelegramBot, client: Client, chat_id: int, i
         today = await sync_to_async(get_client_today)(client)
         program = await sync_to_async(get_active_program_for_client)(client, today)
 
-        if not program or not program.track_compliance:
+        if not program:
             return False
 
         program_day = await sync_to_async(get_program_day)(program, today)
@@ -155,12 +158,10 @@ async def _maybe_ask_meal_type(bot: TelegramBot, client: Client, chat_id: int, i
         if not seen_types:
             return False
 
-        # Сохраняем данные в cache (5 минут)
+        # Сохраняем сырые данные в cache (5 минут) — анализ будет после выбора типа
         cache_data = {
-            'analysis': analysis,
             'image_data': base64.b64encode(image_data).decode('ascii'),
             'caption': caption,
-            'total_start': total_start,
         }
         cache.set(f'pending_meal:{client.pk}', cache_data, timeout=300)
 
@@ -170,10 +171,9 @@ async def _maybe_ask_meal_type(bot: TelegramBot, client: Client, chat_id: int, i
             label = MEAL_TYPE_LABELS.get(mt, mt)
             buttons.append([{'text': label, 'callback_data': f'meal_type:{mt}'}])
 
-        dish_name = analysis.get('dish_name', 'блюдо')
         await send_message_with_inline_keyboard(
             bot.token, chat_id,
-            f'📸 Распознал: *{dish_name}*\n\nК какому приёму пищи относится?',
+            '📸 Фото получил! К какому приёму пищи относится?',
             buttons,
         )
         logger.info('[PHOTO] Asked meal type for client=%s program=%s', client.pk, program.pk)

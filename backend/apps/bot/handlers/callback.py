@@ -1,10 +1,12 @@
 import base64
 import logging
+import time
 
 from asgiref.sync import sync_to_async
 from django.core.cache import cache
 
 from apps.accounts.models import Client
+from apps.meals.services import classify_and_analyze
 from apps.persona.models import TelegramBot
 from ..telegram_api import answer_callback_query, send_message, send_chat_action
 
@@ -32,8 +34,11 @@ async def handle_callback_query(bot: TelegramBot, callback_query: dict):
 
 
 async def _handle_meal_type_callback(bot: TelegramBot, from_user: dict, chat_id: int, callback_data: str):
-    """Handle meal type selection from inline keyboard."""
-    from .photo import _handle_food_photo_with_analysis
+    """Handle meal type selection from inline keyboard.
+
+    Full flow: get cached image → classify_and_analyze → _handle_food_photo_with_analysis
+    """
+    from .photo import _handle_food_photo_with_analysis, MEAL_TYPE_LABELS
 
     meal_type = callback_data.split(':', 1)[1]
     telegram_user_id = from_user.get('id')
@@ -60,18 +65,35 @@ async def _handle_meal_type_callback(bot: TelegramBot, from_user: dict, chat_id:
     # Delete from cache immediately to prevent double processing
     cache.delete(cache_key)
 
-    analysis = cached['analysis']
     image_data = base64.b64decode(cached['image_data'])
     caption = cached.get('caption', '')
-    total_start = cached.get('total_start')
 
+    # Подтверждаем выбор и начинаем анализ
+    meal_label = MEAL_TYPE_LABELS.get(meal_type, meal_type)
+    await send_message(bot.token, chat_id, f'{meal_label} — принял, анализирую...')
     await send_chat_action(bot.token, chat_id, 'typing')
 
-    logger.info('[CALLBACK] Meal type selected: client=%s type=%s dish="%s"',
-                client.pk, meal_type, analysis.get('dish_name', ''))
+    total_start = time.time()
 
-    await _handle_food_photo_with_analysis(
-        bot, client, chat_id, image_data, caption, analysis,
-        total_start=total_start,
-        program_meal_type=meal_type,
-    )
+    logger.info('[CALLBACK] Meal type selected: client=%s type=%s', client.pk, meal_type)
+
+    try:
+        # Полный анализ фото (classify_and_analyze)
+        analysis = await classify_and_analyze(bot, image_data, caption)
+        image_type = analysis.get('type', 'other')
+
+        if image_type == 'food':
+            await _handle_food_photo_with_analysis(
+                bot, client, chat_id, image_data, caption, analysis,
+                total_start=total_start,
+                program_meal_type=meal_type,
+            )
+        else:
+            await send_message(
+                bot.token, chat_id,
+                'Не смог распознать еду на фото. Попробуйте отправить другое фото.',
+            )
+            logger.info('[CALLBACK] Photo classified as %s, not food', image_type)
+    except Exception:
+        logger.exception('[CALLBACK] Error processing photo for client=%s', client.pk)
+        await send_message(bot.token, chat_id, 'Произошла ошибка при анализе. Попробуйте ещё раз.')
