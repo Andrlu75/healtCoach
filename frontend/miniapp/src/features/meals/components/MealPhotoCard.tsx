@@ -72,20 +72,12 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
                 <p className="text-white font-semibold">{meal.dish_name}</p>
                 <p className="text-white/70 text-sm">{typeLabel} · {time}</p>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true) }}
-                  className="w-10 h-10 bg-red-500/80 rounded-full flex items-center justify-center"
-                >
-                  <Trash2 size={18} className="text-white" />
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setIsFullscreen(false) }}
-                  className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"
-                >
-                  <X size={20} className="text-white" />
-                </button>
-              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); setIsFullscreen(false) }}
+                className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"
+              >
+                <X size={20} className="text-white" />
+              </button>
             </div>
           </div>
 
@@ -166,24 +158,35 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
             </div>
           )}
 
-          {/* Footer with nutrition */}
+          {/* Footer with nutrition + delete */}
           <div className="flex-shrink-0 p-4 pb-10 bg-gradient-to-t from-black to-transparent">
-            <div className="grid grid-cols-4 gap-2 text-center">
-              <div>
-                <p className="text-white font-bold text-lg">{meal.calories || 0}</p>
-                <p className="text-white/60 text-xs">ккал</p>
-              </div>
-              <div>
-                <p className="text-white font-bold text-lg">{meal.proteins || 0}г</p>
-                <p className="text-white/60 text-xs">белки</p>
-              </div>
-              <div>
-                <p className="text-white font-bold text-lg">{meal.fats || 0}г</p>
-                <p className="text-white/60 text-xs">жиры</p>
-              </div>
-              <div>
-                <p className="text-white font-bold text-lg">{meal.carbohydrates || 0}г</p>
-                <p className="text-white/60 text-xs">углев.</p>
+            <div className="flex items-end gap-3">
+              {/* Delete button */}
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true) }}
+                className="flex-shrink-0 w-[52px] h-[52px] bg-white/10 rounded-xl flex items-center justify-center"
+              >
+                <Trash2 size={20} className="text-white/40" />
+              </button>
+
+              {/* KBJU cards */}
+              <div className="flex-1 grid grid-cols-4 gap-2 text-center">
+                <div className="bg-blue-500/20 rounded-xl p-2.5">
+                  <p className="text-blue-400 font-bold text-base">{meal.calories || 0}</p>
+                  <p className="text-white/50 text-xs">ккал</p>
+                </div>
+                <div className="bg-red-500/20 rounded-xl p-2.5">
+                  <p className="text-red-400 font-bold text-base">{meal.proteins || 0}г</p>
+                  <p className="text-white/50 text-xs">белки</p>
+                </div>
+                <div className="bg-amber-500/20 rounded-xl p-2.5">
+                  <p className="text-amber-400 font-bold text-base">{meal.fats || 0}г</p>
+                  <p className="text-white/50 text-xs">жиры</p>
+                </div>
+                <div className="bg-green-500/20 rounded-xl p-2.5">
+                  <p className="text-green-400 font-bold text-base">{meal.carbohydrates || 0}г</p>
+                  <p className="text-white/50 text-xs">углев.</p>
+                </div>
               </div>
             </div>
           </div>
