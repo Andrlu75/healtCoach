@@ -1231,7 +1231,7 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
     text_model_used = None
     text_provider_name = None
 
-    if persona.food_response_prompt:
+    if persona and persona.food_response_prompt:
         # Get daily summary for context
         summary = await get_daily_summary(client)
 
@@ -1272,6 +1272,7 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
                 temperature=persona.temperature,
                 model=text_model,
             )
+            text_model_used = text_model
 
             # Log text generation usage
             await log_ai_usage(client.coach, text_provider_name, text_model, text_response, task_type='text', client=client)
@@ -1315,12 +1316,12 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
         ai_response={
             'analysis': data,
             'ai_response': data.get('ai_response'),
-            'vision_model': model_used,
+            'vision_model': model,
             'text_model': text_model_used,
         },
         client_output=data.get('ai_response') or json.dumps(data, ensure_ascii=False),
         provider=text_provider_name or provider_name,
-        model=text_model_used or model_used,
+        model=text_model_used or model,
         duration_ms=duration_ms,
     )
 
