@@ -2,6 +2,7 @@
 FitDB models for workout tracking - simplified interface
 """
 from django.db import models
+from django.utils import timezone
 
 
 class FitDBWorkoutAssignment(models.Model):
@@ -59,7 +60,7 @@ class FitDBWorkoutSession(models.Model):
         null=True,
         blank=True
     )
-    started_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(default=timezone.now)
     completed_at = models.DateTimeField(null=True, blank=True)
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)
 

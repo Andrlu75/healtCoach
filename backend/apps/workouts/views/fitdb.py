@@ -1,6 +1,8 @@
 """
 FitDB API for workouts - simplified interface without blocks abstraction
 """
+from datetime import timedelta
+
 from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -8,6 +10,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db import transaction
 from django.db.models import Count, Prefetch
+from django.utils import timezone
 
 from apps.workouts.models import (
     WorkoutTemplate, WorkoutTemplateBlock, WorkoutTemplateExercise,
@@ -831,6 +834,124 @@ class FitDBSessionViewSet(viewsets.ModelViewSet):
                 'volume_kg': round(total_weight, 1),
             }
         })
+
+    @action(detail=False, methods=['post'], url_path='submit-report')
+    def submit_report(self, request):
+        """
+        Bulk submit workout report (post-workout mode).
+        POST /api/workouts/sessions/submit-report/
+        """
+        client = get_client_from_token(request)
+        if not client:
+            return Response({'error': 'Client not found'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        workout_id = request.data.get('workout_id')
+        assignment_id = request.data.get('assignment_id')
+        duration_minutes = request.data.get('duration_minutes')
+        exercises_data = request.data.get('exercises', [])
+
+        if not workout_id:
+            return Response({'error': 'workout_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            workout = WorkoutTemplate.objects.get(pk=workout_id)
+        except WorkoutTemplate.DoesNotExist:
+            return Response({'error': 'Workout not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        now = timezone.now()
+
+        with transaction.atomic():
+            # Создать сессию
+            duration_seconds = int(duration_minutes * 60) if duration_minutes else None
+            started_at = now - timedelta(seconds=duration_seconds) if duration_seconds else now
+
+            session = FitDBWorkoutSession.objects.create(
+                workout=workout,
+                client=client,
+                started_at=started_at,
+                completed_at=now,
+                duration_seconds=duration_seconds,
+            )
+
+            # Bulk-создать exercise logs
+            log_objects = []
+            total_sets = 0
+            total_reps = 0
+            total_volume = 0.0
+
+            for ex_data in exercises_data:
+                exercise_id = ex_data.get('exercise_id')
+                sets = ex_data.get('sets', [])
+                for s in sets:
+                    reps = s.get('reps', 0)
+                    weight = s.get('weight_kg')
+                    log_objects.append(FitDBExerciseLog(
+                        session=session,
+                        exercise_id=exercise_id,
+                        set_number=s.get('set_number', 1),
+                        reps_completed=reps,
+                        weight_kg=weight,
+                        duration_seconds=s.get('duration_seconds'),
+                    ))
+                    total_sets += 1
+                    total_reps += reps
+                    if weight:
+                        total_volume += float(weight) * reps
+
+            if log_objects:
+                FitDBExerciseLog.objects.bulk_create(log_objects)
+
+            # Activity logs (минимальные для report mode)
+            FitDBActivityLog.objects.bulk_create([
+                FitDBActivityLog(
+                    session=session,
+                    event_type='workout_started',
+                    details={'mode': 'report'},
+                ),
+                FitDBActivityLog(
+                    session=session,
+                    event_type='workout_completed',
+                    details={
+                        'mode': 'report',
+                        'total_sets': total_sets,
+                        'total_reps': total_reps,
+                        'volume_kg': round(total_volume, 1),
+                    },
+                ),
+            ])
+
+            # Обновить assignment
+            if assignment_id:
+                FitDBWorkoutAssignment.objects.filter(
+                    pk=assignment_id, client=client
+                ).update(status='completed')
+
+            # Триггер event-уведомлений
+            try:
+                from apps.reminders.services import schedule_event_reminder
+                schedule_event_reminder(client, 'workout_completed')
+            except Exception:
+                pass
+
+        # Уведомление коучу
+        from apps.workouts.notifications import notify_workout_completed
+        notify_workout_completed(session)
+
+        exercises_count = len([e for e in exercises_data if e.get('sets')])
+        completion_percent = round(total_sets / max(1, sum(
+            len(e.get('sets', [])) for e in exercises_data
+        )) * 100) if exercises_data else 0
+
+        return Response({
+            'session_id': session.id,
+            'totals': {
+                'exercises': exercises_count,
+                'sets': total_sets,
+                'volume_kg': round(total_volume, 1),
+                'duration_minutes': duration_minutes,
+                'completion_percent': completion_percent,
+            }
+        }, status=status.HTTP_201_CREATED)
 
 
 # ============== FitDB Exercise Logs ==============

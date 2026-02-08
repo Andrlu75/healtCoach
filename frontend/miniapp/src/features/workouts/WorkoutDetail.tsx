@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Clock, Dumbbell, Play, CheckCircle2, Loader2, Weight, BarChart3 } from 'lucide-react'
+import { ArrowLeft, Clock, Dumbbell, Play, CheckCircle2, Loader2, Weight, BarChart3, ClipboardCheck } from 'lucide-react'
 import { motion } from 'framer-motion'
 import api from '../../api/client'
 
@@ -422,15 +422,22 @@ export default function WorkoutDetail() {
         </>
       )}
 
-      {/* Start Button */}
+      {/* Action Buttons */}
       {status !== 'completed' && assignmentId && (
-        <div className="fixed bottom-20 left-4 right-4 max-w-md mx-auto">
+        <div className="fixed bottom-20 left-4 right-4 max-w-md mx-auto space-y-2">
           <button
             onClick={() => navigate(`/workouts/${workoutId}/run?assignment=${assignmentId}`)}
             className="w-full bg-blue-500 text-white rounded-2xl py-4 font-semibold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30 active:scale-[0.98] transition-transform"
           >
             <Play className="w-5 h-5" fill="white" />
             Начать тренировку
+          </button>
+          <button
+            onClick={() => navigate(`/workouts/${workoutId}/report?assignment=${assignmentId}`)}
+            className="w-full bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 rounded-2xl py-3 font-medium flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700 active:scale-[0.98] transition-transform"
+          >
+            <ClipboardCheck className="w-5 h-5" />
+            Заполнить отчёт
           </button>
         </div>
       )}
