@@ -11,17 +11,6 @@ interface ExerciseDetail {
   category: string
 }
 
-interface WorkoutExercise {
-  id: string
-  order_index: number
-  sets: number
-  reps: number
-  rest_seconds: number
-  weight_kg: number | null
-  duration_seconds: number | null
-  exercise: ExerciseDetail
-}
-
 interface ReportSet {
   set_number: number
   completed: boolean
