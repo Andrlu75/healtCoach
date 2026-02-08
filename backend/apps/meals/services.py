@@ -1310,7 +1310,7 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
         ai_request={
             'source': 'miniapp',
             'vision_prompt': ANALYZE_FOOD_PROMPT,
-            'text_prompt': persona.food_response_prompt if persona.food_response_prompt else None,
+            'text_prompt': persona.food_response_prompt if persona and persona.food_response_prompt else None,
             'caption': caption,
         },
         ai_response={
@@ -1320,8 +1320,8 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
             'text_model': text_model_used,
         },
         client_output=data.get('ai_response') or json.dumps(data, ensure_ascii=False),
-        provider=text_provider_name or provider_name,
-        model=text_model_used or model,
+        provider=text_provider_name or provider_name or 'openai',
+        model=text_model_used or model or 'default',
         duration_ms=duration_ms,
     )
 
