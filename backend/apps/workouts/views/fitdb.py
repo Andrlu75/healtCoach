@@ -524,6 +524,23 @@ def get_client_from_token(request):
         return None
 
 
+def calc_completion_percent(workout, exercise_logs_qs):
+    """Рассчитать процент выполнения тренировки (план vs факт по подходам)."""
+    planned_exercises = WorkoutTemplateExercise.objects.filter(
+        block__template=workout
+    )
+    total_planned_sets = 0
+    for te in planned_exercises:
+        params = te.parameters or {}
+        total_planned_sets += params.get('sets', 1)
+
+    if total_planned_sets == 0:
+        return 100 if exercise_logs_qs.exists() else 0
+
+    actual_sets = exercise_logs_qs.count()
+    return min(100, round(actual_sets / total_planned_sets * 100))
+
+
 class FitDBAssignmentViewSet(viewsets.ModelViewSet):
     """FitDB API for workout assignments"""
     permission_classes = [AllowAny]
@@ -667,8 +684,8 @@ class FitDBSessionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FitDBWorkoutSession
-        fields = ['id', 'workout_id', 'client_id', 'started_at', 'completed_at', 'duration_seconds', 'workout_detail']
-        read_only_fields = ['started_at', 'workout_detail']
+        fields = ['id', 'workout_id', 'client_id', 'started_at', 'completed_at', 'duration_seconds', 'completion_percent', 'workout_detail']
+        read_only_fields = ['started_at', 'completion_percent', 'workout_detail']
 
     def get_workout_detail(self, obj):
         return {'name': obj.workout.name} if obj.workout else None
@@ -736,6 +753,15 @@ class FitDBSessionViewSet(viewsets.ModelViewSet):
             assignment.status = 'active'
             assignment.save(update_fields=['status'])
 
+    def _on_session_completed(self, instance):
+        """Рассчитать completion_percent и отправить уведомление при завершении."""
+        instance.completion_percent = calc_completion_percent(
+            instance.workout, instance.exercise_logs.all()
+        )
+        instance.save(update_fields=['completion_percent'])
+        from apps.workouts.notifications import notify_workout_completed
+        notify_workout_completed(instance)
+
     def update(self, request, *args, **kwargs):
         """Update session and notify coach about workout completion"""
         instance = self.get_object()
@@ -746,8 +772,7 @@ class FitDBSessionViewSet(viewsets.ModelViewSet):
         # If workout just completed, send notification and update assignment
         instance.refresh_from_db()
         if was_incomplete and instance.completed_at is not None and instance.client:
-            from apps.workouts.notifications import notify_workout_completed
-            notify_workout_completed(instance)
+            self._on_session_completed(instance)
         self._sync_assignment_status(instance)
 
         return response
@@ -762,8 +787,7 @@ class FitDBSessionViewSet(viewsets.ModelViewSet):
         # If workout just completed, send notification and update assignment
         instance.refresh_from_db()
         if was_incomplete and instance.completed_at is not None and instance.client:
-            from apps.workouts.notifications import notify_workout_completed
-            notify_workout_completed(instance)
+            self._on_session_completed(instance)
         self._sync_assignment_status(instance)
 
         return response
@@ -871,6 +895,7 @@ class FitDBSessionViewSet(viewsets.ModelViewSet):
                 started_at=started_at,
                 completed_at=now,
                 duration_seconds=duration_seconds,
+                # completion_percent будет рассчитан после создания логов
             )
 
             # Bulk-создать exercise logs
@@ -933,14 +958,18 @@ class FitDBSessionViewSet(viewsets.ModelViewSet):
             except Exception:
                 pass
 
+            # Рассчитать и сохранить completion_percent из плановых данных
+            completion_percent = calc_completion_percent(
+                workout, FitDBExerciseLog.objects.filter(session=session)
+            )
+            session.completion_percent = completion_percent
+            session.save(update_fields=['completion_percent'])
+
         # Уведомление коучу
         from apps.workouts.notifications import notify_workout_completed
         notify_workout_completed(session)
 
         exercises_count = len([e for e in exercises_data if e.get('sets')])
-        completion_percent = round(total_sets / max(1, sum(
-            len(e.get('sets', [])) for e in exercises_data
-        )) * 100) if exercises_data else 0
 
         return Response({
             'session_id': session.id,
@@ -949,7 +978,7 @@ class FitDBSessionViewSet(viewsets.ModelViewSet):
                 'sets': total_sets,
                 'volume_kg': round(total_volume, 1),
                 'duration_minutes': duration_minutes,
-                'completion_percent': completion_percent,
+                'completion_percent': session.completion_percent,
             }
         }, status=status.HTTP_201_CREATED)
 

@@ -63,6 +63,7 @@ class FitDBWorkoutSession(models.Model):
     started_at = models.DateTimeField(default=timezone.now)
     completed_at = models.DateTimeField(null=True, blank=True)
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)
+    completion_percent = models.PositiveSmallIntegerField(null=True, blank=True)
 
     class Meta:
         db_table = 'fitdb_workout_sessions'

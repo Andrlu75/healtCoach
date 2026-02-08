@@ -212,6 +212,125 @@ export default function WorkoutReport() {
 
   // Экран успеха
   if (success) {
+    const isFullCompletion = success.completion_percent === 100
+
+    if (isFullCompletion) {
+      // Праздничный экран при 100% выполнении
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[70vh] p-6">
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+            className="bg-gradient-to-b from-yellow-400 via-orange-500 to-red-500 rounded-3xl w-full max-w-sm p-1"
+          >
+            <div className="bg-white dark:bg-gray-900 rounded-[22px] p-6 relative overflow-hidden">
+              {/* Confetti */}
+              {Array.from({ length: 20 }).map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-2 h-2 rounded-full"
+                  style={{
+                    background: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'][i % 8],
+                    left: `${Math.random() * 100}%`,
+                    top: '-10px',
+                  }}
+                  animate={{
+                    y: [0, 400 + Math.random() * 200],
+                    x: [0, (Math.random() - 0.5) * 100],
+                    rotate: [0, Math.random() * 720],
+                    opacity: [1, 0],
+                  }}
+                  transition={{
+                    duration: 2 + Math.random(),
+                    delay: Math.random() * 0.5,
+                    ease: 'easeOut',
+                  }}
+                />
+              ))}
+
+              <div className="text-center mb-6 relative z-10">
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 10, delay: 0.2 }}
+                  className="w-24 h-24 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center mx-auto mb-4 shadow-lg"
+                >
+                  <Trophy className="w-12 h-12 text-white" />
+                </motion.div>
+
+                <motion.h3
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-3xl font-bold text-gray-900 dark:text-white mb-2"
+                >
+                  МОЛОДЕЦ!
+                </motion.h3>
+
+                <motion.p
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                  className="text-gray-500 dark:text-gray-400 mb-2"
+                >
+                  {workoutName}
+                </motion.p>
+
+                <motion.p
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 200, delay: 0.5 }}
+                  className="text-5xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent"
+                >
+                  100%
+                </motion.p>
+              </div>
+
+              <motion.div
+                initial={{ y: 30, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="grid grid-cols-3 gap-2 mb-6"
+              >
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 text-center">
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">{success.exercises}</p>
+                  <p className="text-xs text-gray-500">упражнений</p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 text-center">
+                  <p className="text-xl font-bold text-green-600">{success.sets}</p>
+                  <p className="text-xs text-gray-500">подходов</p>
+                </div>
+                {success.volume_kg > 0 ? (
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 text-center">
+                    <p className="text-xl font-bold text-blue-600">{success.volume_kg}</p>
+                    <p className="text-xs text-gray-500">кг объём</p>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 text-center">
+                    <p className="text-xl font-bold text-gray-900 dark:text-white">{durationMinutes}</p>
+                    <p className="text-xs text-gray-500">мин</p>
+                  </div>
+                )}
+              </motion.div>
+
+              <motion.button
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.7 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => navigate('/workouts')}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-2xl py-4 font-bold text-lg shadow-lg"
+              >
+                Отлично!
+              </motion.button>
+            </div>
+          </motion.div>
+        </div>
+      )
+    }
+
+    // Обычный экран при частичном выполнении
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 text-center">
         <motion.div
@@ -233,10 +352,18 @@ export default function WorkoutReport() {
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="text-gray-500 dark:text-gray-400 mb-8"
+          transition={{ delay: 0.3 }}
+          className="text-gray-500 dark:text-gray-400 mb-2"
         >
           {workoutName}
+        </motion.p>
+        <motion.p
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', stiffness: 200, delay: 0.4 }}
+          className="text-4xl font-bold text-green-500 mb-6"
+        >
+          {success.completion_percent}%
         </motion.p>
 
         <motion.div
@@ -257,12 +384,6 @@ export default function WorkoutReport() {
             <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
               <p className="text-xs text-gray-500 dark:text-gray-400">Объём</p>
               <p className="text-xl font-bold text-gray-900 dark:text-white">{success.volume_kg} кг</p>
-            </div>
-          )}
-          {success.completion_percent > 0 && (
-            <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Выполнение</p>
-              <p className="text-xl font-bold text-green-500">{success.completion_percent}%</p>
             </div>
           )}
         </motion.div>

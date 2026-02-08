@@ -363,7 +363,7 @@ class TodayWorkoutsDashboardView(APIView):
                     'session': {
                         'id': latest_session.id,
                         'status': 'completed' if latest_session.completed_at else 'in_progress',
-                        'completion_percentage': 100 if latest_session.completed_at else 50,
+                        'completion_percentage': latest_session.completion_percent if latest_session.completion_percent is not None else (100 if latest_session.completed_at else 50),
                         'duration_seconds': latest_session.duration_seconds,
                     } if latest_session else None,
                 })
