@@ -433,6 +433,10 @@ async def get_program_controller_feedback(
             logger.info('[PROGRAM_CONTROLLER] No active program for client=%s', client.pk)
             return None
 
+        if not program.track_compliance:
+            logger.info('[PROGRAM_CONTROLLER] track_compliance=False for program=%s, skipping', program.pk)
+            return None
+
         program_day = await sync_to_async(get_program_day)(program, today)
         if not program_day:
             logger.info('[PROGRAM_CONTROLLER] No program day for client=%s date=%s', client.pk, today)
@@ -1165,7 +1169,7 @@ async def analyze_food_for_client(client: Client, image_data: bytes, caption: st
     try:
         today = await sync_to_async(get_client_today)(client)
         program = await sync_to_async(get_active_program_for_client)(client, today)
-        if program:
+        if program and program.track_compliance:
             program_day = await sync_to_async(get_program_day)(program, today)
             if program_day:
                 allowed = program_day.allowed_ingredients_list[:10]
@@ -1888,7 +1892,7 @@ async def generate_meal_comment(client: Client, meal: Meal, program_meal_type: s
     try:
         today = await sync_to_async(get_client_today)(client)
         program = await sync_to_async(get_active_program_for_client)(client, today)
-        if program:
+        if program and program.track_compliance:
             program_day = await sync_to_async(get_program_day)(program, today)
             if program_day:
                 allowed = program_day.allowed_ingredients_list[:10]
