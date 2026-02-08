@@ -122,6 +122,7 @@ export interface NutritionProgramUpdatePayload {
   name?: string
   description?: string
   general_notes?: string
+  track_compliance?: boolean
   status?: NutritionProgramStatus
   days?: NutritionProgramDayPayload[]
 }

@@ -197,7 +197,7 @@ export default function NutritionProgramEdit() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [hasUnsavedChanges])
 
-  const handleFormChange = useCallback((field: keyof typeof formData, value: string | number) => {
+  const handleFormChange = useCallback((field: keyof typeof formData, value: string | number | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     setHasUnsavedChanges(true)
     triggerAutoSave()
