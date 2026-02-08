@@ -239,20 +239,20 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
                                 </div>
                                 <div className="grid grid-cols-4 gap-1.5 text-center">
                                   <div>
-                                    <p className="text-blue-400 text-xs font-medium">{ing.calories}</p>
-                                    <p className="text-white/30 text-[10px]">ккал</p>
+                                    <p className="text-blue-400 text-sm font-bold">{ing.calories}</p>
+                                    <p className="text-white/30 text-xs">ккал</p>
                                   </div>
                                   <div>
-                                    <p className="text-red-400 text-xs font-medium">{ing.proteins} г</p>
-                                    <p className="text-white/30 text-[10px]">белки</p>
+                                    <p className="text-red-400 text-sm font-bold">{ing.proteins} г</p>
+                                    <p className="text-white/30 text-xs">белки</p>
                                   </div>
                                   <div>
-                                    <p className="text-amber-400 text-xs font-medium">{ing.fats} г</p>
-                                    <p className="text-white/30 text-[10px]">жиры</p>
+                                    <p className="text-amber-400 text-sm font-bold">{ing.fats} г</p>
+                                    <p className="text-white/30 text-xs">жиры</p>
                                   </div>
                                   <div>
-                                    <p className="text-green-400 text-xs font-medium">{ing.carbs} г</p>
-                                    <p className="text-white/30 text-[10px]">углев.</p>
+                                    <p className="text-green-400 text-sm font-bold">{ing.carbs} г</p>
+                                    <p className="text-white/30 text-xs">углев.</p>
                                   </div>
                                 </div>
                               </div>
