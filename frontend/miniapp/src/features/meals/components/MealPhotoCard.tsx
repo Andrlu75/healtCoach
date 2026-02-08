@@ -253,8 +253,14 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
                 <Trash2 size={20} className="text-white/40" />
               </button>
 
-              {/* KBJU cards */}
-              <div className="flex-1 grid grid-cols-4 gap-2 text-center">
+              {/* Weight + KBJU cards */}
+              <div className={`flex-1 grid gap-2 text-center ${estimatedWeight ? 'grid-cols-5' : 'grid-cols-4'}`}>
+                {estimatedWeight && (
+                  <div className="bg-white/10 rounded-xl p-2.5">
+                    <p className="text-white font-bold text-base">~{estimatedWeight}</p>
+                    <p className="text-white/50 text-xs">грамм</p>
+                  </div>
+                )}
                 <div className="bg-blue-500/20 rounded-xl p-2.5">
                   <p className="text-blue-400 font-bold text-base">{meal.calories || 0}</p>
                   <p className="text-white/50 text-xs">ккал</p>
