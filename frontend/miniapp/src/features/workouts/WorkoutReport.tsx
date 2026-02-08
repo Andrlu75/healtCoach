@@ -68,7 +68,7 @@ export default function WorkoutReport() {
           expanded: false,
           sets: Array.from({ length: setsCount }, (_, i) => ({
             set_number: i + 1,
-            completed: true,
+            completed: false,
             reps: isTimeBased ? 1 : (we.reps || 10),
             weight_kg: isTimeBased ? null : (we.weight_kg || null),
             duration_seconds: isTimeBased ? (we.duration_seconds || 60) : null,
@@ -105,6 +105,21 @@ export default function WorkoutReport() {
           si === setIndex ? { ...s, completed: !s.completed } : s
         ),
       }
+    }))
+  }
+
+  const addSet = (exIndex: number) => {
+    setExercises(prev => prev.map((ex, i) => {
+      if (i !== exIndex) return ex
+      const last = ex.sets[ex.sets.length - 1]
+      const newSet: ReportSet = {
+        set_number: ex.sets.length + 1,
+        completed: true,
+        reps: last?.reps ?? 10,
+        weight_kg: last?.weight_kg ?? null,
+        duration_seconds: last?.duration_seconds ?? null,
+      }
+      return { ...ex, sets: [...ex.sets, newSet] }
     }))
   }
 
@@ -369,7 +384,7 @@ export default function WorkoutReport() {
                     className="overflow-hidden"
                   >
                     <div className="px-4 pb-4 space-y-2">
-                      {ex.sets.map((set, setIndex) => (
+                      {ex.sets.map((set, setIndex: number) => (
                         <div
                           key={set.set_number}
                           className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${
@@ -458,6 +473,13 @@ export default function WorkoutReport() {
                           )}
                         </div>
                       ))}
+                      <button
+                        onClick={() => addSet(exIndex)}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-500 text-xs active:scale-[0.98] transition-transform"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Добавить подход
+                      </button>
                     </div>
                   </motion.div>
                 )}
