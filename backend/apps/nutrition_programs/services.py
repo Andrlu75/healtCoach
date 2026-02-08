@@ -301,6 +301,10 @@ def process_meal_compliance(
     if not program:
         return None, ''
 
+    # Если отслеживание выключено — пропускаем анализ соответствия
+    if not program.track_compliance:
+        return None, ''
+
     # Получаем день программы
     program_day = get_program_day(program, target_date)
     if not program_day:
@@ -430,6 +434,17 @@ async def analyze_meal_report(
     program_day = await sync_to_async(lambda: meal_report.program_day)()
     program = await sync_to_async(lambda: program_day.program)()
     client = await sync_to_async(lambda: program.client)()
+
+    # Если отслеживание выключено — возвращаем пустой результат
+    if not program.track_compliance:
+        return {
+            'recognized_ingredients': [],
+            'is_compliant': True,
+            'compliance_score': 100,
+            'ai_analysis': '',
+            'found_forbidden': [],
+            'found_allowed': [],
+        }
 
     # Информация о клиенте для корректного обращения
     client_name = client.first_name or 'Клиент'

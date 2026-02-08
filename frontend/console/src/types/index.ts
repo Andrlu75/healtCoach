@@ -386,7 +386,7 @@ export interface ClientWorkout {
   description: string
   scheduled_date: string | null
   scheduled_time: string | null
-  status: 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'skipped'
+  status: 'draft' | 'scheduled' | 'active' | 'in_progress' | 'completed' | 'skipped'
   estimated_duration: number | null
   difficulty: 'beginner' | 'intermediate' | 'advanced'
   notes: string

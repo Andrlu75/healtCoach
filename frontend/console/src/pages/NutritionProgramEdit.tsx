@@ -68,6 +68,7 @@ export default function NutritionProgramEdit() {
     general_notes: '',
     start_date: new Date().toISOString().split('T')[0],
     duration_days: 7,
+    track_compliance: true,
   })
 
   const [days, setDays] = useState<DayFormData[]>([])
@@ -92,6 +93,7 @@ export default function NutritionProgramEdit() {
           general_notes: data.general_notes || '',
           start_date: data.start_date,
           duration_days: data.duration_days,
+          track_compliance: data.track_compliance ?? true,
         })
         if (data.days) {
           setDays(
@@ -144,6 +146,7 @@ export default function NutritionProgramEdit() {
         name: formData.name,
         description: formData.description,
         general_notes: formData.general_notes,
+        track_compliance: formData.track_compliance,
         days: days.map((d) => ({
           day_number: d.day_number,
           meals: d.meals,
@@ -217,6 +220,7 @@ export default function NutritionProgramEdit() {
           general_notes: formData.general_notes,
           start_date: formData.start_date,
           duration_days: formData.duration_days,
+          track_compliance: formData.track_compliance,
           days: days.map((d) => ({
             day_number: d.day_number,
             meals: d.meals,
@@ -242,6 +246,7 @@ export default function NutritionProgramEdit() {
           name: formData.name,
           description: formData.description,
           general_notes: formData.general_notes,
+          track_compliance: formData.track_compliance,
           days: days.map((d) => ({
             day_number: d.day_number,
             meals: d.meals,
@@ -707,6 +712,30 @@ export default function NutritionProgramEdit() {
                     placeholder="Рекомендации на всю программу: режим питья, сна, активности..."
                     minRows={3}
                   />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                  <div>
+                    <p className="text-sm font-medium">Отслеживать выполнение</p>
+                    <p className="text-xs text-muted-foreground">
+                      Бот будет сравнивать приёмы пищи с планом и сообщать о несоответствиях
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={formData.track_compliance}
+                    onClick={() => handleFormChange('track_compliance', !formData.track_compliance)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      formData.track_compliance ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        formData.track_compliance ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
                 </div>
 
                 {/* Days overview */}

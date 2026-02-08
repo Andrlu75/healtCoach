@@ -41,7 +41,7 @@ export interface WorkoutDashboardItem {
   id: number
   name: string
   scheduled_time: string | null
-  status: 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'skipped'
+  status: 'draft' | 'scheduled' | 'active' | 'in_progress' | 'completed' | 'skipped'
   difficulty: 'beginner' | 'intermediate' | 'advanced'
   estimated_duration: number | null
   exercises_count: number

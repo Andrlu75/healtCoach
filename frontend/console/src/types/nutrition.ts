@@ -47,6 +47,7 @@ export interface NutritionProgram {
   end_date: string
   duration_days: number
   status: NutritionProgramStatus
+  track_compliance: boolean
   compliance_rate: number | null
   days_count: number
   current_day: number | null
@@ -90,6 +91,7 @@ export interface NutritionProgramListItem {
   start_date: string
   end_date: string
   duration_days: number
+  track_compliance: boolean
   current_day: number | null
   compliance_rate: number | null
   created_at: string
@@ -102,6 +104,7 @@ export interface NutritionProgramCreatePayload {
   general_notes?: string
   start_date: string
   duration_days: number
+  track_compliance?: boolean
   days: NutritionProgramDayPayload[]
 }
 

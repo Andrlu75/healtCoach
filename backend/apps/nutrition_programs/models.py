@@ -88,6 +88,10 @@ class NutritionProgram(models.Model):
         default='draft',
         verbose_name='Статус',
     )
+    track_compliance = models.BooleanField(
+        default=True,
+        verbose_name='Отслеживать выполнение',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

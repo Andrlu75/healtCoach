@@ -43,6 +43,7 @@ class NutritionProgramSerializer(serializers.ModelSerializer):
             'end_date',
             'duration_days',
             'status',
+            'track_compliance',
             'days_count',
             'compliance_rate',
             'current_day',
@@ -113,6 +114,7 @@ class NutritionProgramCreateSerializer(serializers.ModelSerializer):
             'general_notes',
             'start_date',
             'duration_days',
+            'track_compliance',
             'days',
         ]
 
