@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Droplets, Plus, Zap, Sparkles, X, Dumbbell, Play, ChevronRight } from 'lucide-react'
+import { Droplets, Plus, Zap, Sparkles, X, Dumbbell, Play, ChevronRight, ClipboardCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import { getDailySummary, getMeals, getNutritionProgramSummary, getNutritionProgramToday } from '../../api/endpoints'
@@ -275,32 +275,48 @@ function Dashboard() {
               {todayWorkouts.map((workout: any) => (
                 <div
                   key={workout.id}
-                  className="flex items-center justify-between bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3"
+                  className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3"
                   onClick={(e) => {
                     e.stopPropagation()
-                    navigate(`/workouts/${workout.workout_id}`)
+                    navigate(`/workouts/${workout.workout_id}?assignment=${workout.id}`)
                   }}
                 >
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                      {workout.name}
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {workout.exercise_count} упражнений
-                    </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                        {workout.name}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {workout.exercise_count} упражнений
+                      </p>
+                    </div>
                   </div>
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      impact('light')
-                      navigate(`/workouts/${workout.workout_id}/run`)
-                    }}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-medium"
-                  >
-                    <Play size={12} fill="currentColor" />
-                    {workout.status === 'in_progress' || workout.status === 'active' ? 'Продолжить' : 'Начать'}
-                  </motion.button>
+                  <div className="flex items-center gap-2">
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        impact('light')
+                        navigate(`/workouts/${workout.workout_id}/run?assignment=${workout.id}`)
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-orange-500 text-white rounded-lg text-xs font-medium"
+                    >
+                      <Play size={12} fill="currentColor" />
+                      {workout.status === 'in_progress' || workout.status === 'active' ? 'Продолжить' : 'Начать'}
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        impact('light')
+                        navigate(`/workouts/${workout.workout_id}/report?assignment=${workout.id}`)
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700"
+                    >
+                      <ClipboardCheck size={12} />
+                      Отчёт
+                    </motion.button>
+                  </div>
                 </div>
               ))}
             </div>
