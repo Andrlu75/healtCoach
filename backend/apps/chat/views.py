@@ -85,11 +85,21 @@ class InteractionLogListView(APIView):
 
         date_from = request.query_params.get('date_from')
         if date_from:
-            qs = qs.filter(created_at__date__gte=date_from)
+            try:
+                from datetime import date
+                parsed = date.fromisoformat(date_from)
+                qs = qs.filter(created_at__date__gte=parsed)
+            except ValueError:
+                pass
 
         date_to = request.query_params.get('date_to')
         if date_to:
-            qs = qs.filter(created_at__date__lte=date_to)
+            try:
+                from datetime import date
+                parsed = date.fromisoformat(date_to)
+                qs = qs.filter(created_at__date__lte=parsed)
+            except ValueError:
+                pass
 
         try:
             page = max(1, int(request.query_params.get('page', 1)))

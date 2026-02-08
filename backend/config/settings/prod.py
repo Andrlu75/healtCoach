@@ -10,7 +10,7 @@ if 'dev-only' in SECRET_KEY or 'insecure' in SECRET_KEY:
     print("CRITICAL ERROR: SECRET_KEY не настроен для production!", file=sys.stderr)
     sys.exit(1)
 
-if 'dev-only' in ENCRYPTION_KEY or ENCRYPTION_KEY == '':
+if not ENCRYPTION_KEY or ENCRYPTION_KEY == 'zV6OM0v6JUcS7pGN_-oP8XxWJZxVlH5Kv7N8fDl3yxo=':
     print("CRITICAL ERROR: ENCRYPTION_KEY не настроен для production!", file=sys.stderr)
     sys.exit(1)
 

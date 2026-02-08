@@ -259,8 +259,7 @@ HUAWEI_HEALTH_REDIRECT_URI = config('HUAWEI_HEALTH_REDIRECT_URI', default='http:
 
 # Encryption key for tokens (Fernet) - generate with: from cryptography.fernet import Fernet; Fernet.generate_key()
 # SECURITY: ENCRYPTION_KEY ОБЯЗАТЕЛЬНО должен быть уникальным в production!
-# Дефолт - валидный Fernet ключ ТОЛЬКО для локальной разработки
-ENCRYPTION_KEY = config('ENCRYPTION_KEY', default='zV6OM0v6JUcS7pGN_-oP8XxWJZxVlH5Kv7N8fDl3yxo=')
+ENCRYPTION_KEY = config('ENCRYPTION_KEY', default='')
 
 # File upload limits
 MAX_IMAGE_UPLOAD_SIZE = config('MAX_IMAGE_UPLOAD_SIZE', default=10 * 1024 * 1024, cast=int)  # 10 MB

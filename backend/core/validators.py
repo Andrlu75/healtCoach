@@ -47,13 +47,14 @@ def validate_image_extension(file) -> None:
     """Проверяет расширение файла."""
     import os
     name = getattr(file, 'name', '')
-    if name:
-        ext = os.path.splitext(name)[1].lower()
-        if ext and ext not in ALLOWED_IMAGE_EXTENSIONS:
-            raise ValidationError(
-                f'Недопустимое расширение файла: {ext}. '
-                f'Разрешены: {", ".join(ALLOWED_IMAGE_EXTENSIONS)}'
-            )
+    if not name:
+        raise ValidationError('Имя файла обязательно')
+    ext = os.path.splitext(name)[1].lower()
+    if not ext or ext not in ALLOWED_IMAGE_EXTENSIONS:
+        raise ValidationError(
+            f'Недопустимое расширение файла: {ext or "(нет)"}. '
+            f'Разрешены: {", ".join(ALLOWED_IMAGE_EXTENSIONS)}'
+        )
 
 
 def validate_image_is_valid(file) -> None:

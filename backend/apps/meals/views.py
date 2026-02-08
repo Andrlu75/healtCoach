@@ -479,7 +479,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         Возвращает до 10 продуктов, подходящих под запрос.
         """
         query = request.query_params.get('q', '').strip()
-        if len(query) < 2:
+        if len(query) < 2 or len(query) > 100:
             return Response([])
 
         coach = request.user.coach_profile

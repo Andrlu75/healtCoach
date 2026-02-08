@@ -26,16 +26,14 @@ async def telegram_webhook(request, bot_id: int):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
-    # Validate secret token - REQUIRED in production
+    # Validate secret token - REQUIRED
     secret = getattr(settings, 'TELEGRAM_WEBHOOK_SECRET', '')
     if not secret:
-        logger.error('TELEGRAM_WEBHOOK_SECRET is not configured! Webhook is vulnerable.')
-        # In production, reject requests without configured secret
-        if not settings.DEBUG:
-            return JsonResponse({'error': 'Server misconfigured'}, status=500)
+        logger.error('TELEGRAM_WEBHOOK_SECRET is not configured!')
+        return JsonResponse({'error': 'Server misconfigured'}, status=500)
 
     token = request.headers.get('X-Telegram-Bot-Api-Secret-Token', '')
-    if secret and not hmac.compare_digest(token, secret):
+    if not hmac.compare_digest(token, secret):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
 
     # Parse body
