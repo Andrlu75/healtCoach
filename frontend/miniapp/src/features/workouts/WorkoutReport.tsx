@@ -4,13 +4,6 @@ import { ArrowLeft, Check, ChevronDown, ChevronUp, Loader2, Minus, Plus, Trophy 
 import { motion, AnimatePresence } from 'framer-motion'
 import api from '../../api/client'
 
-interface ExerciseDetail {
-  id: string
-  name: string
-  muscle_group: string
-  category: string
-}
-
 interface ReportSet {
   set_number: number
   completed: boolean
