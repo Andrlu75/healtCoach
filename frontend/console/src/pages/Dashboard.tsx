@@ -228,21 +228,30 @@ export default function Dashboard() {
                           }}
                         >
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                            workout.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                            workout.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
-                            workout.status === 'skipped' ? 'bg-red-500/20 text-red-400' :
-                            'bg-gray-500/20 text-gray-400'
+                            workout.status === 'completed'
+                              ? (workout.session?.completion_percentage != null && workout.session.completion_percentage < 100
+                                ? 'bg-orange-500/20 text-orange-400'
+                                : 'bg-green-500/20 text-green-400')
+                              : workout.status === 'in_progress' || workout.status === 'active'
+                                ? 'bg-blue-500/20 text-blue-400'
+                                : workout.status === 'skipped'
+                                  ? 'bg-red-500/20 text-red-400'
+                                  : 'bg-gray-500/20 text-gray-400'
                           }`}>
                             {workout.status === 'completed' ? <Check size={16} /> :
-                             workout.status === 'in_progress' ? <Play size={16} /> :
+                             workout.status === 'in_progress' || workout.status === 'active' ? <Play size={16} /> :
                              <Clock size={16} />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-xs font-medium text-foreground truncate">{workout.name}</div>
                             <div className="text-[10px] text-muted-foreground">
                               {workout.scheduled_time || '—'} • {workout.exercises_count} упр.
-                              {workout.session && workout.status !== 'completed' && (
-                                <span className="text-blue-400"> • {workout.session.completion_percentage}%</span>
+                              {workout.session && (
+                                <span className={
+                                  workout.status === 'completed'
+                                    ? (workout.session.completion_percentage === 100 ? 'text-green-400' : 'text-orange-400')
+                                    : 'text-blue-400'
+                                }> • {workout.session.completion_percentage}%</span>
                               )}
                             </div>
                           </div>

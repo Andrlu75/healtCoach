@@ -478,11 +478,12 @@ class FitDBAssignmentSerializer(serializers.ModelSerializer):
         queryset=Client.objects.all()
     )
     workout_detail = serializers.SerializerMethodField()
+    latest_session = serializers.SerializerMethodField()
 
     class Meta:
         model = FitDBWorkoutAssignment
-        fields = ['id', 'workout_id', 'client_id', 'assigned_at', 'due_date', 'status', 'notes', 'workout_detail']
-        read_only_fields = ['assigned_at', 'workout_detail']
+        fields = ['id', 'workout_id', 'client_id', 'assigned_at', 'due_date', 'status', 'notes', 'workout_detail', 'latest_session']
+        read_only_fields = ['assigned_at', 'workout_detail', 'latest_session']
 
     def get_workout_detail(self, obj):
         if not obj.workout:
@@ -497,6 +498,19 @@ class FitDBAssignmentSerializer(serializers.ModelSerializer):
             'name': obj.workout.name,
             'description': obj.workout.description or '',
             'exercise_count': exercise_count,
+        }
+
+    def get_latest_session(self, obj):
+        session = FitDBWorkoutSession.objects.filter(
+            workout=obj.workout, client=obj.client
+        ).order_by('-started_at').first()
+        if not session:
+            return None
+        return {
+            'id': session.id,
+            'completed_at': session.completed_at.isoformat() if session.completed_at else None,
+            'completion_percent': session.completion_percent,
+            'duration_seconds': session.duration_seconds,
         }
 
 

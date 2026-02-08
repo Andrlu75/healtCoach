@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Droplets, Plus, Zap, Sparkles, X, Dumbbell, Play, ChevronRight, ClipboardCheck } from 'lucide-react'
+import { Droplets, Plus, Zap, Sparkles, X, Dumbbell, Play, ChevronRight, ClipboardCheck, Check } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import { getDailySummary, getMeals, getNutritionProgramSummary, getNutritionProgramToday } from '../../api/endpoints'
@@ -71,9 +71,8 @@ function Dashboard() {
       const assignments = data.results || data
       const todayStr = dayjs().format('YYYY-MM-DD')
 
-      // Фильтруем тренировки на сегодня (не завершённые)
       const todayAssignments = assignments.filter((a: any) =>
-        a.due_date === todayStr && a.status !== 'completed'
+        a.due_date === todayStr
       )
 
       return todayAssignments.map((a: any) => ({
@@ -82,6 +81,7 @@ function Dashboard() {
         name: a.workout_detail?.name || 'Тренировка',
         exercise_count: a.workout_detail?.exercise_count || 0,
         status: a.status,
+        session: a.latest_session || null,
       }))
     },
   })
@@ -272,53 +272,95 @@ function Dashboard() {
 
           {todayWorkouts && todayWorkouts.length > 0 ? (
             <div className="space-y-3">
-              {todayWorkouts.map((workout: any) => (
-                <div
-                  key={workout.id}
-                  className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    navigate(`/workouts/${workout.workout_id}?assignment=${workout.id}`)
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                        {workout.name}
-                      </h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {workout.exercise_count} упражнений
-                      </p>
+              {todayWorkouts.map((workout: any) => {
+                const isCompleted = workout.status === 'completed' || workout.session?.completed_at
+                const isActive = workout.status === 'active' || workout.status === 'in_progress'
+                const completionPercent = workout.session?.completion_percent
+
+                return (
+                  <div
+                    key={workout.id}
+                    className={`rounded-xl p-3 ${
+                      isCompleted
+                        ? 'bg-green-50 dark:bg-green-900/20'
+                        : isActive
+                          ? 'bg-blue-50 dark:bg-blue-900/20'
+                          : 'bg-orange-50 dark:bg-orange-900/20'
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/workouts/${workout.workout_id}?assignment=${workout.id}`)
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {isCompleted && (
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                            completionPercent === 100 ? 'bg-green-500' : 'bg-orange-500'
+                          }`}>
+                            <Check size={14} className="text-white" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                            {workout.name}
+                          </h3>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {workout.exercise_count} упражнений
+                          </p>
+                        </div>
+                      </div>
+                      {isCompleted && completionPercent != null && (
+                        <span className={`text-sm font-bold ${completionPercent === 100 ? 'text-green-500' : 'text-orange-500'}`}>
+                          {completionPercent}%
+                        </span>
+                      )}
                     </div>
+
+                    {isCompleted ? (
+                      <div className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium ${
+                        completionPercent === 100
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                          : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
+                      }`}>
+                        <Check size={12} />
+                        {completionPercent === 100 ? 'Выполнено' : `Выполнено на ${completionPercent}%`}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <motion.button
+                          whileTap={{ scale: 0.95 }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            impact('light')
+                            navigate(`/workouts/${workout.workout_id}/run?assignment=${workout.id}`)
+                          }}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-white rounded-lg text-xs font-medium ${
+                            isActive ? 'bg-blue-500' : 'bg-orange-500'
+                          }`}
+                        >
+                          <Play size={12} fill="currentColor" />
+                          {isActive ? 'Продолжить' : 'Начать'}
+                        </motion.button>
+                        {!isActive && (
+                          <motion.button
+                            whileTap={{ scale: 0.95 }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              impact('light')
+                              navigate(`/workouts/${workout.workout_id}/report?assignment=${workout.id}`)
+                            }}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700"
+                          >
+                            <ClipboardCheck size={12} />
+                            Отчёт
+                          </motion.button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        impact('light')
-                        navigate(`/workouts/${workout.workout_id}/run?assignment=${workout.id}`)
-                      }}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-orange-500 text-white rounded-lg text-xs font-medium"
-                    >
-                      <Play size={12} fill="currentColor" />
-                      {workout.status === 'in_progress' || workout.status === 'active' ? 'Продолжить' : 'Начать'}
-                    </motion.button>
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        impact('light')
-                        navigate(`/workouts/${workout.workout_id}/report?assignment=${workout.id}`)
-                      }}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700"
-                    >
-                      <ClipboardCheck size={12} />
-                      Отчёт
-                    </motion.button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <div className="text-center py-2">
