@@ -164,85 +164,7 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
             </div>
           )}
 
-          {/* Details button + expandable panel */}
-          {hasDetails && (
-            <div className="flex-shrink-0 px-4">
-              <button
-                onClick={(e) => { e.stopPropagation(); setShowDetails(!showDetails) }}
-                className="w-full flex items-center justify-center gap-1.5 py-2 text-white/60 text-sm"
-              >
-                <span>{showDetails ? 'Скрыть' : 'Подробнее'}</span>
-                <motion.span
-                  animate={{ rotate: showDetails ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <ChevronDown size={16} />
-                </motion.span>
-              </button>
-
-              <AnimatePresence>
-                {showDetails && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25 }}
-                    className="overflow-hidden"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="bg-white/10 rounded-xl p-3 mb-2 max-h-[40vh] overflow-y-auto">
-                      {estimatedWeight && (
-                        <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/10">
-                          <span className="text-white/50 text-xs">Вес порции</span>
-                          <span className="text-white font-medium text-sm">~{estimatedWeight} г</span>
-                        </div>
-                      )}
-
-                      {detailedIngredients && detailedIngredients.length > 0 ? (
-                        <div className="space-y-3">
-                          {detailedIngredients.map((ing, i) => (
-                            <div key={i} className="bg-white/5 rounded-lg p-2.5">
-                              <div className="flex items-center justify-between mb-1.5">
-                                <p className="text-white text-sm font-medium">{ing.name}</p>
-                                <span className="text-white/40 text-xs">{ing.weight} г</span>
-                              </div>
-                              <div className="grid grid-cols-4 gap-1.5 text-center">
-                                <div>
-                                  <p className="text-blue-400 text-xs font-medium">{ing.calories}</p>
-                                  <p className="text-white/30 text-[10px]">ккал</p>
-                                </div>
-                                <div>
-                                  <p className="text-red-400 text-xs font-medium">{ing.proteins} г</p>
-                                  <p className="text-white/30 text-[10px]">белки</p>
-                                </div>
-                                <div>
-                                  <p className="text-amber-400 text-xs font-medium">{ing.fats} г</p>
-                                  <p className="text-white/30 text-[10px]">жиры</p>
-                                </div>
-                                <div>
-                                  <p className="text-green-400 text-xs font-medium">{ing.carbs} г</p>
-                                  <p className="text-white/30 text-[10px]">углев.</p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : simpleIngredients && simpleIngredients.length > 0 ? (
-                        <div className="space-y-1">
-                          <p className="text-white/50 text-xs mb-2">Ингредиенты</p>
-                          {simpleIngredients.map((ing, i) => (
-                            <p key={i} className="text-white text-sm">• {ing}</p>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-
-          {/* Footer with nutrition + delete */}
+          {/* Footer with nutrition + delete + details */}
           <div className="flex-shrink-0 p-4 pb-10 bg-gradient-to-t from-black to-transparent">
             <div className="flex items-end gap-3">
               {/* Delete button */}
@@ -279,6 +201,77 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
                 </div>
               </div>
             </div>
+
+            {/* Details button + expandable panel under KBJU */}
+            {hasDetails && (
+              <div className="mt-2">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowDetails(!showDetails) }}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-white/60 text-sm"
+                >
+                  <span>{showDetails ? 'Скрыть' : 'Подробнее'}</span>
+                  <motion.span
+                    animate={{ rotate: showDetails ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ChevronDown size={16} />
+                  </motion.span>
+                </button>
+
+                <AnimatePresence>
+                  {showDetails && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="overflow-hidden"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="bg-white/10 rounded-xl p-3 max-h-[40vh] overflow-y-auto">
+                        {detailedIngredients && detailedIngredients.length > 0 ? (
+                          <div className="space-y-3">
+                            {detailedIngredients.map((ing, i) => (
+                              <div key={i} className="bg-white/5 rounded-lg p-2.5">
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <p className="text-white text-sm font-medium">{ing.name}</p>
+                                  <span className="text-white/40 text-xs">{ing.weight} г</span>
+                                </div>
+                                <div className="grid grid-cols-4 gap-1.5 text-center">
+                                  <div>
+                                    <p className="text-blue-400 text-xs font-medium">{ing.calories}</p>
+                                    <p className="text-white/30 text-[10px]">ккал</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-red-400 text-xs font-medium">{ing.proteins} г</p>
+                                    <p className="text-white/30 text-[10px]">белки</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-amber-400 text-xs font-medium">{ing.fats} г</p>
+                                    <p className="text-white/30 text-[10px]">жиры</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-green-400 text-xs font-medium">{ing.carbs} г</p>
+                                    <p className="text-white/30 text-[10px]">углев.</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : simpleIngredients && simpleIngredients.length > 0 ? (
+                          <div className="space-y-1">
+                            <p className="text-white/50 text-xs mb-2">Ингредиенты</p>
+                            {simpleIngredients.map((ing, i) => (
+                              <p key={i} className="text-white text-sm">• {ing}</p>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
         </motion.div>
       )}
