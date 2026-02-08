@@ -721,7 +721,7 @@ class FitDBSessionViewSet(viewsets.ModelViewSet):
         return queryset
 
     def create(self, request, *args, **kwargs):
-        """Create session and notify coach about workout start"""
+        """Create session or return existing incomplete session for same workout+client today"""
         # Try to get client from JWT token
         client = get_client_from_token(request)
 
@@ -729,6 +729,23 @@ class FitDBSessionViewSet(viewsets.ModelViewSet):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if client and 'client_id' not in data:
             data['client_id'] = client.pk
+
+        # Check for existing incomplete session (same workout, same client, today)
+        workout_id = data.get('workout_id')
+        client_id = data.get('client_id')
+        if workout_id and client_id:
+            today = timezone.now().date()
+            existing = FitDBWorkoutSession.objects.filter(
+                workout_id=workout_id,
+                client_id=client_id,
+                completed_at__isnull=True,
+                started_at__date=today,
+            ).order_by('-started_at').first()
+            if existing:
+                serializer = self.get_serializer(existing)
+                resp = serializer.data
+                resp['resumed'] = True
+                return Response(resp, status=status.HTTP_200_OK)
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)

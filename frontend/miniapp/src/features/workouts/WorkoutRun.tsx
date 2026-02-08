@@ -87,8 +87,7 @@ export default function WorkoutRun() {
   useEffect(() => {
     isMountedRef.current = true
     if (workoutId) {
-      fetchExercises()
-      createSession()
+      initWorkout()
     }
     return () => {
       isMountedRef.current = false
@@ -97,16 +96,70 @@ export default function WorkoutRun() {
     }
   }, [workoutId])
 
-  const createSession = async () => {
+  const initWorkout = async () => {
+    const exercisesList = await fetchExercises()
+    await createSession(exercisesList || [])
+  }
+
+  const createSession = async (exercisesList: Exercise[]) => {
     try {
       const { data } = await api.post('/workouts/sessions/', { workout_id: workoutId })
       if (!isMountedRef.current) return
       const newSessionId = String(data.id)
       setSessionId(newSessionId)
-      // Log workout started
-      logActivity(newSessionId, 'workout_started', null, null, {})
+
+      if (data.resumed) {
+        // Восстанавливаем существующую сессию — загружаем выполненные подходы
+        if (data.started_at) {
+          startTimeRef.current = new Date(data.started_at)
+        }
+        await restoreSessionLogs(newSessionId, exercisesList)
+      } else {
+        logActivity(newSessionId, 'workout_started', null, null, {})
+      }
     } catch (error) {
       console.error('Error creating session:', error)
+    }
+  }
+
+  const restoreSessionLogs = async (sid: string, exercisesList: Exercise[]) => {
+    try {
+      const { data } = await api.get('/workouts/exercise-logs/', { params: { session_id: sid } })
+      const logs = Array.isArray(data) ? data : (data.results || [])
+      if (!isMountedRef.current || logs.length === 0) return
+
+      // Группируем логи по exercise_id → set_number
+      const completedMap: Record<string, Record<number, { reps: number; weight: number | null }>> = {}
+      for (const log of logs) {
+        const exId = String(log.exercise_id || log.exercise)
+        if (!completedMap[exId]) completedMap[exId] = {}
+        completedMap[exId][log.set_number] = {
+          reps: log.reps_completed,
+          weight: log.weight_kg != null ? Number(log.weight_kg) : null,
+        }
+      }
+
+      // Обновляем setLogs — отмечаем выполненные подходы
+      setSetLogs(prev => {
+        const updated = { ...prev }
+        for (const [templateExId, sets] of Object.entries(updated)) {
+          const ex = exercisesList.find(e => e.id === templateExId)
+          if (!ex) continue
+          const exCompletedSets = completedMap[ex.exercise.id]
+          if (!exCompletedSets) continue
+
+          updated[templateExId] = sets.map(s => {
+            const log = exCompletedSets[s.set_number]
+            if (log) {
+              return { ...s, completed: true, reps: log.reps, weight: log.weight }
+            }
+            return s
+          })
+        }
+        return updated
+      })
+    } catch (error) {
+      console.error('Error restoring session logs:', error)
     }
   }
 
@@ -131,12 +184,12 @@ export default function WorkoutRun() {
     }
   }
 
-  const fetchExercises = async () => {
+  const fetchExercises = async (): Promise<Exercise[] | null> => {
     try {
       const { data: exercisesData } = await api.get('/workouts/fitdb/workout-exercises/', {
         params: { workout_id: workoutId }
       })
-      if (!isMountedRef.current) return
+      if (!isMountedRef.current) return null
 
       const exercisesList = Array.isArray(exercisesData) ? exercisesData : (exercisesData.results || [])
 
@@ -183,8 +236,10 @@ export default function WorkoutRun() {
         }))
       })
       setSetLogs(logs)
+      return exercisesWithDetails
     } catch (error) {
       console.error('Error fetching exercises:', error)
+      return null
     } finally {
       if (isMountedRef.current) setLoading(false)
     }

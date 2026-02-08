@@ -347,20 +347,18 @@ function Dashboard() {
                           <Play size={12} fill="currentColor" />
                           {isActive ? 'Продолжить' : 'Начать'}
                         </motion.button>
-                        {!isActive && (
-                          <motion.button
-                            whileTap={{ scale: 0.95 }}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              impact('light')
-                              navigate(`/workouts/${workout.workout_id}/report?assignment=${workout.id}`)
-                            }}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700"
-                          >
-                            <ClipboardCheck size={12} />
-                            Отчёт
-                          </motion.button>
-                        )}
+                        <motion.button
+                          whileTap={{ scale: 0.95 }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            impact('light')
+                            navigate(`/workouts/${workout.workout_id}/report?assignment=${workout.id}`)
+                          }}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700"
+                        >
+                          <ClipboardCheck size={12} />
+                          Отчёт
+                        </motion.button>
                       </div>
                     )}
                   </div>
