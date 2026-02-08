@@ -10,6 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from apps.accounts.models import Client
 from apps.persona.models import TelegramBot
 
+from .handlers.callback import handle_callback_query
 from .handlers.commands import handle_start
 from .handlers.onboarding import handle_onboarding
 from .handlers.photo import handle_photo
@@ -55,6 +56,18 @@ async def telegram_webhook(request, bot_id: int):
 
 async def _dispatch(bot_id: int, data: dict):
     """Route the update to the appropriate handler."""
+    # Handle callback_query (inline keyboard button press)
+    callback_query = data.get('callback_query')
+    if callback_query:
+        bot = await sync_to_async(
+            lambda: TelegramBot.objects.select_related('coach').filter(
+                pk=bot_id, is_active=True
+            ).first()
+        )()
+        if bot:
+            await handle_callback_query(bot, callback_query)
+        return
+
     message = data.get('message')
     if not message:
         return

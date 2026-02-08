@@ -244,6 +244,55 @@ async def send_message_with_webapp(
         return None
 
 
+async def send_message_with_inline_keyboard(
+    token: str,
+    chat_id: int | str,
+    text: str,
+    buttons: list[list[dict]],
+    parse_mode: str | None = 'Markdown',
+) -> dict | None:
+    """Send a message with inline keyboard buttons.
+
+    buttons format: [[{'text': 'Label', 'callback_data': 'data'}], ...]
+    Each inner list is a row of buttons.
+    """
+    url = f'{TELEGRAM_API}/bot{token}/sendMessage'
+    payload = {
+        'chat_id': chat_id,
+        'text': text,
+        'reply_markup': {'inline_keyboard': buttons},
+    }
+    if parse_mode:
+        payload['parse_mode'] = parse_mode
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(url, json=payload)
+        result = resp.json()
+        if result.get('ok'):
+            return result.get('result')
+
+        if parse_mode:
+            del payload['parse_mode']
+            resp = await client.post(url, json=payload)
+            result = resp.json()
+            if result.get('ok'):
+                return result.get('result')
+
+        logger.error('Failed to send inline keyboard to chat %s: %s', chat_id, result)
+        return None
+
+
+async def answer_callback_query(token: str, callback_query_id: str, text: str = '') -> None:
+    """Answer a callback query to remove loading state from button."""
+    url = f'{TELEGRAM_API}/bot{token}/answerCallbackQuery'
+    payload = {'callback_query_id': callback_query_id}
+    if text:
+        payload['text'] = text
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        await client.post(url, json=payload)
+
+
 async def send_chat_action(token: str, chat_id: int, action: str = 'typing') -> None:
     """Send chat action (e.g. typing indicator)."""
     url = f'{TELEGRAM_API}/bot{token}/sendChatAction'

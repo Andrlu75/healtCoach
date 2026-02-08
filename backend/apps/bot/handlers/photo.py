@@ -35,12 +35,22 @@ from apps.metrics.services import (
 )
 from apps.persona.models import TelegramBot
 
+import base64
 from django.conf import settings
+from django.core.cache import cache
 
-from ..telegram_api import get_file, send_chat_action, send_message, send_message_with_webapp, send_notification, send_photo_notification
+from ..telegram_api import get_file, send_chat_action, send_message, send_message_with_inline_keyboard, send_message_with_webapp, send_notification, send_photo_notification
 from ..services import get_ai_vision_response, _get_persona, _get_api_key
 
 logger = logging.getLogger(__name__)
+
+MEAL_TYPE_LABELS = {
+    'breakfast': '🍳 Завтрак',
+    'snack1': '🍎 Перекус 1',
+    'lunch': '🍲 Обед',
+    'snack2': '🍎 Перекус 2',
+    'dinner': '🍽 Ужин',
+}
 
 
 async def handle_photo(bot: TelegramBot, client: Client, message: dict):
@@ -74,9 +84,12 @@ async def handle_photo(bot: TelegramBot, client: Client, message: dict):
         image_type = analysis.get('type', 'other')
 
         if image_type == 'food':
-            await _handle_food_photo_with_analysis(
-                bot, client, chat_id, image_data, caption, analysis, total_start
-            )
+            # Проверяем, нужно ли спросить тип приёма пищи (активная программа)
+            asked = await _maybe_ask_meal_type(bot, client, chat_id, image_data, caption, analysis, total_start)
+            if not asked:
+                await _handle_food_photo_with_analysis(
+                    bot, client, chat_id, image_data, caption, analysis, total_start
+                )
         elif image_type == 'data':
             await _handle_data_photo(bot, client, chat_id, image_data)
         else:
@@ -110,7 +123,68 @@ async def handle_photo(bot: TelegramBot, client: Client, message: dict):
     logger.info('[PHOTO] client=%s analyzed directly in chat (%.1fs)', client.pk, time.time() - total_start)
 
 
-async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, chat_id: int, image_data: bytes, caption: str, analysis: dict, total_start: float = None):
+async def _maybe_ask_meal_type(bot: TelegramBot, client: Client, chat_id: int, image_data: bytes, caption: str, analysis: dict, total_start: float) -> bool:
+    """Check if client has active nutrition program and ask meal type via inline keyboard.
+
+    Returns True if question was sent (processing deferred to callback), False otherwise.
+    """
+    from apps.nutrition_programs.services import get_active_program_for_client, get_client_today, get_program_day
+
+    try:
+        today = await sync_to_async(get_client_today)(client)
+        program = await sync_to_async(get_active_program_for_client)(client, today)
+
+        if not program or not program.track_compliance:
+            return False
+
+        program_day = await sync_to_async(get_program_day)(program, today)
+        if not program_day:
+            return False
+
+        meals = await sync_to_async(program_day.get_meals_list)()
+        if not meals:
+            return False
+
+        # Собираем уникальные типы приёмов пищи из программы дня
+        seen_types = []
+        for m in meals:
+            mt = m.get('type', '')
+            if mt and mt not in seen_types:
+                seen_types.append(mt)
+
+        if not seen_types:
+            return False
+
+        # Сохраняем данные в cache (5 минут)
+        cache_data = {
+            'analysis': analysis,
+            'image_data': base64.b64encode(image_data).decode('ascii'),
+            'caption': caption,
+            'total_start': total_start,
+        }
+        cache.set(f'pending_meal:{client.pk}', cache_data, timeout=300)
+
+        # Формируем inline-клавиатуру
+        buttons = []
+        for mt in seen_types:
+            label = MEAL_TYPE_LABELS.get(mt, mt)
+            buttons.append([{'text': label, 'callback_data': f'meal_type:{mt}'}])
+
+        dish_name = analysis.get('dish_name', 'блюдо')
+        await send_message_with_inline_keyboard(
+            bot.token, chat_id,
+            f'📸 Распознал: *{dish_name}*\n\nК какому приёму пищи относится?',
+            buttons,
+        )
+        logger.info('[PHOTO] Asked meal type for client=%s program=%s', client.pk, program.pk)
+        return True
+
+    except Exception as e:
+        logger.warning('[PHOTO] Error checking program for meal type question: %s', e)
+        return False
+
+
+async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, chat_id: int, image_data: bytes, caption: str, analysis: dict, total_start: float = None, program_meal_type: str = ''):
     """Handle food photo with pre-computed analysis from classify_and_analyze."""
     from decimal import Decimal
     from core.ai.factory import get_ai_provider
@@ -267,7 +341,7 @@ async def _handle_food_photo_with_analysis(bot: TelegramBot, client: Client, cha
         )()
 
     # Добавляем полный feedback программы питания (как в miniapp)
-    meal_type = analysis.get('dish_type', '')
+    meal_type = program_meal_type or analysis.get('dish_type', '')
     program_feedback = await get_program_controller_feedback(client, analysis, meal_type)
     if program_feedback:
         response_text += f'\n\n📋 *Программа питания:*\n{program_feedback}'
