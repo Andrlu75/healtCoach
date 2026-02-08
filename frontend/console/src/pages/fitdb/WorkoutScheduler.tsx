@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { DndContext, DragOverlay, useDroppable, useDraggable } from '@dnd-kit/core'
+import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { ArrowLeft, ChevronLeft, ChevronRight, Dumbbell, Loader2, X, Calendar, GripVertical, Plus, Minus, Trash2, Search, Save, Edit3, Tag, Check, Clock, Zap, Heart, Target, Pencil } from 'lucide-react'
@@ -258,6 +260,23 @@ function WorkoutDragOverlay({ workout }: { workout: Workout }) {
   )
 }
 
+function SortableExerciseItem({ id, children }: {
+  id: string
+  children: (props: { dragHandleProps: Record<string, any>; isDragging: boolean }) => React.ReactNode
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ dragHandleProps: { ...attributes, ...listeners }, isDragging })}
+    </div>
+  )
+}
+
 export default function WorkoutScheduler() {
   const navigate = useNavigate()
   const { clientId } = useParams()
@@ -285,6 +304,11 @@ export default function WorkoutScheduler() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [editingTagsWorkout, setEditingTagsWorkout] = useState<Workout | null>(null)
   const [newTagInput, setNewTagInput] = useState('')
+
+  // Sensors для drag-and-drop упражнений в модали
+  const exerciseSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  )
 
   // Load data
   useEffect(() => {
@@ -540,12 +564,14 @@ export default function WorkoutScheduler() {
     setEditingExercises((prev) => prev.filter((ex) => ex.id !== id))
   }
 
-  const moveExercise = (index: number, direction: 'up' | 'down') => {
-    const newExercises = [...editingExercises]
-    const newIndex = direction === 'up' ? index - 1 : index + 1
-    if (newIndex < 0 || newIndex >= newExercises.length) return
-    ;[newExercises[index], newExercises[newIndex]] = [newExercises[newIndex], newExercises[index]]
-    setEditingExercises(newExercises.map((ex, i) => ({ ...ex, orderIndex: i })))
+  const handleExerciseDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setEditingExercises(prev => {
+      const oldIndex = prev.findIndex(e => e.id === String(active.id))
+      const newIndex = prev.findIndex(e => e.id === String(over.id))
+      return arrayMove(prev, oldIndex, newIndex).map((ex, i) => ({ ...ex, orderIndex: i }))
+    })
   }
 
   // Поиск упражнений для добавления
@@ -933,35 +959,29 @@ export default function WorkoutScheduler() {
               <Loader2 className="w-10 h-10 text-primary animate-spin" />
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-              {editingExercises.map((ex, index) => {
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <DndContext sensors={exerciseSensors} collisionDetection={closestCenter} onDragEnd={handleExerciseDragEnd}>
+                <SortableContext items={editingExercises.map(e => e.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-4">
+              {editingExercises.map((ex) => {
                 const timeBasedCategories = ['cardio', 'warmup', 'cooldown', 'flexibility']
                 const isTimeBased = timeBasedCategories.includes(ex.exercise.category || '')
                 const isCardio = ex.exercise.category === 'cardio'
 
                 return (
+                  <SortableExerciseItem key={ex.id} id={ex.id}>
+                    {({ dragHandleProps }) => (
                   <div
-                    key={ex.id}
                     className="bg-card border border-border rounded-2xl p-5 hover:border-primary/30 transition-colors"
                   >
                     {/* Заголовок упражнения */}
                     <div className="flex items-center justify-between mb-5">
                       <div className="flex items-center gap-4">
-                        <div className="flex flex-col gap-1">
-                          <button
-                            onClick={() => moveExercise(index, 'up')}
-                            disabled={index === 0}
-                            className="w-8 h-8 rounded-lg bg-muted hover:bg-muted/80 disabled:opacity-30 flex items-center justify-center transition-colors"
-                          >
-                            <ChevronLeft className="w-4 h-4 rotate-90" />
-                          </button>
-                          <button
-                            onClick={() => moveExercise(index, 'down')}
-                            disabled={index === editingExercises.length - 1}
-                            className="w-8 h-8 rounded-lg bg-muted hover:bg-muted/80 disabled:opacity-30 flex items-center justify-center transition-colors"
-                          >
-                            <ChevronRight className="w-4 h-4 rotate-90" />
-                          </button>
+                        <div
+                          {...dragHandleProps}
+                          className="cursor-grab active:cursor-grabbing p-2 rounded-lg hover:bg-muted transition-colors"
+                        >
+                          <GripVertical className="w-5 h-5 text-muted-foreground" />
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-xl">
                           {isTimeBased ? '🏃' : '💪'}
@@ -1187,8 +1207,13 @@ export default function WorkoutScheduler() {
                       </div>
                     )}
                   </div>
+                    )}
+                  </SortableExerciseItem>
                 )
               })}
+                  </div>
+                </SortableContext>
+              </DndContext>
 
               {/* Кнопка добавления упражнения */}
               <button
@@ -1196,7 +1221,7 @@ export default function WorkoutScheduler() {
                   setExerciseSelectorOpen(true)
                   searchExercises('')
                 }}
-                className="w-full py-5 border-2 border-dashed border-border hover:border-primary/50 rounded-2xl flex items-center justify-center gap-3 text-muted-foreground hover:text-primary transition-colors"
+                className="w-full mt-4 py-5 border-2 border-dashed border-border hover:border-primary/50 rounded-2xl flex items-center justify-center gap-3 text-muted-foreground hover:text-primary transition-colors"
               >
                 <Plus className="w-6 h-6" />
                 <span className="font-medium">Добавить упражнение</span>
