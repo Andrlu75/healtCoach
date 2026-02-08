@@ -5,10 +5,12 @@ import time
 from asgiref.sync import sync_to_async
 from django.core.cache import cache
 
+from django.conf import settings
+
 from apps.accounts.models import Client
 from apps.meals.services import classify_and_analyze
 from apps.persona.models import TelegramBot
-from ..telegram_api import answer_callback_query, send_message, send_chat_action
+from ..telegram_api import answer_callback_query, send_message, send_message_with_webapp, send_chat_action
 
 logger = logging.getLogger(__name__)
 
@@ -97,3 +99,20 @@ async def _handle_meal_type_callback(bot: TelegramBot, from_user: dict, chat_id:
     except Exception:
         logger.exception('[CALLBACK] Error processing photo for client=%s', client.pk)
         await send_message(bot.token, chat_id, 'Произошла ошибка при анализе. Попробуйте ещё раз.')
+        return
+
+    # Отправляем кнопку на приложение (как в handle_photo)
+    miniapp_url = getattr(settings, 'TELEGRAM_MINIAPP_URL', '')
+    if miniapp_url:
+        await send_message_with_webapp(
+            bot.token,
+            chat_id,
+            text=(
+                '📱 В приложении доступно:\n'
+                '• Редактирование КБЖУ и ингредиентов\n'
+                '• Дневник питания и статистика\n'
+                '• Программа питания'
+            ),
+            button_text='📱 Открыть приложение',
+            webapp_url=miniapp_url,
+        )
