@@ -1859,21 +1859,7 @@ async def generate_meal_comment(client: Client, meal: Meal, program_meal_type: s
             lambda: BotPersona.objects.filter(coach=bot.coach).first()
         )()
 
-    # Если персона — контроллер без food_response_prompt, ищем основную персону
-    if persona and persona.role == 'controller' and not persona.food_response_prompt:
-        main_persona = await sync_to_async(
-            lambda: BotPersona.objects.filter(controller=persona, role='main').first()
-                    or BotPersona.objects.filter(coach=bot.coach, role='main', is_default=True).first()
-        )()
-        if main_persona and main_persona.food_response_prompt:
-            logger.info('[MEAL COMMENT] Persona is controller, using main persona %s for food comment', main_persona.pk)
-            persona = main_persona
-        else:
-            logger.info('[MEAL COMMENT] No main persona with food_response_prompt found')
-            if program_feedback:
-                return '📋 *Программа питания:*\n' + program_feedback
-            return ''
-
+    # Если нет персоны или food_response_prompt - возвращаем только контроллер
     if not persona or not persona.food_response_prompt:
         logger.info('[MEAL COMMENT] No persona or food_response_prompt, using controller only')
         if program_feedback:
