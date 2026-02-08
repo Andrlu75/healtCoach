@@ -260,15 +260,20 @@ function Dashboard() {
           className="p-4 cursor-pointer"
           onClick={() => navigate('/workouts')}
         >
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Dumbbell size={18} className="text-orange-500" />
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Тренировка на сегодня
-              </span>
-            </div>
-            <ChevronRight size={18} className="text-gray-400" />
-          </div>
+          {(() => {
+            const allDone = todayWorkouts && todayWorkouts.length > 0 && todayWorkouts.every((w: any) => w.status === 'completed' || w.session?.completed_at)
+            return (
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Dumbbell size={18} className={allDone ? 'text-green-500' : 'text-orange-500'} />
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Тренировки на сегодня
+                  </span>
+                </div>
+                <ChevronRight size={18} className="text-gray-400" />
+              </div>
+            )
+          })()}
 
           {todayWorkouts && todayWorkouts.length > 0 ? (
             <div className="space-y-3">
