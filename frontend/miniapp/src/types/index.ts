@@ -23,6 +23,15 @@ export interface ComplianceStatus {
   ai_comment: string
 }
 
+export interface DetailedIngredient {
+  name: string
+  weight: number
+  calories: number
+  proteins: number
+  fats: number
+  carbs: number
+}
+
 export interface Meal {
   id: number
   dish_name: string
@@ -35,6 +44,11 @@ export interface Meal {
   image?: string
   thumbnail?: string
   ingredients?: string[]
+  health_analysis?: {
+    estimated_weight?: number
+    detailed_ingredients?: DetailedIngredient[]
+    smart_mode?: boolean
+  }
   compliance_status?: ComplianceStatus | null
 }
 

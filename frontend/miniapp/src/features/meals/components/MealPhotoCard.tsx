@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Trash2 } from 'lucide-react'
+import { X, Trash2, ChevronDown } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -30,6 +30,7 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
   const [isLoaded, setIsLoaded] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
   const queryClient = useQueryClient()
 
   const handleDelete = async () => {
@@ -51,6 +52,11 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
   const typeLabel = dishTypeLabels[meal.dish_type] || 'Приём пищи'
   const icon = dishTypeIcons[meal.dish_type] || '🍽️'
   const time = dayjs(meal.meal_time).format('HH:mm')
+
+  const detailedIngredients = meal.health_analysis?.detailed_ingredients
+  const estimatedWeight = meal.health_analysis?.estimated_weight
+  const simpleIngredients = meal.ingredients
+  const hasDetails = (detailedIngredients && detailedIngredients.length > 0) || (simpleIngredients && simpleIngredients.length > 0)
 
   // Use thumbnail for preview if available, otherwise full image
   const thumbnailSrc = meal.thumbnail || meal.image
@@ -155,6 +161,72 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
               {meal.compliance_status.ai_comment && (
                 <p className="text-white/70 text-xs">{meal.compliance_status.ai_comment}</p>
               )}
+            </div>
+          )}
+
+          {/* Details button + expandable panel */}
+          {hasDetails && (
+            <div className="flex-shrink-0 px-4">
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowDetails(!showDetails) }}
+                className="w-full flex items-center justify-center gap-1.5 py-2 text-white/60 text-sm"
+              >
+                <span>{showDetails ? 'Скрыть' : 'Подробнее'}</span>
+                <motion.span
+                  animate={{ rotate: showDetails ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ChevronDown size={16} />
+                </motion.span>
+              </button>
+
+              <AnimatePresence>
+                {showDetails && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="bg-white/10 rounded-xl p-3 mb-2 max-h-[40vh] overflow-y-auto">
+                      {estimatedWeight && (
+                        <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/10">
+                          <span className="text-white/50 text-xs">Вес порции</span>
+                          <span className="text-white font-medium text-sm">~{estimatedWeight} г</span>
+                        </div>
+                      )}
+
+                      {detailedIngredients && detailedIngredients.length > 0 ? (
+                        <div className="space-y-2">
+                          {detailedIngredients.map((ing, i) => (
+                            <div key={i} className="flex items-center justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-white text-sm truncate">{ing.name}</p>
+                                <p className="text-white/40 text-xs">{ing.weight} г</p>
+                              </div>
+                              <div className="flex gap-2 text-xs flex-shrink-0">
+                                <span className="text-blue-400">{ing.calories}</span>
+                                <span className="text-red-400">{ing.proteins}б</span>
+                                <span className="text-amber-400">{ing.fats}ж</span>
+                                <span className="text-green-400">{ing.carbs}у</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : simpleIngredients && simpleIngredients.length > 0 ? (
+                        <div className="space-y-1">
+                          <p className="text-white/50 text-xs mb-2">Ингредиенты</p>
+                          {simpleIngredients.map((ing, i) => (
+                            <p key={i} className="text-white text-sm">• {ing}</p>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
 
