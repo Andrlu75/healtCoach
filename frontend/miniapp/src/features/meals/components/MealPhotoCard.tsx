@@ -199,18 +199,30 @@ export function MealPhotoCard({ meal }: MealPhotoCardProps) {
                       )}
 
                       {detailedIngredients && detailedIngredients.length > 0 ? (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {detailedIngredients.map((ing, i) => (
-                            <div key={i} className="flex items-center justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <p className="text-white text-sm truncate">{ing.name}</p>
-                                <p className="text-white/40 text-xs">{ing.weight} г</p>
+                            <div key={i} className="bg-white/5 rounded-lg p-2.5">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <p className="text-white text-sm font-medium">{ing.name}</p>
+                                <span className="text-white/40 text-xs">{ing.weight} г</span>
                               </div>
-                              <div className="flex gap-2 text-xs flex-shrink-0">
-                                <span className="text-blue-400">{ing.calories}</span>
-                                <span className="text-red-400">{ing.proteins}б</span>
-                                <span className="text-amber-400">{ing.fats}ж</span>
-                                <span className="text-green-400">{ing.carbs}у</span>
+                              <div className="grid grid-cols-4 gap-1.5 text-center">
+                                <div>
+                                  <p className="text-blue-400 text-xs font-medium">{ing.calories}</p>
+                                  <p className="text-white/30 text-[10px]">ккал</p>
+                                </div>
+                                <div>
+                                  <p className="text-red-400 text-xs font-medium">{ing.proteins} г</p>
+                                  <p className="text-white/30 text-[10px]">белки</p>
+                                </div>
+                                <div>
+                                  <p className="text-amber-400 text-xs font-medium">{ing.fats} г</p>
+                                  <p className="text-white/30 text-[10px]">жиры</p>
+                                </div>
+                                <div>
+                                  <p className="text-green-400 text-xs font-medium">{ing.carbs} г</p>
+                                  <p className="text-white/30 text-[10px]">углев.</p>
+                                </div>
                               </div>
                             </div>
                           ))}
