@@ -109,11 +109,14 @@ CLASSIFY_AND_ANALYZE_PROMPT = """Посмотри на фото и опреде�
   "type": "food",
   "dish_name": "название блюда",
   "dish_type": "тип (завтрак/обед/ужин/перекус)",
+  "estimated_weight": общий_вес_порции_в_граммах,
   "calories": число_ккал,
   "proteins": граммы_белка,
   "fats": граммы_жиров,
   "carbohydrates": граммы_углеводов,
-  "ingredients": ["ингредиент1", "ингредиент2"],
+  "ingredients": [
+    {"name": "ингредиент", "weight": вес_г, "calories": ккал, "proteins": белки_г, "fats": жиры_г, "carbs": углеводы_г}
+  ],
   "confidence": число_от_1_до_100
 }
 
@@ -129,11 +132,14 @@ ANALYZE_FOOD_PROMPT = """Проанализируй фото еды и верн�
 {
   "dish_name": "название блюда",
   "dish_type": "тип (завтрак/обед/ужин/перекус)",
+  "estimated_weight": общий_вес_порции_в_граммах,
   "calories": число_ккал,
   "proteins": граммы_белка,
   "fats": граммы_жиров,
   "carbohydrates": граммы_углеводов,
-  "ingredients": ["ингредиент1", "ингредиент2"],
+  "ingredients": [
+    {"name": "ингредиент", "weight": вес_г, "calories": ккал, "proteins": белки_г, "fats": жиры_г, "carbs": углеводы_г}
+  ],
   "confidence": число_от_1_до_100
 }
 
@@ -831,6 +837,24 @@ async def save_meal(client: Client, image_data: bytes, analysis: dict) -> Meal:
     """Save analyzed meal to database with image."""
     now = timezone.now()
 
+    # Ингредиенты могут быть детальными (dict) или простыми (str)
+    raw_ingredients = analysis.get('ingredients', [])
+    detailed_ingredients = []
+    simple_ingredients = []
+    for ing in raw_ingredients:
+        if isinstance(ing, dict):
+            detailed_ingredients.append(ing)
+            simple_ingredients.append(ing.get('name', ''))
+        else:
+            simple_ingredients.append(str(ing))
+
+    health_analysis = {}
+    estimated_weight = analysis.get('estimated_weight')
+    if estimated_weight:
+        health_analysis['estimated_weight'] = estimated_weight
+    if detailed_ingredients:
+        health_analysis['detailed_ingredients'] = detailed_ingredients
+
     meal = await sync_to_async(Meal.objects.create)(
         client=client,
         image_type='food',
@@ -840,10 +864,11 @@ async def save_meal(client: Client, image_data: bytes, analysis: dict) -> Meal:
         proteins=analysis.get('proteins'),
         fats=analysis.get('fats'),
         carbohydrates=analysis.get('carbohydrates'),
-        ingredients=analysis.get('ingredients', []),
+        ingredients=simple_ingredients,
         ai_confidence=analysis.get('confidence'),
         ai_comment=analysis.get('ai_response', ''),
         meal_time=now,
+        health_analysis=health_analysis,
     )
 
     # Save image
