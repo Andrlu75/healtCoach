@@ -32,7 +32,10 @@ class Command(BaseCommand):
             self.stdout.write(f'Setting webhook: {webhook_url}')
 
             try:
-                params = {'url': webhook_url}
+                params = {
+                    'url': webhook_url,
+                    'allowed_updates': ['message', 'callback_query'],
+                }
                 if webhook_secret:
                     params['secret_token'] = webhook_secret
 
