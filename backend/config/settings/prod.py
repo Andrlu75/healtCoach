@@ -108,6 +108,16 @@ if REDIS_URL:
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
             'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'socket_connect_timeout': 3,
+                'socket_timeout': 3,
+                'retry_on_timeout': True,
+            },
+        },
+        # Локальный кеш для throttling — не зависит от Redis
+        'throttle': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'throttle-cache',
         },
     }
     CELERY_BROKER_URL = REDIS_URL
@@ -116,6 +126,10 @@ else:
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        },
+        'throttle': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'throttle-cache',
         },
     }
 

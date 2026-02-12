@@ -123,9 +123,10 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
     # Rate limiting (anti-spam protection)
+    # Используем SafeThrottle с locmem кешем — не зависит от Redis
     'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
+        'core.throttling.SafeAnonRateThrottle',
+        'core.throttling.SafeUserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/hour',
@@ -180,6 +181,11 @@ CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
         'LOCATION': REDIS_URL,
+    },
+    # Локальный кеш для throttling — не зависит от Redis
+    'throttle': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'throttle-cache',
     },
 }
 

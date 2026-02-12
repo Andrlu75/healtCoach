@@ -12,7 +12,7 @@ from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser, JSONParser
 from rest_framework.response import Response
-from rest_framework.throttling import UserRateThrottle
+from core.throttling import SafeUserRateThrottle
 from rest_framework.views import APIView
 
 from .models import Dish, DishTag, Meal, MealDraft, Product
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 # SECURITY: AI RATE LIMITING
 # ============================================================================
 
-class AIHourlyRateThrottle(UserRateThrottle):
+class AIHourlyRateThrottle(SafeUserRateThrottle):
     """Rate limiting для AI endpoints — 60 запросов в час на пользователя.
 
     SECURITY: Защита от cost attacks и злоупотребления AI API.
@@ -46,7 +46,7 @@ class AIHourlyRateThrottle(UserRateThrottle):
     rate = '60/hour'
 
 
-class AIDailyRateThrottle(UserRateThrottle):
+class AIDailyRateThrottle(SafeUserRateThrottle):
     """Rate limiting для AI endpoints — 300 запросов в день на пользователя.
 
     SECURITY: Дополнительный дневной лимит для защиты от злоупотреблений.
