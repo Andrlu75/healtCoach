@@ -237,8 +237,13 @@ async def _get_vision_provider(bot: TelegramBot, client: Client = None):
         if persona:
             logger.info('[VISION] Using client persona=%s', persona.pk)
 
+    # Дефолтная персона коуча — именно та, которую редактирует UI AI-настроек
+    # (флаг is_default=True). Без этого фильтра мы рисковали попасть на другую
+    # персону того же коуча (например, привязанную к конкретному клиенту) со
+    # старыми/пустыми полями vision_provider.
     default_persona = await sync_to_async(
-        lambda: BotPersona.objects.filter(coach=bot.coach).first()
+        lambda: BotPersona.objects.filter(coach=bot.coach, is_default=True).first()
+        or BotPersona.objects.filter(coach=bot.coach).first()
     )()
 
     if not persona:
