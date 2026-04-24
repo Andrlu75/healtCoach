@@ -23,7 +23,20 @@ function onTokenRefreshed(token: string) {
   refreshSubscribers = []
 }
 
+// Эндпоинты, на которые нельзя передавать access_token — иначе протухший
+// токен приводит к 401 от JWT middleware ещё до выполнения вьюхи, хотя
+// сами эндпоинты разрешены AllowAny.
+const AUTH_ENDPOINTS = ['/auth/telegram/', '/auth/refresh/']
+
 api.interceptors.request.use((config) => {
+  const url = config.url || ''
+  const isAuthEndpoint = AUTH_ENDPOINTS.some((path) => url.includes(path))
+  if (isAuthEndpoint) {
+    if (config.headers) {
+      delete config.headers.Authorization
+    }
+    return config
+  }
   const token = localStorage.getItem('access_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`

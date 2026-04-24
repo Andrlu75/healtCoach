@@ -65,6 +65,11 @@ export const useAuthStore = create<AuthState>((set) => ({
         needsOnboarding,
       })
     } catch (err: unknown) {
+      // Любая ошибка авторизации означает, что сохранённые токены
+      // больше не валидны. Чистим, чтобы повторный запуск MiniApp
+      // не слал протухший Bearer-токен снова.
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
       const message = err instanceof Error ? err.message : 'Ошибка авторизации'
       set({ error: message, status: 'error', isLoading: false })
     }
