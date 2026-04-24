@@ -8,6 +8,8 @@ from .pricing import MODEL_PRICING
 OPENROUTER_PROVIDER_MAP = {
     'openai': 'openai',
     'deepseek': 'deepseek',
+    'anthropic': 'anthropic',
+    'gemini': 'google',
 }
 
 # In-memory cache for OpenRouter metadata
@@ -210,6 +212,10 @@ async def fetch_models(provider: str, api_key: str) -> list[dict]:
         raw = await _fetch_openai_models(api_key)
     elif provider == 'deepseek':
         raw = await _fetch_deepseek_models(api_key)
+    elif provider == 'anthropic':
+        raw = await _fetch_anthropic_models(api_key)
+    elif provider == 'gemini':
+        raw = await _fetch_gemini_models(api_key)
     else:
         raise ValueError(f'Unknown provider: {provider}')
 
@@ -251,6 +257,61 @@ async def _fetch_deepseek_models(api_key: str) -> list[dict]:
     models = []
     for m in data.get('data', []):
         models.append({'id': m['id'], 'name': m['id']})
+
+    models.sort(key=lambda x: x['id'])
+    return models
+
+
+async def _fetch_anthropic_models(api_key: str) -> list[dict]:
+    """Валидация ключа Anthropic и получение списка моделей.
+
+    Endpoint: https://docs.anthropic.com/en/api/models-list
+    """
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            'https://api.anthropic.com/v1/models',
+            headers={
+                'x-api-key': api_key,
+                'anthropic-version': '2023-06-01',
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+    models = []
+    for m in data.get('data', []):
+        model_id = m.get('id')
+        if not model_id:
+            continue
+        models.append({'id': model_id, 'name': m.get('display_name') or model_id})
+
+    models.sort(key=lambda x: x['id'])
+    return models
+
+
+async def _fetch_gemini_models(api_key: str) -> list[dict]:
+    """Валидация ключа Google Gemini и получение списка моделей.
+
+    Endpoint: https://ai.google.dev/api/models#method:-models.list
+    """
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            'https://generativelanguage.googleapis.com/v1beta/models',
+            params={'key': api_key},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+    models = []
+    for m in data.get('models', []):
+        name = m.get('name', '')
+        if not name.startswith('models/'):
+            continue
+        model_id = name.removeprefix('models/')
+        supported = m.get('supportedGenerationMethods', [])
+        if 'generateContent' not in supported:
+            continue
+        models.append({'id': model_id, 'name': m.get('displayName') or model_id})
 
     models.sort(key=lambda x: x['id'])
     return models
