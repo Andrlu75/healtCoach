@@ -225,6 +225,8 @@ async def _get_vision_provider(bot: TelegramBot, client: Client = None):
     """Get vision AI provider for the bot's coach.
 
     Uses client's persona if available, otherwise falls back to coach's default persona.
+    AI-настройки (vision_provider/model) всегда берутся с fallback на дефолтную
+    персону коуча, если у индивидуальной персоны клиента они пустые.
     """
     logger.info('[VISION] Getting provider for bot=%s coach=%s client=%s', bot.pk, bot.coach_id, client.pk if client else None)
 
@@ -235,10 +237,12 @@ async def _get_vision_provider(bot: TelegramBot, client: Client = None):
         if persona:
             logger.info('[VISION] Using client persona=%s', persona.pk)
 
+    default_persona = await sync_to_async(
+        lambda: BotPersona.objects.filter(coach=bot.coach).first()
+    )()
+
     if not persona:
-        persona = await sync_to_async(
-            lambda: BotPersona.objects.filter(coach=bot.coach).first()
-        )()
+        persona = default_persona
         if persona:
             logger.info('[VISION] Using coach default persona=%s', persona.pk)
 
@@ -246,8 +250,19 @@ async def _get_vision_provider(bot: TelegramBot, client: Client = None):
         logger.error('[VISION] No BotPersona for coach=%s', bot.coach_id)
         raise ValueError(f'No BotPersona configured for coach {bot.coach_id}')
 
-    provider_name = persona.vision_provider or persona.text_provider or 'openai'
-    model = persona.vision_model or persona.text_model or None
+    # Эффективные AI-настройки: если в клиентской персоне vision/text провайдер
+    # не задан, подмешиваем из дефолтной персоны коуча. Это позволяет менять
+    # провайдера/модель централизованно через UI консоли (AI настройки), даже
+    # если у клиента есть индивидуальная персона со старыми пустыми полями.
+    provider_name = persona.vision_provider or persona.text_provider
+    model = persona.vision_model or persona.text_model
+
+    if not provider_name and default_persona and default_persona.pk != persona.pk:
+        provider_name = default_persona.vision_provider or default_persona.text_provider
+        model = default_persona.vision_model or default_persona.text_model
+        logger.info('[VISION] Fallback to coach default persona AI settings: provider=%s model=%s', provider_name, model)
+
+    provider_name = provider_name or 'openai'
 
     logger.info('[VISION] Using provider=%s model=%s', provider_name, model)
 
