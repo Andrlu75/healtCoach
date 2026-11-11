@@ -16,6 +16,7 @@ dj-database-url==2.3.0
 
 # Async / Celery
 celery[redis]==5.4.0
+kombu==5.6.2  # Совместимость с redis-py 5.2.1
 django-celery-beat==2.7.0
 redis==5.2.1
 
