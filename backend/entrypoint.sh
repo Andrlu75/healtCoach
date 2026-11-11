@@ -13,11 +13,11 @@ python manage.py setup_webhooks || true
 # Start Celery worker in background if Redis is available
 if [ -n "$CELERY_BROKER_URL" ]; then
     echo "Starting Celery worker in background..."
-    celery -A config worker -l info --concurrency=1 &
+    celery -A config worker -l info --pool=solo &
 
     echo "Starting Celery beat in background..."
     celery -A config beat -l info &
 fi
 
 echo "Starting gunicorn on port 8000..."
-exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120 --preload
+exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 1 --threads 4 --timeout 120 --preload
